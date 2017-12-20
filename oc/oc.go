@@ -15,13 +15,15 @@ import(
 func main() {
 	fmt.Println("OnionCoin v1.0.0 Started...")
 
-	coin.New_Coin()
 	p2p.Init_p2p_net()
 	ocrypto.Crypto_test()
-	
-	var vault vault.Vault
-	vault.Init_vault()
 
+	var vault vault.Vault
+	coin := coin.New_Coin()
+	vault.Init_vault()
+	vault.Deposit(coin)
+	vault.Withdraw("1338")
+	
 	//for {
 		// receiving user commands
 	//}
