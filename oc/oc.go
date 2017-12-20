@@ -6,27 +6,31 @@ package main
 
 import(
 	"fmt"
-	chain "github.com/rainer37/OnionCoin/blockchain_oc"
-	"github.com/rainer37/OnionCoin/crypto_oc/onion"
-	"github.com/rainer37/OnionCoin/peernet"
-	"github.com/rainer37/OnionCoin/crypto_oc/pkpair"
+	"github.com/rainer37/OnionCoin/coin"
+	"github.com/rainer37/OnionCoin/vault"	
+	"github.com/rainer37/OnionCoin/ocrypto"
+	"github.com/rainer37/OnionCoin/p2p"
 )
 
 func main() {
-	fmt.Println("Onicrypto_oc/pkpairClient v1.0.0 Started...")
-	chain.New_Chain()
-	onion.Onion()
-	peernet.Peernet_Init()
-	peernet.Serve()
+	fmt.Println("OnionCoin Client v1.0.0 Started...")
+	/*
+	1. 	check if there is local ledger/registry/coins:
+			yes: read it from disk
+			no: create a new one
+		in either case update with peers:
 
-	pub, prv := pkpair.KeyGen()
-	
-	cipher := pkpair.Encrypt("Bring them down", pub)
-	plain := pkpair.Decrypt(cipher, prv)
+	2.	start the crypto manager
+	3.	start the p2p net server listening on [ip:port]
 
-	fmt.Println(plain)
+	5.	UI initiated
+	*/
+	coin.Test_coin()
+	p2p.Init_p2p_net()
+	ocrypto.Crypto_test()
+	vault.Init_vault()
 
 	for {
-
+		// receiving user commands
 	}
 }
