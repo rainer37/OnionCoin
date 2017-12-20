@@ -13,24 +13,16 @@ import(
 )
 
 func main() {
-	fmt.Println("OnionCoin Client v1.0.0 Started...")
-	/*
-	1. 	check if there is local ledger/registry/coins:
-			yes: read it from disk
-			no: create a new one
-		in either case update with peers:
+	fmt.Println("OnionCoin v1.0.0 Started...")
 
-	2.	start the crypto manager
-	3.	start the p2p net server listening on [ip:port]
-
-	5.	UI initiated
-	*/
-	coin.Test_coin()
+	coin.New_Coin()
 	p2p.Init_p2p_net()
 	ocrypto.Crypto_test()
+	
+	var vault vault.Vault
 	vault.Init_vault()
 
-	for {
+	//for {
 		// receiving user commands
-	}
+	//}
 }
