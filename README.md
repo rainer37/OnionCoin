@@ -1,2 +1,2 @@
 # OnionCoin
-Anonymous Messaging System Over BlockChain.
+Anonymous Messaging System with Incentives. Onion-as-a-Service.
