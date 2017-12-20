@@ -16,7 +16,7 @@ func print(str interface{}) {
 	case int, uint, uint64:
 		fmt.Printf("%s %d\n", VAULT_PREFIX, str)
 	case string:
-		println(VAULT_PREFIX, str.(string))
+		fmt.Println(VAULT_PREFIX, str.(string))
 	default:
 
 	}
