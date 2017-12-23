@@ -13,15 +13,15 @@ func print(str interface{}) {
 	case int, uint, uint64:
 		fmt.Printf("%s %d\n", BANK_PREFIX, str)
 	case string:
-		println(BANK_PREFIX, str.(string))
+		fmt.Println(BANK_PREFIX, str.(string))
 	default:
 
 	}
 }
 
 
-func New_Bank() *Bank{
+func InitBank() *Bank{
 	print("i'm a bank!")
 	bank := new(Bank)
 	return bank
-	}
+}

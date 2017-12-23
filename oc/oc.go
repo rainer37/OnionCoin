@@ -18,12 +18,18 @@ func main() {
 
 	p2p.Init_p2p_net()
 	ocrypto.Crypto_test()
-	node.New_Node()
+	n := node.NewNode()
+	fmt.Println(n.GetBalance())
 
 	var vault vault.Vault
 	coin := coin.New_Coin()
-	vault.Init_vault()
-	vault.Deposit(coin)
+	vault.InitVault()
+
+	err := vault.Deposit(coin)
+	if err != nil {
+		println(1)
+	}
+
 	vault.Withdraw("1338")
 
 	//for {

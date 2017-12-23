@@ -7,11 +7,18 @@ import(
 
 const VAULT_PREFIX string = "[VULT]"
 
+var debugged bool = false
+
 type Vault struct {
 	Coins map[string]*coin.Coin
 }
 
 func print(str interface{}) {
+
+	if !debugged {
+		return
+	}
+
 	switch str.(type) {
 	case int, uint, uint64:
 		fmt.Printf("%s %d\n", VAULT_PREFIX, str)
@@ -26,15 +33,26 @@ func (vault *Vault) Len() int {
 	return len(vault.Coins)
 }
 
-func (vault *Vault) Init_vault() {
+func (vault *Vault) InitVault() {
 	vault.Coins = make(map[string]*coin.Coin)
 	print("Vault Created.")
 }
 
-func (vault *Vault) Deposit(coin *coin.Coin) {
+func (vault *Vault) Contains(coin *coin.Coin) bool {
+	if vault.Coins[coin.Get_RID()] != nil {
+		return true
+	}
+	return false
+}
+
+func (vault *Vault) Deposit(coin *coin.Coin) error {
 	print("Depositing Coin :"+coin.Get_RID())
-	vault.Coins[coin.Get_RID()] = coin
-	print(vault.Len())
+	if !vault.Contains(coin) {
+		vault.Coins[coin.Get_RID()] = coin
+		print(vault.Len())
+		return nil
+	}
+	return fmt.Errorf("Error: %s is in the Vault", coin.Get_RID())
 }
 
 func (vault *Vault) Withdraw(id string) *coin.Coin {

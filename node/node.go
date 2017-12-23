@@ -3,6 +3,7 @@ package node
 import(
 	"fmt"
 	"github.com/rainer37/OnionCoin/vault"
+	"github.com/rainer37/OnionCoin/coin"
 )
 
 const NODE_PREFIX string = "[NODE]"
@@ -22,10 +23,22 @@ func print(str interface{}) {
 	}
 }
 
-func New_Node() *Node {
+func NewNode() *Node {
 	print("Create a new node.")
 	n := new(Node)
 	n.Vault = new(vault.Vault)
-	n.Vault.Init_vault()
+	n.Vault.InitVault()
 	return n
+}
+
+func (n *Node) GetBalance() int {
+	return n.Vault.Len()
+}
+
+func (n *Node) Deposit(coin *coin.Coin) error {
+	return n.Vault.Deposit(coin)
+}
+
+func (n *Node) Withdraw(rid string) *coin.Coin {
+	return n.Vault.Withdraw(rid)
 }
