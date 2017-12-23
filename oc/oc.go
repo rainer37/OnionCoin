@@ -16,7 +16,7 @@ import(
 func main() {
 	fmt.Println("[MAIN] OnionCoin v1.0.0 Started...")
 
-	p2p.Init_p2p_net()
+	p2p.P2PInit()
 	ocrypto.Crypto_test()
 	n := node.NewNode()
 	fmt.Println(n.GetBalance())
@@ -27,7 +27,7 @@ func main() {
 
 	err := vault.Deposit(coin)
 	if err != nil {
-		println(1)
+		println(err.Error())
 	}
 
 	vault.Withdraw("1338")

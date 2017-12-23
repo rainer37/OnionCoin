@@ -4,7 +4,13 @@ import(
 	"fmt"
 )
 
-const P2P_PREFIX string = "[PEER]"
+const P2P_PREFIX = "[PEER]"
+
+type NetInfo struct {
+	IP string
+	Port int
+
+}
 
 func print(str interface{}) {
 	switch str.(type) {
@@ -17,6 +23,6 @@ func print(str interface{}) {
 	}
 }
 
-func Init_p2p_net() {
+func P2PInit() {
 	print("p2p net initiated.")
 }

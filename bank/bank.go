@@ -1,11 +1,12 @@
 package bank
 
-import "fmt"
-
-const BANK_PREFIX string = "[BANK]"
+import (
+	"fmt"
+	)
+const BANK_PREFIX = "[BANK]"
 
 type Bank struct {
-
+	FCL *FreeCoinList
 }
 
 func print(str interface{}) {
@@ -19,9 +20,14 @@ func print(str interface{}) {
 	}
 }
 
-
 func InitBank() *Bank{
 	print("i'm a bank!")
 	bank := new(Bank)
+	bank.FCL = NewFCL()
 	return bank
 }
+
+func (bank *Bank) Sign() {}
+func (bank *Bank) VerifyCoin() {}
+func (bank *Bank) MakeCoin() {}
+func (bank *Bank) GenFreeList() {}

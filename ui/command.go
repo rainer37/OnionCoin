@@ -1,5 +1,5 @@
 package ui
 
-func New_Command() {
+func NewCommand() {
 	println("creating new command.")
 }

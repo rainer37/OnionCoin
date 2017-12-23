@@ -4,7 +4,13 @@ import(
 	"fmt"
 )
 
-const CRYPTO_PREFIX string = "[CRYP]"
+const CRYPTO_PREFIX = "[CRYP]"
+
+type CryptoTK struct {
+	Ver Verifier
+	Bsig BlindSig
+	Sig Signer
+}
 
 func print(str interface{}) {
 	switch str.(type) {

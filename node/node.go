@@ -6,10 +6,10 @@ import(
 	"github.com/rainer37/OnionCoin/coin"
 )
 
-const NODE_PREFIX string = "[NODE]"
+const NODE_PREFIX = "[NODE]"
 
 type Node struct {
-	Vault *vault.Vault
+	vault *vault.Vault
 }
 
 func print(str interface{}) {
@@ -26,19 +26,19 @@ func print(str interface{}) {
 func NewNode() *Node {
 	print("Create a new node.")
 	n := new(Node)
-	n.Vault = new(vault.Vault)
-	n.Vault.InitVault()
+	n.vault = new(vault.Vault)
+	n.vault.InitVault()
 	return n
 }
 
 func (n *Node) GetBalance() int {
-	return n.Vault.Len()
+	return n.vault.Len()
 }
 
 func (n *Node) Deposit(coin *coin.Coin) error {
-	return n.Vault.Deposit(coin)
+	return n.vault.Deposit(coin)
 }
 
 func (n *Node) Withdraw(rid string) *coin.Coin {
-	return n.Vault.Withdraw(rid)
+	return n.vault.Withdraw(rid)
 }

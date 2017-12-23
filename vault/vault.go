@@ -5,7 +5,7 @@ import(
 	"github.com/rainer37/OnionCoin/coin"
 )
 
-const VAULT_PREFIX string = "[VULT]"
+const VAULT_PREFIX = "[VULT]"
 
 var debugged bool = false
 
@@ -39,7 +39,7 @@ func (vault *Vault) InitVault() {
 }
 
 func (vault *Vault) Contains(coin *coin.Coin) bool {
-	if vault.Coins[coin.Get_RID()] != nil {
+	if _, ok := vault.Coins[coin.Get_RID()]; ok {
 		return true
 	}
 	return false

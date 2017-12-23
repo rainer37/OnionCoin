@@ -4,7 +4,7 @@ import(
 	"fmt"
 )
 
-const COIN_PREFIX string = "[COIN]"
+const COIN_PREFIX = "[COIN]"
 
 type Coin struct {
 	RID string // receiver's ID
