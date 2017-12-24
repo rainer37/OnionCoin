@@ -16,8 +16,7 @@ import(
 
 func main() {
 
-
-	if len(os.Args) < 2 {
+	if len(os.Args) < 2 || len(os.Args) > 5{
 		fmt.Println("[MAIN] Usage:\n\toc [port]")
 		os.Exit(1)
 	}
@@ -28,7 +27,7 @@ func main() {
 
 	ocrypto.NewCryptoTK()
 	n := node.NewNode()
-	fmt.Println("[MAIN] Balance:",n.GetBalance())
+	fmt.Println("[MAIN] Balance:", n.GetBalance())
 
 	var vault vault.Vault
 	coin := coin.New_Coin()
