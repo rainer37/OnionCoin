@@ -6,6 +6,7 @@ package main
 
 import(
 	"fmt"
+	"os"
 	"github.com/rainer37/OnionCoin/coin"
 	"github.com/rainer37/OnionCoin/vault"	
 	"github.com/rainer37/OnionCoin/ocrypto"
@@ -14,12 +15,20 @@ import(
 )
 
 func main() {
+
+
+	if len(os.Args) < 2 {
+		fmt.Println("[MAIN] Usage:\n\toc [port]")
+		os.Exit(1)
+	}
+
+	port := os.Args[1]
+
 	fmt.Println("[MAIN] OnionCoin v1.0.0 Started...")
 
-	p2p.P2PInit()
-	ocrypto.Crypto_test()
+	ocrypto.NewCryptoTK()
 	n := node.NewNode()
-	fmt.Println(n.GetBalance())
+	fmt.Println("[MAIN] Balance:",n.GetBalance())
 
 	var vault vault.Vault
 	coin := coin.New_Coin()
@@ -32,7 +41,6 @@ func main() {
 
 	vault.Withdraw("1338")
 
-	//for {
-		// receiving user commands
-	//}
+	p2p.P2PInit("127.0.0.1", port)
+
 }

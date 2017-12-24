@@ -2,9 +2,14 @@ package p2p
 
 import(
 	"fmt"
+	"strconv"
 )
 
 const P2P_PREFIX = "[PEER]"
+
+type OCServer interface {
+	serve(string, int)
+}
 
 type NetInfo struct {
 	IP string
@@ -23,6 +28,9 @@ func print(str interface{}) {
 	}
 }
 
-func P2PInit() {
+func P2PInit(ip string, port string) {
 	print("p2p net initiated.")
+	p,_ := strconv.Atoi(port)
+
+	new(NServer).serve(ip, p)
 }

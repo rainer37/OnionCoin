@@ -7,7 +7,7 @@ import(
 
 const VAULT_PREFIX = "[VULT]"
 
-var debugged bool = false
+var debugged = false
 
 type Vault struct {
 	Coins map[string]*coin.Coin
@@ -49,7 +49,7 @@ func (vault *Vault) Deposit(coin *coin.Coin) error {
 	print("Depositing Coin :"+coin.Get_RID())
 	if !vault.Contains(coin) {
 		vault.Coins[coin.Get_RID()] = coin
-		print(vault.Len())
+		//print(vault.Len())
 		return nil
 	}
 	return fmt.Errorf("Error: %s is in the Vault", coin.Get_RID())

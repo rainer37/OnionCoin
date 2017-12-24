@@ -10,6 +10,7 @@ type CryptoTK struct {
 	Ver Verifier
 	Bsig BlindSig
 	Sig Signer
+	OMaker OnionMaker
 }
 
 func print(str interface{}) {
@@ -23,6 +24,7 @@ func print(str interface{}) {
 	}
 }
 
-func Crypto_test() {
+func NewCryptoTK() *CryptoTK {
 	print("Crypto ToolKit.")
+	return new(CryptoTK)
 }
