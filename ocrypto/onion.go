@@ -2,7 +2,6 @@ package ocrypto
 
 import (
 	"strconv"
-	"fmt"
 )
 
 type Onion struct {
@@ -23,17 +22,22 @@ func (o *Onion) toByte() []byte {
 	return buffer
 }
 
+func toOnion(ob []byte) *Onion{
+	return nil
+}
+
 func (o *OnionMaker) MakeOnion() *Onion { return nil }
-func (o *OnionMaker) wrap(pk []byte, nextID string, len int, onion *Onion) (oret *Onion) {
-	onionByte := onion.toByte()
-	fmt.Println(onionByte)
+
+func (o *OnionMaker) wrap(pk []byte, nextID string, len int, onionByte []byte) []byte {
+	//TODO: pk encryption
+	oret := new(Onion)
 	oret.len = len
 	oret.nextID = nextID
 	oret.content = onionByte
-	return
+	return oret.toByte()
 }
 
-func (o *OnionMaker) peel (onionBytes []byte) (oret *Onion) {
+func (o *OnionMaker) peel (sk []byte, onionBytes []byte) (oret *Onion) {
 	oret = nil
-	return 
+	return
 }

@@ -31,3 +31,5 @@ func (bank *Bank) Sign() {}
 func (bank *Bank) VerifyCoin() {}
 func (bank *Bank) MakeCoin() {}
 func (bank *Bank) GenFreeList() {}
+func (bank *Bank) send() {}
+func (bank *Bank) receive() {}

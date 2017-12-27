@@ -4,12 +4,18 @@ import(
 	"fmt"
 	"github.com/rainer37/OnionCoin/vault"
 	"github.com/rainer37/OnionCoin/coin"
+	"log"
 )
 
 const NODE_PREFIX = "[NODE]"
 
+
 type Node struct {
 	vault *vault.Vault
+}
+
+func checkErr(err error){
+	if err != nil {log.Fatal(err)}
 }
 
 func print(str interface{}) {
@@ -42,3 +48,6 @@ func (n *Node) Deposit(coin *coin.Coin) error {
 func (n *Node) Withdraw(rid string) *coin.Coin {
 	return n.vault.Withdraw(rid)
 }
+
+
+
