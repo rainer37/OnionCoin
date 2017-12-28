@@ -6,10 +6,12 @@ import(
 	"github.com/rainer37/OnionCoin/node"
 )
 
+const LOCALHOST = "127.0.0.1"
+
 func main() {
 
 	if len(os.Args) < 2 || len(os.Args) > 5{
-		fmt.Println("[MAIN] Usage:\n\toc [port]")
+		fmt.Println("[MAIN] Usage:\n\toc [i|j] [ip:port] [join_port]")
 		os.Exit(1)
 	}
 
@@ -22,7 +24,7 @@ func main() {
 	cmd := os.Args[1]
 
 	n := node.NewNode()
-	n.IP = "127.0.0.1"
+	n.IP = LOCALHOST
 	n.Port = os.Args[2]
 
 	if cmd == "j" {

@@ -8,6 +8,7 @@ import(
 )
 
 const NODE_PREFIX = "[NODE]"
+const FAKE_ID = "FAKEID"
 
 type PKPair struct {
 	pk []byte
@@ -15,6 +16,7 @@ type PKPair struct {
 }
 
 type Node struct {
+	ID string
 	IP string
 	Port string
 	*vault.Vault
@@ -23,7 +25,7 @@ type Node struct {
 }
 
 func checkErr(err error){
-	if err != nil {log.Fatal(err)}
+	if err != nil { log.Fatal(err) }
 }
 
 func print(str interface{}) {
@@ -40,6 +42,7 @@ func print(str interface{}) {
 func NewNode() *Node {
 	print("Create a new node.")
 	n := new(Node)
+	n.ID = FAKE_ID+n.Port
 	n.Vault = new(vault.Vault)
 	n.RoutingTable = new(RoutingTable)
 	n.InitRT()
@@ -60,7 +63,7 @@ func (n *Node) Withdraw(rid string) *coin.Coin {
 }
 
 func (n *Node) Join(address string) {
-	n.sendActive("JOIN"+n.Port, address)
+	go n.SelfInit()
+	n.sendActive(JOIN+n.ID+"@"+n.IP+":"+n.Port, address)
+	select {}
 }
-
-
