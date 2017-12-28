@@ -5,7 +5,7 @@ type RawCoin struct {
 	Content []byte
 }
 
-func New_RawCoin() *RawCoin {
+func NewRawCoin() *RawCoin {
 	coin := new(RawCoin)
 	coin.RID = "1338"
 	coin.Content = []byte("hello world")
@@ -13,10 +13,10 @@ func New_RawCoin() *RawCoin {
 	return coin
 }
 
-func (c *RawCoin) Get_Content() []byte {
+func (c *RawCoin) GetContent() []byte {
 	return c.Content
 }
 
-func (c *RawCoin) Get_RID() string {
+func (c *RawCoin) GetRID() string {
 	return c.RID
 }

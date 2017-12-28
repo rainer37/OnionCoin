@@ -3,9 +3,6 @@ package main
 import(
 	"fmt"
 	"os"
-	//"github.com/rainer37/OnionCoin/coin"
-	//"github.com/rainer37/OnionCoin/vault"
-	//"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/node"
 )
 
@@ -16,26 +13,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	port := os.Args[1]
-
 	fmt.Println("[MAIN] OnionCoin v1.0.0 Started...")
 
-	/*
-	ocrypto.NewCryptoTK()
+	defer func() {
+		fmt.Println("[MAIN] OnionCoin shudown.")
+	}()
+
+	cmd := os.Args[1]
+
 	n := node.NewNode()
-	fmt.Println("[MAIN] Balance:", n.GetBalance())
+	n.IP = "127.0.0.1"
+	n.Port = os.Args[2]
 
-	var vault vault.Vault
-	coin := coin.New_Coin()
-	vault.InitVault()
-
-	err := vault.Deposit(coin)
-	if err != nil {
-		println(err.Error())
+	if cmd == "j" {
+		n.Join(os.Args[3])
+	} else if cmd == "i" {
+		n.SelfInit()
 	}
-
-	vault.Withdraw("1338")
-	*/
-
-	new(node.Node).PeerNetInit(port)
 }

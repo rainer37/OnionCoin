@@ -15,9 +15,7 @@ type Vault struct {
 
 func print(str interface{}) {
 
-	if !debugged {
-		return
-	}
+	if !debugged { return }
 
 	switch str.(type) {
 	case int, uint, uint64:
@@ -39,20 +37,20 @@ func (vault *Vault) InitVault() {
 }
 
 func (vault *Vault) Contains(coin *coin.Coin) bool {
-	if _, ok := vault.Coins[coin.Get_RID()]; ok {
+	if _, ok := vault.Coins[coin.GetRID()]; ok {
 		return true
 	}
 	return false
 }
 
 func (vault *Vault) Deposit(coin *coin.Coin) error {
-	print("Depositing Coin :"+coin.Get_RID())
+	print("Depositing Coin :"+coin.GetRID())
 	if !vault.Contains(coin) {
-		vault.Coins[coin.Get_RID()] = coin
+		vault.Coins[coin.GetRID()] = coin
 		//print(vault.Len())
 		return nil
 	}
-	return fmt.Errorf("Error: %s is in the Vault", coin.Get_RID())
+	return fmt.Errorf("error: %s is in the vault", coin.GetRID())
 }
 
 func (vault *Vault) Withdraw(id string) *coin.Coin {

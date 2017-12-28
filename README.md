@@ -7,3 +7,6 @@ Collection of Coins.
 Trusted Node managing Coin Exchage.
 ## Coin(Onion)
 Currency Unit for messages forwarding.
+## P2P
+port 1338 normal node
+port 8331 bank node

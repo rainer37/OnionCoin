@@ -9,9 +9,17 @@ import(
 
 const NODE_PREFIX = "[NODE]"
 
+type PKPair struct {
+	pk []byte
+	sk []byte
+}
 
 type Node struct {
-	vault *vault.Vault
+	IP string
+	Port string
+	*vault.Vault
+	*PKPair
+	*RoutingTable
 }
 
 func checkErr(err error){
@@ -32,22 +40,27 @@ func print(str interface{}) {
 func NewNode() *Node {
 	print("Create a new node.")
 	n := new(Node)
-	n.vault = new(vault.Vault)
-	n.vault.InitVault()
+	n.Vault = new(vault.Vault)
+	n.RoutingTable = new(RoutingTable)
+	n.InitRT()
+	n.InitVault()
 	return n
 }
 
 func (n *Node) GetBalance() int {
-	return n.vault.Len()
+	return n.Len()
 }
 
 func (n *Node) Deposit(coin *coin.Coin) error {
-	return n.vault.Deposit(coin)
+	return n.Deposit(coin)
 }
 
 func (n *Node) Withdraw(rid string) *coin.Coin {
-	return n.vault.Withdraw(rid)
+	return n.Withdraw(rid)
 }
 
+func (n *Node) Join(address string) {
+	n.sendActive("JOIN"+n.Port, address)
+}
 
 

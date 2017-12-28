@@ -21,7 +21,7 @@ func print(str interface{}) {
 
 	}
 }
-func New_Coin() *Coin {
+func NewCoin() *Coin {
 	coin := new(Coin)
 	coin.RID = "1338"
 	coin.Content = []byte("hello world")
@@ -29,10 +29,10 @@ func New_Coin() *Coin {
 	return coin
 }
 
-func (c *Coin) Get_Content() []byte {
+func (c *Coin) GetContent() []byte {
 	return c.Content
 }
 
-func (c *Coin) Get_RID() string {
+func (c *Coin) GetRID() string {
 	return c.RID
 }
