@@ -28,15 +28,18 @@ func checkErr(err error){
 	if err != nil { log.Fatal(err) }
 }
 
-func print(str interface{}) {
-	switch str.(type) {
-	case int, uint, uint64:
-		fmt.Printf("%s %d\n", NODE_PREFIX, str)
-	case string:
-		fmt.Println(NODE_PREFIX, str.(string))
-	default:
+func print(str ...interface{}) {
+	//switch str.(type) {
+	//case int, uint, uint64:
+	//	fmt.Printf("%s %d\n", NODE_PREFIX, str)
+	//case string:
+	//	fmt.Println(NODE_PREFIX, str)
+	//default:
+	//
+	//}
+	//fmt.Println(str)
+	fmt.Printf("%s %v\n", NODE_PREFIX, str)
 
-	}
 }
 
 func NewNode() *Node {
@@ -62,8 +65,3 @@ func (n *Node) Withdraw(rid string) *coin.Coin {
 	return n.Withdraw(rid)
 }
 
-func (n *Node) Join(address string) {
-	go n.SelfInit()
-	n.sendActive(JOIN+n.ID+"@"+n.IP+":"+n.Port, address)
-	select {}
-}

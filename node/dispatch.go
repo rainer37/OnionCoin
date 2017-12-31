@@ -41,7 +41,7 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 			n.send([]byte(REJ_STR+" UNABLE TO VERIFY YOUR ID"), con, add)
 		}
 
-		n.insert(id, address)
+		n.insert(id, address) //TODO: alternatives on node discovery
 		n.sendActive("JACK", address)
 		print("Welcome to "+address)
 

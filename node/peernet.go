@@ -2,7 +2,6 @@ package node
 
 import (
 	"net"
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -12,6 +11,12 @@ func (n *Node) SelfInit() {
 	p,err := strconv.Atoi(n.Port)
 	checkErr(err)
 	n.Serve(":", p)
+}
+
+func (n *Node) Join(address string) {
+	go n.SelfInit()
+	n.sendActive(JOIN+n.ID+"@"+n.IP+":"+n.Port, address)
+	select {}
 }
 
 func (n *Node) Serve(ip string, port int) {
@@ -27,7 +32,7 @@ func (n *Node) Serve(ip string, port int) {
 		l, add, e := con.ReadFromUDP(buffer)
 		checkErr(e)
 		incoming := buffer[0:l]
-		fmt.Println(NODE_PREFIX,"From", add, l, "bytes : [", string(incoming),"]")
+		print("From", add, l, "bytes : [", string(incoming),"]")
 		//TODO: verify authenticity of msg
 		go n.dispatch(incoming, con, add)
 	}
