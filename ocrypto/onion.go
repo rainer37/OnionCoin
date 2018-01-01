@@ -3,6 +3,7 @@ package ocrypto
 import (
 	"encoding/binary"
 	"fmt"
+	"crypto/rsa"
 )
 
 /*
@@ -17,10 +18,36 @@ type Onion struct {
 	Chaos []byte
 }
 
-type OnionMaker struct {}
+func WrapOnion(pk rsa.PublicKey, nextID string, coin []byte, content []byte) []byte {
 
-func decryptOnion(sk []byte, onion []byte) []byte {
-	return nil
+	b := make([]byte, 0)
+
+	nlen := make([]byte, 4)
+	binary.BigEndian.PutUint32(nlen, uint32(len(nextID)))
+	b = append(b, nlen...)
+
+	clen := make([]byte, 4)
+	binary.BigEndian.PutUint32(clen, uint32(len(coin)))
+	b = append(b, clen...)
+
+	ilen := make([]byte, 8)
+	binary.BigEndian.PutUint64(ilen, uint64(len(content)))
+	b = append(b, ilen...)
+
+	b = append(b, []byte(nextID)...)
+	b = append(b, coin...)
+	b = append(b, content...)
+	b = append(b, []byte{'c','h','a','o','s'}...)
+
+	return PKEncrypt(pk, b)
+}
+
+func PeelOnion(sk *rsa.PrivateKey, onion []byte) *Onion {
+	return FormatOnion(DecryptOnion(sk, onion))
+}
+
+func DecryptOnion(sk *rsa.PrivateKey, onion []byte) []byte {
+	return PKDecrypt(sk, onion)
 }
 
 /*
@@ -45,20 +72,6 @@ func FormatOnion(onion []byte) *Onion {
 	o.InnerOnion = onion[cur: totol_len - chaos_len]
 	o.Chaos = onion[totol_len - chaos_len:]
 	return o
-}
-
-func CookOnion(sk []byte, onion []byte) *Onion {
-	return FormatOnion(decryptOnion(sk, onion))
-}
-
-func (o *OnionMaker) MakeOnionHeart() *Onion { return nil }
-
-func (o *OnionMaker) wrap(pk []byte, nextID string, len int, onionByte []byte) []byte {
-	return nil
-}
-
-func (o *OnionMaker) peel (sk []byte, onionBytes []byte) (oret *Onion) {
-	return
 }
 
 func (o *Onion) String() string {

@@ -10,17 +10,11 @@ import(
 const NODE_PREFIX = "[NODE]"
 const FAKE_ID = "FAKEID"
 
-type PKPair struct {
-	pk []byte
-	sk []byte
-}
-
 type Node struct {
 	ID string
 	IP string
 	Port string
 	*vault.Vault
-	*PKPair
 	*RoutingTable
 }
 
@@ -29,17 +23,8 @@ func checkErr(err error){
 }
 
 func print(str ...interface{}) {
-	//switch str.(type) {
-	//case int, uint, uint64:
-	//	fmt.Printf("%s %d\n", NODE_PREFIX, str)
-	//case string:
-	//	fmt.Println(NODE_PREFIX, str)
-	//default:
-	//
-	//}
-	//fmt.Println(str)
-	fmt.Printf("%s %v\n", NODE_PREFIX, str)
-
+	fmt.Print(NODE_PREFIX+" ")
+	fmt.Println(str...)
 }
 
 func NewNode() *Node {

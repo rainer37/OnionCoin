@@ -11,16 +11,11 @@ type Coin struct {
 	Content []byte
 }
 
-func print(str interface{}) {
-	switch str.(type) {
-	case int, uint, uint64:
-		fmt.Printf("%s %d\n", COIN_PREFIX, str)
-	case string:
-		fmt.Println(COIN_PREFIX, str.(string))
-	default:
-
-	}
+func print(str ...interface{}) {
+	fmt.Print(COIN_PREFIX+" ")
+	fmt.Println(str...)
 }
+
 func NewCoin() *Coin {
 	coin := new(Coin)
 	coin.RID = "1338"
@@ -36,3 +31,5 @@ func (c *Coin) GetContent() []byte {
 func (c *Coin) GetRID() string {
 	return c.RID
 }
+
+func (c *Coin) toByte() {}
