@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 	"github.com/rainer37/OnionCoin/ocrypto"
-	"fmt"
 )
 
 func TestFormatOnion(t *testing.T) {
@@ -35,9 +34,13 @@ func TestWrapOnion(t *testing.T) {
 	coin := []byte{1,2,3,4}
 	inner := []byte{6,7,8,9,0}
 
-	o := ocrypto.WrapOnion(nil, nextID, coin, inner)
+	key := ocrypto.RSAKeyGen()
 
-	fmt.Println(o)
+	oc := ocrypto.WrapOnion(key.PublicKey, nextID, coin, inner)
+
+	o := ocrypto.DecryptOnion(key, oc)
+
+	//fmt.Println(o)
 
 	if len(o) != 36 {
 		t.Error("Crying")

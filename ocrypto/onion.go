@@ -75,5 +75,6 @@ func FormatOnion(onion []byte) *Onion {
 }
 
 func (o *Onion) String() string {
-	return fmt.Sprintf("nextID: %s coin: %v inner: %v chaos: %v", o.NextID, o.Coin, o.InnerOnion, o.Chaos)
+	return fmt.Sprintf("nextID: %s coin: %v inner: %v chaos: %v",
+		o.NextID, o.Coin, o.InnerOnion, o.Chaos)
 }
