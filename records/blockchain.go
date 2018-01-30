@@ -4,33 +4,40 @@ package records
 	
 	Blockchain core api for external usage.
 
-	New_Chain()
-	Mine_block()
-	Verify_block()
-
 */
 
 import(
 	"fmt"
+	"time"
 )
 
+const BKCH_PREFIX = "BKCH"
+
+func print(str ...interface{}) {
+	fmt.Print(BKCH_PREFIX+" ")
+	fmt.Println(str...)
+}
+
 type Txn struct {
-	time string
-	signature string
-	reward_pt float64
-	id string
+	coinNum uint64
+	redeemer string
+	signers []string // ids of signing bank nodes
+	ts time.Time
 }
 
-func New_Chain() {
-	fmt.Println("New BlockChain created by you...")
+type CoinBlock struct {
+	curHash []byte
+	preHash []byte
+	txns [32]Txn
+	ts time.Time
 }
 
-func Mine_block() {
-
+func NewCoinBlock() {
+	print("creating new CoinBlock")
 }
 
-func Verify_block() {
-
+func NewTxn() {
+	print("creating new Transaction")
 }
 
 func get_block_from_disk() {

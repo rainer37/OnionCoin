@@ -3,6 +3,7 @@ package node
 import (
 	"net"
 	"github.com/rainer37/OnionCoin/records"
+	"github.com/rainer37/OnionCoin/ocrypto"
 )
 
 const (
@@ -27,7 +28,7 @@ const (
 	Then dispatch the OMsg to its OpCode.
  */
 func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
-	omsg, ok := UnmarshalOMsg(incoming)
+	omsg, ok := n.UnmarshalOMsg(incoming)
 
 	if !ok || !omsg.VerifySig() {
 		print("Terrible Msg, discard it.")
@@ -36,6 +37,7 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 
 	switch omsg.GetOPCode() {
 	case FWD:
+		n.forwardProtocol(omsg,con, add)
 		print("Forwarding")
 		n.send([]byte("Fine i will take the coin though."), con, add)
 	case JOIN:
@@ -56,26 +58,15 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 	}
 }
 
-func (n *Node) joinProtocol(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
-	ok, id, address := deSegmentJoinMsg(string(incoming[4:]))
-
-	if !ok {
-		print(INV_MSG_FMT)
-		n.send([]byte(REJ_STR+" "+INV_MSG_FMT), con, add)
-	}
-
-	verified := n.verifyID(id)
-
-	if !verified {
-		print("Invalidate ID, be aware!")
-		n.send([]byte(REJ_STR+" UNABLE TO VERIFY YOUR ID"), con, add)
-	}
-
-	n.insert(id, address) //TODO: alternatives on node discovery
-	n.sendActive("JACK", address)
-	print("Welcome to "+address)
-}
-
-func UnmarshalOMsg(msg []byte) (records.OnionMsg, bool) {
-	return nil, true
+/*
+	Retrieve the encrypted symmetric key, and decrypt it
+	Decrypt the rest of incoming packet, and return it as OMsg
+ */
+func (n* Node) UnmarshalOMsg(incoming []byte) (*records.OMsg, bool) {
+	ckey := ocrypto.PKDecrypt(n.sk, incoming[:ocrypto.SYM_KEY_LEN])
+	omsg := new(records.OMsg)
+	b, err := ocrypto.AESDecrypt(ckey, incoming[ocrypto.SYM_KEY_LEN:])
+	if err == nil { return nil, false }
+	omsg.B = b
+	return omsg, true
 }

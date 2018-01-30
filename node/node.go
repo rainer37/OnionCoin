@@ -5,6 +5,9 @@ import(
 	"github.com/rainer37/OnionCoin/vault"
 	"github.com/rainer37/OnionCoin/coin"
 	"log"
+	"crypto/rsa"
+	"github.com/rainer37/OnionCoin/records"
+	"github.com/rainer37/OnionCoin/ocrypto"
 )
 
 const NODE_PREFIX = "[NODE]"
@@ -16,6 +19,7 @@ type Node struct {
 	Port string
 	*vault.Vault
 	*RoutingTable
+	sk *rsa.PrivateKey
 }
 
 func checkErr(err error){
@@ -50,3 +54,16 @@ func (n *Node) Withdraw(rid string) *coin.Coin {
 	return n.Withdraw(rid)
 }
 
+/*
+	Retrieve the encrypted symmetric key, and decrypt it
+	Decrypt the rest of incoming packet, and return it as OMsg
+ */
+
+func (n *Node) DecryptOMsg(incoming []byte) *records.OMsg {
+	ckey := ocrypto.PKDecrypt(n.sk, incoming[:ocrypto.SYM_KEY_LEN])
+	omsg := new(records.OMsg)
+	b, err := ocrypto.AESDecrypt(ckey, incoming[ocrypto.SYM_KEY_LEN:])
+	if err == nil { return nil }
+	omsg.B = b
+	return omsg
+}

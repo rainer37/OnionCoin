@@ -96,8 +96,3 @@ func BlockDecrypt(cipher []byte, cipherKey []byte, sk *rsa.PrivateKey) ([]byte, 
 	key := PKDecrypt(sk, cipherKey)
 	return AESDecrypt(key, cipher)
 }
-
-func NewCryptoTK() *CryptoTK {
-	print("New Crypto ToolKit.")
-	return new(CryptoTK)
-}
