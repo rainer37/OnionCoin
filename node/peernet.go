@@ -38,11 +38,20 @@ func (n *Node) Serve(ip string, port int) {
 	}
 }
 
+
+/*
+	msg: data as bytes to send
+	con: local udp connection
+	add: remote destination address
+ */
 func (n *Node) send(msg []byte, con *net.UDPConn, add *net.UDPAddr) {
 	_, err := con.WriteTo(msg, add)
 	checkErr(err)
 }
 
+/*
+	build a udp connection and send msg to add.
+ */
 func (n *Node) sendActive(msg string, add string) {
 	con, err := net.Dial("udp", add)
 	checkErr(err)
@@ -50,6 +59,7 @@ func (n *Node) sendActive(msg string, add string) {
 	checkErr(err)
 	con.Close()
 }
+
 
 func (n *Node) verifyID(id string) bool { return true }
 

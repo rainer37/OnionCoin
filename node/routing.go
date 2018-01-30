@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 )
+
 type RTEntry interface {
 	IDtoIP() RTLessEntry
 }

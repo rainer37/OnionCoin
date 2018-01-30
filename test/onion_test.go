@@ -3,7 +3,18 @@ package test
 import (
 	"testing"
 	"github.com/rainer37/OnionCoin/ocrypto"
+	"fmt"
 )
+
+
+func TestOnionToOMsg(t *testing.T) {
+	key := ocrypto.RSAKeyGen()
+	msg := []byte("the-key-has-to-be-32-bytes-long!")
+	cipher := ocrypto.PKEncrypt(key.PublicKey, msg)
+	fmt.Println(len(cipher))
+	symcipher, _ := ocrypto.AESEncrypt(msg, msg)
+	fmt.Println(len(symcipher))
+}
 
 func TestFormatOnion(t *testing.T) {
 	b := []byte{0,0,0,3,0,0,0,4,0,0,0,0,0,0,0,7,'w','h','o',0,0,0,9,0,0,0,0,0,0,0xE,1,2,3}
@@ -34,13 +45,13 @@ func TestWrapOnion(t *testing.T) {
 	coin := []byte{1,2,3,4}
 	inner := []byte{6,7,8,9,0}
 
+	sym_key := []byte("the-key-has-to-be-32-bytes-long!")
+
 	key := ocrypto.RSAKeyGen()
 
-	oc := ocrypto.WrapOnion(key.PublicKey, nextID, coin, inner)
+	oc := ocrypto.WrapOnion(key.PublicKey, sym_key, nextID, coin, inner)
 
-	o := ocrypto.DecryptOnion(key, oc)
-
-	//fmt.Println(o)
+	o := ocrypto.DecryptOnion(key, ocrypto.PKEncrypt(key.PublicKey, sym_key), oc[256:])
 
 	if len(o) != 36 {
 		t.Error("Crying")
@@ -72,5 +83,19 @@ func TestWrapOnion(t *testing.T) {
 
 	if string(o[31:]) != "chaos" {
 		t.Error("Crying again again on chaos")
+	}
+
+	op := ocrypto.PeelOnion(key, sym_key, oc)
+
+	if string(op.Chaos) != "chaos" {
+		t.Error("Peel Chaos")
+	}
+
+	if string(op.NextID) != "rainer" {
+		t.Error("Peel nextID")
+	}
+
+	if string(op.Coin) != string([]byte{1,2,3,4}) {
+		t.Error("Peel Coin")
 	}
 }

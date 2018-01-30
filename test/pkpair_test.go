@@ -6,15 +6,12 @@ import (
 )
 
 func TestPKEncrypt(t *testing.T) {
-	msg := "hello world"
-	for i:=0; i<10; i++ {
-		msg += "i"
-	}
+	msg := "the-key-has-to-be-32-bytes-long!"
+
 	sk := ocrypto.RSAKeyGen()
 	pk := sk.PublicKey
 
 	cipher := ocrypto.PKEncrypt(pk, []byte(msg))
-	t.Log(pk)
 	plain := ocrypto.PKDecrypt(sk, cipher)
 
 	if string(plain) != msg {

@@ -1,7 +1,6 @@
 package ocrypto
 
 import(
-	"fmt"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -10,10 +9,12 @@ import(
 	"crypto/cipher"
 	"io"
 	"errors"
+	"fmt"
 )
 
 const CRYPTO_PREFIX = "[CRYP]"
-const KEY_LEN = 2048
+const KEY_LEN = 1024
+const SYM_KEY_LEN = 128
 
 var LABEL = []byte("orders")
 var rng = rand.Reader

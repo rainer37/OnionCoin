@@ -13,18 +13,9 @@ type Vault struct {
 	Coins map[string]*coin.Coin
 }
 
-func print(str interface{}) {
-
-	if !debugged { return }
-
-	switch str.(type) {
-	case int, uint, uint64:
-		fmt.Printf("%s %d\n", VAULT_PREFIX, str)
-	case string:
-		fmt.Println(VAULT_PREFIX, str.(string))
-	default:
-
-	}
+func print(str ...interface{}) {
+	fmt.Print(VAULT_PREFIX+" ")
+	fmt.Println(str...)
 }
 
 func (vault *Vault) Len() int {
