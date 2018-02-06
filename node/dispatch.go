@@ -3,7 +3,6 @@ package node
 import (
 	"net"
 	"github.com/rainer37/OnionCoin/records"
-	"github.com/rainer37/OnionCoin/ocrypto"
 )
 
 const (
@@ -30,7 +29,7 @@ const (
 func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 	omsg, ok := n.UnmarshalOMsg(incoming)
 
-	if !ok || !omsg.VerifySig() {
+	if !ok || !n.VerifySig(omsg) {
 		print("Terrible Msg, discard it.")
 		return
 	}
@@ -63,10 +62,9 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 	Decrypt the rest of incoming packet, and return it as OMsg
  */
 func (n* Node) UnmarshalOMsg(incoming []byte) (*records.OMsg, bool) {
-	ckey := ocrypto.PKDecrypt(n.sk, incoming[:ocrypto.SYM_KEY_LEN])
-	omsg := new(records.OMsg)
-	b, err := ocrypto.AESDecrypt(ckey, incoming[ocrypto.SYM_KEY_LEN:])
-	if err == nil { return nil, false }
-	omsg.B = b
-	return omsg, true
+	return records.UnmarshalOMsg(incoming, n.sk)
+}
+
+func (n* Node) VerifySig(omsg *records.OMsg) bool {
+	return omsg.VerifySig(&n.sk.PublicKey)
 }

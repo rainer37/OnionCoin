@@ -3,6 +3,7 @@ package test
 import (
 	"testing"
 	"github.com/rainer37/OnionCoin/ocrypto"
+	"fmt"
 )
 
 func TestPKEncrypt(t *testing.T) {
@@ -20,10 +21,11 @@ func TestPKEncrypt(t *testing.T) {
 }
 
 func TestAESEncryption(t *testing.T) {
-	msg := []byte("hello world")
+	msg := []byte("hello world hello world")
 	key := []byte("the-key-has-to-be-32-bytes-long!")
 
 	cipherText, err := ocrypto.AESEncrypt(key, msg)
+	fmt.Println(len(cipherText))
 	if err != nil { t.Error("Error when encryption") }
 	plainText, err := ocrypto.AESDecrypt(key, cipherText)
 	if err != nil { t.Error("Error when decryption") }

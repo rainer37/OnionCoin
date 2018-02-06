@@ -20,7 +20,6 @@ var LABEL = []byte("orders")
 var rng = rand.Reader
 
 type CryptoTK struct {
-	Ver Verifier
 	Bsig BlindSig
 }
 
