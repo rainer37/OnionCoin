@@ -50,3 +50,16 @@ func TestBlockEncryption(t *testing.T) {
 		t.Error("Wrong Block Encrytion Result")
 	}
 }
+
+func TestSignANDVerify(t *testing.T) {
+	sk := ocrypto.RSAKeyGen()
+	pk := sk.PublicKey
+
+	msg := []byte("Hello World")
+
+	sig := ocrypto.RSASign(sk, msg)
+	b := ocrypto.RSAVerify(&pk, sig, msg)
+	if !b {
+		t.Error("Signature verification failed")
+	}
+}

@@ -22,7 +22,6 @@ var rng = rand.Reader
 type CryptoTK struct {
 	Ver Verifier
 	Bsig BlindSig
-	Sig Signer
 }
 
 func checkErr(err error){

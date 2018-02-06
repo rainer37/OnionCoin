@@ -64,11 +64,11 @@ func DecryptOnion(sk *rsa.PrivateKey, cKey []byte, onion []byte) []byte {
 	Transforms a DRCRYPTED onion in bytes into Onion struct
  */
 func FormatOnion(onion []byte) *Onion {
-	totol_len := uint64(len(onion))
-	nextID_len := uint64(binary.BigEndian.Uint32(onion[:4]))
-	coin_len := uint64(binary.BigEndian.Uint32(onion[4:8]))
-	innerOnion_len := binary.BigEndian.Uint64((onion[8:16]))
-	chaos_len := totol_len - nextID_len - coin_len - innerOnion_len - 16
+	totolLen := uint64(len(onion))
+	nextIDLen := uint64(binary.BigEndian.Uint32(onion[:4]))
+	coinLen := uint64(binary.BigEndian.Uint32(onion[4:8]))
+	innerOnionLen := binary.BigEndian.Uint64(onion[8:16])
+	chaosLen := totolLen - nextIDLen - coinLen - innerOnionLen - 16
 
 	//fmt.Printf("Total Len: %d nextLen: %d coinLen: %d, innerLen: %d chaosLen: %d\n",
 	// totol_len, nextID_len, coin_len, innerOnion_len, chaos_len)
@@ -76,12 +76,12 @@ func FormatOnion(onion []byte) *Onion {
 	cur := uint64(16)
 
 	o := new(Onion)
-	o.NextID = string(onion[cur:cur+nextID_len])
-	cur = cur+nextID_len
-	o.Coin = onion[cur:cur+coin_len]
-	cur = cur+coin_len
-	o.InnerOnion = onion[cur: totol_len - chaos_len]
-	o.Chaos = onion[totol_len - chaos_len:]
+	o.NextID = string(onion[cur:cur+nextIDLen])
+	cur = cur+ nextIDLen
+	o.Coin = onion[cur:cur+coinLen]
+	cur = cur+ coinLen
+	o.InnerOnion = onion[cur: totolLen -chaosLen]
+	o.Chaos = onion[totolLen - chaosLen:]
 	return o
 }
 

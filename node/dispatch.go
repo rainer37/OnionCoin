@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	REJ_STR = "REJECTED"
+	REJSTR = "REJECTED"
 )
 
 const (
-	INV_MSG_FMT = "INVALID MSG FORMAT"
+	INVMSGFMT = "INVALID MSG FORMAT"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 	FREE = '3'
 	COIN = '4'
 	EXPT = '5'
-	JOIN_ACK = '6'
+	JOINACK = '6'
 )
 /*
 	Unmarshal the incoming packet to Omsg and verify the signature.
@@ -51,7 +51,7 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 		//receive the coin
 	case EXPT:
 		//any exception
-	case JOIN_ACK:
+	case JOINACK:
 		print("JOIN SUCCESS")
 	default:
 		print("Unknown Msg, discard.")
