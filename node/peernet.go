@@ -6,6 +6,8 @@ import (
 	"strings"
 	"github.com/rainer37/OnionCoin/records"
 	"github.com/rainer37/OnionCoin/ocrypto"
+	"crypto/rsa"
+	"time"
 )
 
 func (n *Node) SelfInit() {
@@ -25,23 +27,25 @@ func (n *Node) SelfInit() {
 func (n *Node) Join(address string) {
 	go n.SelfInit()
 
-	// request public key from target node if unknown
+	// request public key from target node if its pk is unknown
 	pk := records.GetKeyByID(FAKE_ID+address)
+	var tPk rsa.PublicKey
 	if pk == nil {
 		print("No Known Pub-Key Stored, Looking-UP")
-		n.sendActive(PKREQUEST+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port, address)
-		select{}
-		//return
+		tPk = n.LookUpPK(address)
+		records.InsertEntry(FAKE_ID+n.Port, tPk, time.Now()) // record retrieved pub-key
+	} else {
+		tPk = pk.Pk
 	}
 
 	isNew := NEWBIE
 	// TODO: check if it's old client.
-	if 1 != 1 {
+	if isNew != "N" {
 		isNew = OLDBIE
 	}
 
 	payload := []byte(n.IP+":"+n.Port+"@"+isNew)
-	joinMsg := records.MarshalOMsg(JOIN, payload, n.ID, n.sk, pk.Pk)
+	joinMsg := records.MarshalOMsg(JOIN, payload, n.ID, n.sk, tPk)
 	n.sendActive(string(joinMsg), address)
 	select {}
 }
@@ -64,6 +68,12 @@ func (n *Node) Serve(ip string, port int) {
 	}
 }
 
+func (n *Node) LookUpPK(address string) rsa.PublicKey {
+	n.sendActive(PKREQUEST+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port, address)
+	// waiting for the pk request return.
+	enPk := <-n.pkChan
+	return ocrypto.DecodePK(enPk)
+}
 
 /*
 	msg: data as bytes to send
@@ -86,8 +96,6 @@ func (n *Node) sendActive(msg string, add string) {
 	con.Close()
 }
 
-
-func (n *Node) verifyID(id string) bool { return true }
 
 func deSegmentJoinMsg(msg string) (bool, string, string) {
 	segs := strings.Split(msg, "@")

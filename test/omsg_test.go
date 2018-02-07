@@ -37,7 +37,7 @@ func TestOMsgMashal(t *testing.T) {
 		t.Error("wrong payload len")
 	}
 
-	if string(omsg.GetPayload(omsg.GetLenPayload())) != string(payload) {
+	if string(omsg.GetPayload()) != string(payload) {
 		t.Error("wrong payload")
 	}
 

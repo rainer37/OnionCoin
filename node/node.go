@@ -24,6 +24,7 @@ type Node struct {
 	*vault.Vault
 	*RoutingTable
 	sk *rsa.PrivateKey
+	pkChan chan []byte // for pk lookup await
 }
 
 func checkErr(err error){
@@ -43,6 +44,7 @@ func NewNode() *Node {
 	n.InitRT()
 	n.InitVault()
 	n.sk = ocrypto.RSAKeyGen()
+	n.pkChan = make(chan []byte)
 	return n
 }
 

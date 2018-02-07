@@ -26,25 +26,18 @@ const (
  */
 func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 
+	// if the newbie is joining, special protocol is invoked.
 	if string(incoming[:4]) == PKREQUEST {
 		spk := ocrypto.DecodePK(incoming[4:4+PKRQLEN])
 		senderAddr := string(incoming[4+PKRQLEN:])
 		records.InsertEntry(FAKE_ID+senderAddr, spk, time.Now())
-		n.sendActive(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey)), senderAddr)
+		// PKAK | EncodedPK | PortListening
+		n.sendActive(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port, senderAddr)
 		return
 	} else if string(incoming[:4]) == PKRQACK {
+		// return the pk to the requesting node to finish the join protocol.
 		print("thank you for the pub-key")
-		pubkey := ocrypto.DecodePK(incoming[4:])
-
-		isNew := NEWBIE
-		// TODO: check if it's old client.
-		if 1 != 1 {
-			isNew = OLDBIE
-		}
-
-		payload := []byte(n.IP+":"+n.Port+"@"+isNew)
-		joinMsg := records.MarshalOMsg(JOIN, payload, n.ID, n.sk, pubkey)
-		n.sendActive(string(joinMsg), "1338")
+		n.pkChan <- incoming[4:4+PKRQLEN]
 		return
 	}
 
@@ -59,6 +52,7 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 
 	senderPK := records.KeyRepo[omsg.GetSenderID()] // TODO: check if there is no known pk.
 
+	// verifying the identity of claimed sender by its pk and signature.
 	if !n.VerifySig(omsg, &senderPK.Pk) {
 		print("Cannot verify sig from msg, discard it.")
 		return
@@ -66,14 +60,15 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 
 	print("verified ID", omsg.GetSenderID())
 
+	payload := omsg.GetPayload()
+
 	switch omsg.GetOPCode() {
 	case FWD:
-		n.forwardProtocol(omsg, con, add)
 		print("Forwarding")
-		n.send([]byte("Fine i will take the coin though."), con, add)
+		n.forwardProtocol(payload, con, add)
 	case JOIN:
-		print("Joining "+string(incoming[4:]))
-		n.joinProtocol(incoming, con, add)
+		print("Joining")
+		n.joinProtocol(payload, con, add)
 	case FIND:
 		print("Finding")
 	case FREE:

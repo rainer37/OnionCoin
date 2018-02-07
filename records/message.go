@@ -54,7 +54,7 @@ func (omsg *OMsg) GetOPCode() rune {
 
 func (omsg *OMsg) GetSenderID() string {
 
-	return string(bytes.Trim(omsg.B[1:1 + NODEIDLEN], "\x00"))
+	return string(bytes.Trim(omsg.B[1:1 + NODEIDLEN], "\x00")) // trim trailing NULL
 }
 
 func (omsg *OMsg) GetTS() uint32 {
@@ -65,8 +65,8 @@ func (omsg *OMsg) GetLenPayload() int {
 	return int(binary.BigEndian.Uint32(omsg.B[1 + NODEIDLEN + TSLEN + HASHLEN : 1 + NODEIDLEN + TSLEN + HASHLEN + PAYLOADLENLEN]))
 }
 
-func (omsg *OMsg) GetPayload(len int) []byte {
-	return omsg.B[1 + NODEIDLEN + TSLEN + HASHLEN + PAYLOADLENLEN :1 + NODEIDLEN + TSLEN + HASHLEN + PAYLOADLENLEN + len]
+func (omsg *OMsg) GetPayload() []byte {
+	return omsg.B[1 + NODEIDLEN + TSLEN + HASHLEN + PAYLOADLENLEN :1 + NODEIDLEN + TSLEN + HASHLEN + PAYLOADLENLEN + omsg.GetLenPayload()]
 }
 
 func (omsg *OMsg) GetPayloadTsHash() []byte {
@@ -74,7 +74,7 @@ func (omsg *OMsg) GetPayloadTsHash() []byte {
 }
 
 func (omsg *OMsg) VerifySig(pk *rsa.PublicKey) bool {
-	payload := omsg.GetPayload(omsg.GetLenPayload())
+	payload := omsg.GetPayload()
 	hash := omsg.GetPayloadTsHash()
 	return ocrypto.RSAVerify(pk, hash, payload)
 }
