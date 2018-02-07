@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"github.com/rainer37/OnionCoin/records"
+	"github.com/rainer37/OnionCoin/ocrypto"
 )
 
 func (n *Node) SelfInit() {
@@ -28,7 +29,7 @@ func (n *Node) Join(address string) {
 	pk := records.GetKeyByID(FAKE_ID+address)
 	if pk == nil {
 		print("No Known Pub-Key Stored, Looking-UP")
-		n.sendActive(PKREQUEST+n.Port, address)
+		n.sendActive(PKREQUEST+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port, address)
 		select{}
 		//return
 	}

@@ -5,17 +5,13 @@ import (
 	"github.com/rainer37/OnionCoin/records"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/rsa"
+	"time"
 )
 
 const (
+	PKRQLEN = 132
 	REJSTR = "REJECTED"
-)
-
-const (
 	INVMSGFMT = "INVALID MSG FORMAT"
-)
-
-const (
 	FWD = '0'
 	JOIN = '1'
 	FIND = '2'
@@ -31,8 +27,10 @@ const (
 func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 
 	if string(incoming[:4]) == PKREQUEST {
-		senderAddr := incoming[4:]
-		n.sendActive(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey)), string(senderAddr))
+		spk := ocrypto.DecodePK(incoming[4:4+PKRQLEN])
+		senderAddr := string(incoming[4+PKRQLEN:])
+		records.InsertEntry(FAKE_ID+senderAddr, spk, time.Now())
+		n.sendActive(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey)), senderAddr)
 		return
 	} else if string(incoming[:4]) == PKRQACK {
 		print("thank you for the pub-key")
@@ -59,10 +57,10 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 
 	print("valid OMsg, continue...")
 
-	senderPK := rsa.PublicKey{}
+	senderPK := records.KeyRepo[omsg.GetSenderID()] // TODO: check if there is no known pk.
 
-	if !n.VerifySig(omsg, &senderPK) {
-		print("Terrible Msg, discard it.")
+	if !n.VerifySig(omsg, &senderPK.Pk) {
+		print("Cannot verify sig from msg, discard it.")
 		return
 	}
 

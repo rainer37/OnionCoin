@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"time"
 	"fmt"
+	"bytes"
 )
 
 /*
@@ -52,7 +53,8 @@ func (omsg *OMsg) GetOPCode() rune {
 }
 
 func (omsg *OMsg) GetSenderID() string {
-	return string(omsg.B[1:1 + NODEIDLEN])
+
+	return string(bytes.Trim(omsg.B[1:1 + NODEIDLEN], "\x00"))
 }
 
 func (omsg *OMsg) GetTS() uint32 {
@@ -74,7 +76,7 @@ func (omsg *OMsg) GetPayloadTsHash() []byte {
 func (omsg *OMsg) VerifySig(pk *rsa.PublicKey) bool {
 	payload := omsg.GetPayload(omsg.GetLenPayload())
 	hash := omsg.GetPayloadTsHash()
-	return ocrypto.RSAVerify(pk, payload, hash)
+	return ocrypto.RSAVerify(pk, hash, payload)
 }
 
 func UnmarshalOMsg(msg []byte, sk *rsa.PrivateKey) (*OMsg, bool) {

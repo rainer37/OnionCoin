@@ -38,7 +38,6 @@ func print(str ...interface{}) {
 func NewNode() *Node {
 	print("Create a new node.")
 	n := new(Node)
-	n.ID = FAKE_ID+n.Port
 	n.Vault = new(vault.Vault)
 	n.RoutingTable = new(RoutingTable)
 	n.InitRT()

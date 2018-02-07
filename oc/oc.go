@@ -29,6 +29,7 @@ func main() {
 	n := node.NewNode()
 	n.IP = LOCALHOST
 	n.Port = os.Args[2]
+	n.ID = node.FAKE_ID+n.Port
 
 	records.GenerateKeyRepo("")
 
