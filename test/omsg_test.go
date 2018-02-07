@@ -4,7 +4,6 @@ import (
 	"testing"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/records"
-	"fmt"
 	"strings"
 )
 
@@ -12,12 +11,16 @@ func TestOMsgMashal(t *testing.T) {
 	//msg := "the-key-has-to-be-32-bytes-long!"
 
 	sk := ocrypto.RSAKeyGen()
-
 	payload := []byte("rainer is god")
 	nodeID := "Ella"
-	m := records.MarshalOMsg('0', payload, nodeID, sk)
+	m := records.MarshalOMsg('0', payload, nodeID, sk, sk.PublicKey)
+
+	if m == nil {
+		t.Error("cannot MarshallOMsg")
+	}
+
 	omsg, ok := records.UnmarshalOMsg(m, sk)
-	fmt.Println(omsg.B)
+
 	if !ok {
 		t.Error("cannot UmarshallOMsg")
 	}

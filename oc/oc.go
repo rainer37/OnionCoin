@@ -4,6 +4,7 @@ import(
 	"fmt"
 	"os"
 	"github.com/rainer37/OnionCoin/node"
+	"github.com/rainer37/OnionCoin/records"
 )
 
 const LOCALHOST = "127.0.0.1"
@@ -11,7 +12,9 @@ const LOCALHOST = "127.0.0.1"
 func main() {
 
 	if len(os.Args) < 2 || len(os.Args) > 5{
-		fmt.Println("[MAIN] Usage:\n\toc [i|j] [ip:port] [join_port]")
+		fmt.Println("[MAIN] Usage:" +
+			"\n\toc i [myport]" +
+			"\n\toc j [myport] [joinport]")
 		os.Exit(1)
 	}
 
@@ -27,8 +30,11 @@ func main() {
 	n.IP = LOCALHOST
 	n.Port = os.Args[2]
 
+	records.GenerateKeyRepo("")
+
 	if cmd == "j" {
-		n.Join(os.Args[3])
+		joinPort := os.Args[3]
+		n.Join(joinPort)
 	} else if cmd == "i" {
 		n.SelfInit()
 	}

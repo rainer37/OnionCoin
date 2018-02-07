@@ -3,6 +3,8 @@ package node
 import (
 	"net"
 	"github.com/rainer37/OnionCoin/records"
+	"github.com/rainer37/OnionCoin/ocrypto"
+	"crypto/rsa"
 )
 
 const (
@@ -27,16 +29,48 @@ const (
 	Then dispatch the OMsg to its OpCode.
  */
 func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
+
+	if string(incoming[:4]) == PKREQUEST {
+		senderAddr := incoming[4:]
+		n.sendActive(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey)), string(senderAddr))
+		return
+	} else if string(incoming[:4]) == PKRQACK {
+		print("thank you for the pub-key")
+		pubkey := ocrypto.DecodePK(incoming[4:])
+
+		isNew := NEWBIE
+		// TODO: check if it's old client.
+		if 1 != 1 {
+			isNew = OLDBIE
+		}
+
+		payload := []byte(n.IP+":"+n.Port+"@"+isNew)
+		joinMsg := records.MarshalOMsg(JOIN, payload, n.ID, n.sk, pubkey)
+		n.sendActive(string(joinMsg), "1338")
+		return
+	}
+
 	omsg, ok := n.UnmarshalOMsg(incoming)
 
-	if !ok || !n.VerifySig(omsg) {
+	if !ok {
+		print("Cannot Unmarshal Msg, discard it.")
+		return
+	}
+
+	print("valid OMsg, continue...")
+
+	senderPK := rsa.PublicKey{}
+
+	if !n.VerifySig(omsg, &senderPK) {
 		print("Terrible Msg, discard it.")
 		return
 	}
 
+	print("verified ID", omsg.GetSenderID())
+
 	switch omsg.GetOPCode() {
 	case FWD:
-		n.forwardProtocol(omsg,con, add)
+		n.forwardProtocol(omsg, con, add)
 		print("Forwarding")
 		n.send([]byte("Fine i will take the coin though."), con, add)
 	case JOIN:
@@ -65,6 +99,6 @@ func (n* Node) UnmarshalOMsg(incoming []byte) (*records.OMsg, bool) {
 	return records.UnmarshalOMsg(incoming, n.sk)
 }
 
-func (n* Node) VerifySig(omsg *records.OMsg) bool {
-	return omsg.VerifySig(&n.sk.PublicKey)
+func (n* Node) VerifySig(omsg *records.OMsg, pk *rsa.PublicKey) bool {
+	return omsg.VerifySig(pk)
 }

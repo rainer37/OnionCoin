@@ -4,6 +4,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"github.com/rainer37/OnionCoin/records"
 )
 
 func (n *Node) SelfInit() {
@@ -13,9 +14,34 @@ func (n *Node) SelfInit() {
 	n.Serve(":", p)
 }
 
+/*
+	Joining Routine:
+		0. request public from target node if public key unknown
+		1. send JOIN request to the joining node with [ip:port, isNew]
+		2. into joinProtocol.
+
+ */
 func (n *Node) Join(address string) {
 	go n.SelfInit()
-	n.sendActive(JOIN+n.ID+"@"+n.IP+":"+n.Port, address)
+
+	// request public key from target node if unknown
+	pk := records.GetKeyByID(FAKE_ID+address)
+	if pk == nil {
+		print("No Known Pub-Key Stored, Looking-UP")
+		n.sendActive(PKREQUEST+n.Port, address)
+		select{}
+		//return
+	}
+
+	isNew := NEWBIE
+	// TODO: check if it's old client.
+	if 1 != 1 {
+		isNew = OLDBIE
+	}
+
+	payload := []byte(n.IP+":"+n.Port+"@"+isNew)
+	joinMsg := records.MarshalOMsg(JOIN, payload, n.ID, n.sk, pk.Pk)
+	n.sendActive(string(joinMsg), address)
 	select {}
 }
 
@@ -33,7 +59,6 @@ func (n *Node) Serve(ip string, port int) {
 		checkErr(e)
 		incoming := buffer[0:l]
 		print("From", add, l, "bytes : [", string(incoming),"]")
-		//TODO: verify authenticity of msg
 		go n.dispatch(incoming, con, add)
 	}
 }
@@ -53,7 +78,7 @@ func (n *Node) send(msg []byte, con *net.UDPConn, add *net.UDPAddr) {
 	build a udp connection and send msg to add.
  */
 func (n *Node) sendActive(msg string, add string) {
-	con, err := net.Dial("udp", add)
+	con, err := net.Dial("udp", ":"+add)
 	checkErr(err)
 	_, err = con.Write([]byte(msg))
 	checkErr(err)

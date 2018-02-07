@@ -12,6 +12,10 @@ import(
 
 const NODE_PREFIX = "[NODE]"
 const FAKE_ID = "FAKEID"
+const NEWBIE = "N"
+const OLDBIE = "O"
+const PKREQUEST  = "PKRQ"
+const PKRQACK  = "PKAK"
 
 type Node struct {
 	ID string
@@ -39,6 +43,7 @@ func NewNode() *Node {
 	n.RoutingTable = new(RoutingTable)
 	n.InitRT()
 	n.InitVault()
+	n.sk = ocrypto.RSAKeyGen()
 	return n
 }
 

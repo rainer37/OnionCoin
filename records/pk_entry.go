@@ -7,15 +7,15 @@ import (
 )
 
 type PKEntry struct {
-	pk rsa.PublicKey
+	Pk rsa.PublicKey
 	keyHash []byte
 	time time.Time
 }
 
 var KeyRepo map[string]*PKEntry // map[id:string] entry:PKEntry
 
-func GetKeyByID(id string) rsa.PublicKey {
-	return KeyRepo[id].pk
+func GetKeyByID(id string) *PKEntry {
+	return KeyRepo[id]
 }
 
 func GetKeyHashByID(id string) []byte {
@@ -31,7 +31,7 @@ func InsertEntry(id string, pk rsa.PublicKey, recTime time.Time) {
 	h := sha256.New()
 	h.Write(pk.N.Bytes())
 	e.keyHash = h.Sum(nil)
-	e.pk = pk
+	e.Pk = pk
 	e.time = recTime
 	KeyRepo[id] = e
 }

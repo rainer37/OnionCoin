@@ -10,6 +10,8 @@ import(
 	"io"
 	"errors"
 	"fmt"
+	"encoding/binary"
+	"math/big"
 )
 
 const CRYPTO_PREFIX = "[CRYP]"
@@ -93,4 +95,21 @@ func BlockEncrypt(msg []byte, key []byte, pk rsa.PublicKey) ([]byte, []byte , er
 func BlockDecrypt(cipher []byte, cipherKey []byte, sk *rsa.PrivateKey) ([]byte, error) {
 	key := PKDecrypt(sk, cipherKey)
 	return AESDecrypt(key, cipher)
+}
+
+func EncodePK(pubkey rsa.PublicKey) []byte {
+	bs := make([]byte, 4)
+	binary.LittleEndian.PutUint32(bs, uint32(pubkey.E))
+	return append(pubkey.N.Bytes(), bs...)
+}
+
+func DecodePK(enkey []byte) rsa.PublicKey {
+	if len(enkey) != 132 {
+		panic(nil)
+	}
+	i := new(big.Int)
+	i.SetBytes(enkey[:128])
+	e := int(binary.LittleEndian.Uint32(enkey[128:]))
+	key := rsa.PublicKey{i, e}
+	return key
 }

@@ -33,10 +33,6 @@ const (
 	PAYLOADLENLEN = 4
 )
 
-type Messagable interface {
-
-}
-
 type OnionMsg interface {
 	GetOPCode() rune
 	GetSenderID() string
@@ -85,14 +81,18 @@ func UnmarshalOMsg(msg []byte, sk *rsa.PrivateKey) (*OMsg, bool) {
 	omsg := new(OMsg)
 	b, err := ocrypto.BlockDecrypt(msg[CIPHERKEYLEN:], msg[:CIPHERKEYLEN], sk)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println(1,err.Error())
 		return nil, false
 	}
 	omsg.B = b
 	return omsg, true
 }
 
-func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey) []byte {
+/*
+	sk : own secret key
+	pk : target public key
+ */
+func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey, pk rsa.PublicKey) []byte {
 	buffer := make([]byte,1)
 	buffer[0] = byte(opCode)
 
@@ -103,8 +103,6 @@ func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey)
 		}
 	}
 	buffer = append(buffer, buf...)
-
-	fmt.Println(len(buffer))
 
 	buf = make([]byte, TSLEN)
 	binary.BigEndian.PutUint64(buf, uint64(time.Now().Unix()))
@@ -123,10 +121,9 @@ func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey)
 
 	buffer = append(buffer, payload...)
 
+	key := []byte("the-key-has-to-be-32-bytes-long!") // TODO: generate a random 32-byte key
 
-	key := []byte("the-key-has-to-be-32-bytes-long!")
-
-	cipher, ckey, err := ocrypto.BlockEncrypt(buffer, key, sk.PublicKey)
+	cipher, ckey, err := ocrypto.BlockEncrypt(buffer, key, pk)
 
 	if err != nil {
 		fmt.Println(err.Error())
