@@ -37,12 +37,11 @@ func TestAESEncryption(t *testing.T) {
 
 func TestBlockEncryption(t *testing.T) {
 	msg := []byte("Hello World")
-	key := []byte("the-key-has-to-be-32-bytes-long!")
 
 	sk := ocrypto.RSAKeyGen()
 	pk := sk.PublicKey
 
-	cipher, cKey, err := ocrypto.BlockEncrypt(msg, key, pk)
+	cipher, cKey, err := ocrypto.BlockEncrypt(msg, pk)
 	if err != nil { t.Error("Error when block encryption") }
 
 	plainText, err := ocrypto.BlockDecrypt(cipher, cKey, sk)

@@ -51,6 +51,12 @@ func (n *Node) dispatch(incoming []byte) {
 
 	senderPK := records.KeyRepo[omsg.GetSenderID()] // TODO: check if there is no known pk.
 
+	// check if the sender's id is known, otherwise cannot verify the signature.
+	if senderPK == nil {
+		print("Don't know who you are", omsg.GetSenderID())
+		return
+	}
+
 	// verifying the identity of claimed sender by its pk and signature.
 	if !n.VerifySig(omsg, &senderPK.Pk) {
 		print("Cannot verify sig from msg, discard it.")

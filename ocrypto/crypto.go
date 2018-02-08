@@ -85,10 +85,11 @@ func AESDecrypt(key []byte, cipherText []byte) ([]byte, error){
 	return gcm.Open(nil, nonce, cipherText, nil)
 }
 
-func BlockEncrypt(msg []byte, key []byte, pk rsa.PublicKey) ([]byte, []byte , error) {
-	cipher, err := AESEncrypt(key, msg)
+func BlockEncrypt(msg []byte, pk rsa.PublicKey) ([]byte, []byte , error) {
+	symkey := []byte("the-key-has-to-be-32-bytes-long!")
+	cipher, err := AESEncrypt(symkey, msg)
 	if err != nil { return nil, nil, err}
-	cipherKey := PKEncrypt(pk, key)
+	cipherKey := PKEncrypt(pk, symkey)
 	return cipher, cipherKey, nil
 }
 

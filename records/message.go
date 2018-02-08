@@ -123,9 +123,7 @@ func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey,
 
 	buffer = append(buffer, payload...)
 
-	key := []byte("the-key-has-to-be-32-bytes-long!") // TODO: generate a random 32-byte key
-
-	cipher, ckey, err := ocrypto.BlockEncrypt(buffer, key, pk)
+	cipher, ckey, err := ocrypto.BlockEncrypt(buffer, pk)
 
 	if err != nil {
 		fmt.Println(err.Error())

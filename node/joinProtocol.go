@@ -31,7 +31,10 @@ func (n *Node) joinProtocol(payload []byte) bool {
 		jackPayload := n.gatherRoutingInfo()
 		// print(jackPayload)
 		tpk := records.GetKeyByID(senderID)
-		// TODO: handle unknown joiner protocol
+		if tpk == nil {
+			// TODO: handle unknown joiner protocol
+			return false
+		}
 		jack := records.MarshalOMsg(JOINACK, jackPayload, n.ID, n.sk, tpk.Pk)
 		records.KeyRepo[senderID].Port = senderPort
 		n.sendActive(string(jack), senderPort)

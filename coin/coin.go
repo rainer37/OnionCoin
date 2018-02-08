@@ -5,6 +5,7 @@ import(
 )
 
 const COIN_PREFIX = "[COIN]"
+const COIN_LEN = 32
 
 type Coin struct {
 	RID string // receiver's ID
@@ -32,4 +33,11 @@ func (c *Coin) GetRID() string {
 	return c.RID
 }
 
-func (c *Coin) toByte() {}
+func (c *Coin) Bytes() []byte {
+	b := make([]byte, COIN_LEN)
+	cmsg := []byte("ThisIsNotACoin")
+	for i:=0;i<len(cmsg);i++ {
+		b[i] = cmsg[i]
+	}
+	return b
+}
