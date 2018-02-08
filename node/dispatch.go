@@ -1,7 +1,6 @@
 package node
 
 import (
-	"net"
 	"github.com/rainer37/OnionCoin/records"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/rsa"
@@ -11,8 +10,6 @@ import (
 
 const (
 	PKRQLEN = 132
-	REJSTR = "REJECTED"
-	INVMSGFMT = "INVALID MSG FORMAT"
 	FWD = '0'
 	JOIN = '1'
 	FIND = '2'
@@ -20,12 +17,13 @@ const (
 	COIN = '4'
 	EXPT = '5'
 	JOINACK = '6'
+	WELCOME = '7'
 )
 /*
 	Unmarshal the incoming packet to Omsg and verify the signature.
 	Then dispatch the OMsg to its OpCode.
  */
-func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
+func (n *Node) dispatch(incoming []byte) {
 
 	// if the newbie is joining, special protocol is invoked.
 	if string(incoming[:4]) == PKREQUEST {
@@ -66,10 +64,14 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 	switch omsg.GetOPCode() {
 	case FWD:
 		print("Forwarding")
-		n.forwardProtocol(payload, con, add)
+		n.forwardProtocol(payload)
 	case JOIN:
 		print("Joining")
-		n.joinProtocol(payload, con, add)
+		ok := n.joinProtocol(payload)
+		print(records.KeyRepo)
+		if ok {
+			n.welcomeNewBie(omsg.GetSenderID())
+		}
 	case FIND:
 		print("Finding")
 	case FREE:
@@ -80,8 +82,16 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 		//any exception
 	case JOINACK:
 		print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
-		print(records.KeyRepo)
-		unmarshallRoutingInfo(payload)
+		unmarshalRoutingInfo(payload)
+	case WELCOME:
+		print("WELCOME received from", omsg.GetSenderID())
+		idLen := binary.BigEndian.Uint32(payload[:4])
+		id := string(payload[4:4+idLen])
+		print(id, idLen)
+
+		eLen := binary.BigEndian.Uint32(payload[4+idLen:8+idLen])
+		e := records.BytesToPKEntry(payload[8+idLen:8+idLen+eLen])
+		records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
 		print(records.KeyRepo)
 	default:
 		print("Unknown Msg, discard.")
@@ -112,7 +122,7 @@ func makeBytesLen(b []byte) []byte {
 /*
 	decode received routing info, and update routing table
  */
-func unmarshallRoutingInfo(b []byte) {
+func unmarshalRoutingInfo(b []byte) {
 	cur := 0
 	for cur < len(b) {
 		idLen := binary.BigEndian.Uint32(b[cur:cur+4])
@@ -123,6 +133,7 @@ func unmarshallRoutingInfo(b []byte) {
 		eLen := binary.BigEndian.Uint32(b[cur:cur+4])
 		e := records.BytesToPKEntry(b[cur+4:cur+4+int(eLen)])
 		cur += int(eLen) + 4
-		records.KeyRepo[id] = e
+
+		records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
 	}
 }

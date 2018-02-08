@@ -1,12 +1,8 @@
 package node
 
-import (
-	"net"
-)
-
-func (n *Node) forwardProtocol(payload []byte, con *net.UDPConn, add *net.UDPAddr) {
+func (n *Node) forwardProtocol(payload []byte) {
 	print("Forwarding")
-	n.send([]byte("FWD ACK"), con, add)
+	//n.send([]byte("FWD ACK"), con, add)
 	print("Payload:", payload)
 }
 

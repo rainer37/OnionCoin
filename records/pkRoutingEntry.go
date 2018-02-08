@@ -21,12 +21,20 @@ func GetKeyByID(id string) *PKEntry {
 }
 
 func InsertEntry(id string, pk rsa.PublicKey, recTime int64, ip string, port string) {
-	e := new(PKEntry)
-	e.Pk = pk
-	e.Time = recTime
-	e.IP = ip
-	e.Port = port
-	KeyRepo[id] = e
+	if pe := KeyRepo[id]; pe != nil {
+		if pe.Time < recTime {
+			pe.IP = ip
+			pe.Port = port
+			pe.Time = recTime
+		}
+	} else {
+		e := new(PKEntry)
+		e.Pk = pk // TODO: verify pub key from block chain.
+		e.Time = recTime
+		e.IP = ip
+		e.Port = port
+		KeyRepo[id] = e
+	}
 }
 
 /*

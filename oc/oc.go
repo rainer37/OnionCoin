@@ -37,21 +37,11 @@ func main() {
 
 	// for testing
 	now := time.Now().Unix()
-	if n.Port == "1338" {
+	if n.Port == "1337" {
 		records.InsertEntry("ID1", ocrypto.RSAKeyGen().PublicKey, now, LOCALHOST, "port1")
 		records.InsertEntry("MyID2", ocrypto.RSAKeyGen().PublicKey, now, LOCALHOST, "pt2")
 		records.InsertEntry("HIsID3", ocrypto.RSAKeyGen().PublicKey, now, LOCALHOST, "p3")
 	}
-	//b := records.GetKeyByID("ID1")
-	//fmt.Println(b.Pk, b.IP, b.Port, b.Time)
-	//ab := b.Bytes()
-	//p := records.BytesToPKEntry(ab)
-	//fmt.Println(p.Pk, p.IP, p.Port, p.Time, len(ab))
-
-	//for i,v := range(records.KeyRepo) {
-	//	fmt.Println(i)
-	//	fmt.Println(v.Pk)
-	//}
 
 	if cmd == "j" {
 		joinPort := os.Args[3]

@@ -1,7 +1,6 @@
 package node
 
 import (
-	"net"
 	"strings"
 	"fmt"
 	"github.com/rainer37/OnionCoin/records"
@@ -9,13 +8,13 @@ import (
 
 const NUMNODEINFO = 3
 
-func (n *Node) joinProtocol(payload []byte, con *net.UDPConn, add *net.UDPAddr) {
+func (n *Node) joinProtocol(payload []byte) bool {
 
 	addrANDisNew := strings.Split(string(payload), "@")
+
 	if len(addrANDisNew) != 2 {
 		fmt.Println("Invalid JOIN format, reject")
-		n.send([]byte(REJSTR+" "+INVMSGFMT), con, add)
-		return
+		return false
 	}
 
 	address, isNew := addrANDisNew[0], addrANDisNew[1]
@@ -24,24 +23,31 @@ func (n *Node) joinProtocol(payload []byte, con *net.UDPConn, add *net.UDPAddr) 
 
 	//TODO: alternatives on node discovery
 	senderID := FAKE_ID+strings.Split(address,":")[1]
-	n.insert(senderID, address)
+	senderPort := strings.Split(address,":")[1]
+	//n.insert(senderID, address)
 
 	if isNew == "N" {
 		print("Welcome to OnionCon")
 		jackPayload := n.gatherRoutingInfo()
 		// print(jackPayload)
 		tpk := records.GetKeyByID(senderID)
-		// handle unknown joiner protocol
+		// TODO: handle unknown joiner protocol
 		jack := records.MarshalOMsg(JOINACK, jackPayload, n.ID, n.sk, tpk.Pk)
-		n.sendActive(string(jack), strings.Split(address,":")[1])
+		records.KeyRepo[senderID].Port = senderPort
+		n.sendActive(string(jack), senderPort)
 	} else if isNew == "O" {
 
 	} else {
 		fmt.Println("Invalid JOIN status, reject")
-		n.send([]byte(REJSTR+" "+INVMSGFMT), con, add)
+		return false
 	}
+
+	return true
 }
 
+/*
+	generate bytes encoding PKEntries.
+ */
 func (n *Node) gatherRoutingInfo() []byte {
 	result := make([]byte, 0)
 	count := 1
@@ -56,3 +62,17 @@ func (n *Node) gatherRoutingInfo() []byte {
 	}
 	return result
 }
+
+/*
+	advertise the new comer to random other nodes
+ */
+ func (n *Node) welcomeNewBie(newbieID string) {
+	 pe := records.GetKeyByID(newbieID)
+	 payload := append(makeBytesLen([]byte(newbieID)), makeBytesLen(pe.Bytes())...)
+	 for id, v := range records.KeyRepo {
+	 	if newbieID != id && n.ID != id {
+	 		wpayload := records.MarshalOMsg(WELCOME,payload,n.ID,n.sk,v.Pk)
+			n.sendActive(string(wpayload), v.Port)
+		}
+	 }
+ }

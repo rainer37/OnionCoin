@@ -22,7 +22,6 @@ type Node struct {
 	IP string
 	Port string
 	*vault.Vault
-	*RoutingTable
 	sk *rsa.PrivateKey
 	pkChan chan []byte // for pk lookup await
 }
@@ -40,8 +39,6 @@ func NewNode() *Node {
 	print("Create a new node.")
 	n := new(Node)
 	n.Vault = new(vault.Vault)
-	n.RoutingTable = new(RoutingTable)
-	n.InitRT()
 	n.InitVault()
 	// check if there is already a pub-key stored.
 	n.sk = ocrypto.RSAKeyGen()

@@ -69,8 +69,10 @@ func (n *Node) Serve(ip string, port int) {
 		l, add, e := con.ReadFromUDP(buffer)
 		checkErr(e)
 		incoming := buffer[0:l]
-		print("From", add, l, "bytes : [", string(incoming),"]")
-		go n.dispatch(incoming, con, add)
+		if l < 50 {
+			print("From", add, l, "bytes : [", string(incoming), "]")
+		}
+		go n.dispatch(incoming)
 	}
 }
 
@@ -78,6 +80,7 @@ func (n *Node) Serve(ip string, port int) {
 	msg: data as bytes to send
 	con: local udp connection
 	add: remote destination address
+	PROBABLY USELESS
 */
 func (n *Node) send(msg []byte, con *net.UDPConn, add *net.UDPAddr) {
 	_, err := con.WriteTo(msg, add)
