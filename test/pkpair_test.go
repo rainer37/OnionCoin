@@ -73,8 +73,8 @@ func TestPKEncodeDecode(t *testing.T) {
 	b := ocrypto.EncodePK(pk)
 	newPK := ocrypto.DecodePK(b)
 
-	fmt.Println(pk.N, pk.E)
-	fmt.Println(newPK.N, newPK.E)
+	//fmt.Println(pk.N, pk.E)
+	//fmt.Println(newPK.N, newPK.E)
 	if newPK.N.Cmp(pk.N) != 0 || newPK.E != pk.E {
 		t.Error("Error on pk encoding")
 	}

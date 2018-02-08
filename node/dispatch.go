@@ -6,6 +6,7 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/rsa"
 	"time"
+	"encoding/binary"
 )
 
 const (
@@ -30,7 +31,7 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 	if string(incoming[:4]) == PKREQUEST {
 		spk := ocrypto.DecodePK(incoming[4:4+PKRQLEN])
 		senderAddr := string(incoming[4+PKRQLEN:])
-		records.InsertEntry(FAKE_ID+senderAddr, spk, time.Now())
+		records.InsertEntry(FAKE_ID+senderAddr, spk, time.Now().Unix(), LOCALHOST, senderAddr)
 		// PKAK | EncodedPK | PortListening
 		n.sendActive(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port, senderAddr)
 		return
@@ -78,7 +79,10 @@ func (n *Node) dispatch(incoming []byte, con *net.UDPConn, add *net.UDPAddr) {
 	case EXPT:
 		//any exception
 	case JOINACK:
-		print("JOIN SUCCESS")
+		print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
+		print(records.KeyRepo)
+		unmarshallRoutingInfo(payload)
+		print(records.KeyRepo)
 	default:
 		print("Unknown Msg, discard.")
 	}
@@ -94,4 +98,31 @@ func (n* Node) UnmarshalOMsg(incoming []byte) (*records.OMsg, bool) {
 
 func (n* Node) VerifySig(omsg *records.OMsg, pk *rsa.PublicKey) bool {
 	return omsg.VerifySig(pk)
+}
+
+/*
+	return len(b):b in bytes
+ */
+func makeBytesLen(b []byte) []byte {
+	lb := make([]byte, 4)
+	binary.BigEndian.PutUint32(lb,uint32(len(b)))
+	return append(lb, b...)
+}
+
+/*
+	decode received routing info, and update routing table
+ */
+func unmarshallRoutingInfo(b []byte) {
+	cur := 0
+	for cur < len(b) {
+		idLen := binary.BigEndian.Uint32(b[cur:cur+4])
+		id := string(b[cur+4:cur+4+int(idLen)])
+		print(id, idLen)
+		cur += int(idLen) + 4
+
+		eLen := binary.BigEndian.Uint32(b[cur:cur+4])
+		e := records.BytesToPKEntry(b[cur+4:cur+4+int(eLen)])
+		cur += int(eLen) + 4
+		records.KeyRepo[id] = e
+	}
 }

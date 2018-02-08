@@ -43,6 +43,7 @@ func NewNode() *Node {
 	n.RoutingTable = new(RoutingTable)
 	n.InitRT()
 	n.InitVault()
+	// check if there is already a pub-key stored.
 	n.sk = ocrypto.RSAKeyGen()
 	n.pkChan = make(chan []byte)
 	return n

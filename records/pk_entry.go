@@ -2,14 +2,16 @@ package records
 
 import (
 	"crypto/rsa"
-	"time"
-	"crypto/sha256"
+	"bytes"
+	"encoding/gob"
+	"fmt"
 )
 
 type PKEntry struct {
 	Pk rsa.PublicKey
-	keyHash []byte
-	time time.Time
+	IP string
+	Port string
+	Time int64
 }
 
 var KeyRepo map[string]*PKEntry // map[id:string] entry:PKEntry
@@ -18,21 +20,12 @@ func GetKeyByID(id string) *PKEntry {
 	return KeyRepo[id]
 }
 
-func GetKeyHashByID(id string) []byte {
-	return KeyRepo[id].keyHash
-}
-
-func GetTimeByID(id string) time.Time {
-	return KeyRepo[id].time
-}
-
-func InsertEntry(id string, pk rsa.PublicKey, recTime time.Time) {
+func InsertEntry(id string, pk rsa.PublicKey, recTime int64, ip string, port string) {
 	e := new(PKEntry)
-	h := sha256.New()
-	h.Write(pk.N.Bytes())
-	e.keyHash = h.Sum(nil)
 	e.Pk = pk
-	e.time = recTime
+	e.Time = recTime
+	e.IP = ip
+	e.Port = port
 	KeyRepo[id] = e
 }
 
@@ -41,4 +34,32 @@ func InsertEntry(id string, pk rsa.PublicKey, recTime time.Time) {
  */
 func GenerateKeyRepo(regfilename string) {
 	KeyRepo = make(map[string]*PKEntry)
+}
+
+/*
+	god encode PKEntry to bytes
+ */
+func (e PKEntry) Bytes() []byte {
+	var b bytes.Buffer
+	enc := gob.NewEncoder(&b)
+	err := enc.Encode(PKEntry{e.Pk, e.IP, e.Port, e.Time})
+	if err != nil {
+		fmt.Println(err)
+	}
+	return b.Bytes()
+}
+
+/*
+	decode bytes into PKEntry
+ */
+func BytesToPKEntry(data []byte) *PKEntry {
+	b := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(b)
+	e := new(PKEntry)
+	err := dec.Decode(e)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	return e
 }
