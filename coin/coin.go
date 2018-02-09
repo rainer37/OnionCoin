@@ -21,7 +21,7 @@ func NewCoin() *Coin {
 	coin := new(Coin)
 	coin.RID = "1338"
 	coin.Content = []byte("hello world")
-	print("Coin is an Onion : " + string(coin.RID))
+	//print("Coin is an Onion : " + string(coin.RID))
 	return coin
 }
 

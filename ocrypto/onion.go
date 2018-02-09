@@ -12,6 +12,7 @@ import (
 
 	| cipherKey(32)	| next_ID(16) | coin(COIN_LEN) | innerOnion | chaos |
  */
+const IDLEN = 16
 
 type Onion struct {
 	NextID string
@@ -48,7 +49,7 @@ func PeelOnion(sk *rsa.PrivateKey, fullOnion []byte) (string, []byte, []byte) {
 	cKey, onion := fullOnion[:SYM_KEY_LEN], fullOnion[SYM_KEY_LEN:]
 	decryptedOnion, err := BlockDecrypt(onion, cKey, sk)
 	checkErr(err)
-	return string(bytes.Trim(decryptedOnion[:16], "\x00")), decryptedOnion[16:16+coin.COIN_LEN], decryptedOnion[16+coin.COIN_LEN:]
+	return string(bytes.Trim(decryptedOnion[:IDLEN], "\x00")), decryptedOnion[IDLEN:IDLEN+coin.COIN_LEN], decryptedOnion[IDLEN+coin.COIN_LEN:]
 }
 
 func (o *Onion) String() string {

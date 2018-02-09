@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"time"
 	"encoding/binary"
+	"github.com/rainer37/OnionCoin/coin"
 )
 
 const (
@@ -89,6 +90,7 @@ func (n *Node) dispatch(incoming []byte) {
 	case JOINACK:
 		print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
 		unmarshalRoutingInfo(payload)
+		n.foo()
 	case WELCOME:
 		print("WELCOME received from", omsg.GetSenderID())
 		idLen := binary.BigEndian.Uint32(payload[:4])
@@ -142,4 +144,17 @@ func unmarshalRoutingInfo(b []byte) {
 
 		records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
 	}
+}
+
+func (n *Node) foo() {
+	if n.Port != "1339" {
+		return
+	}
+	pk := records.GetKeyByID("FAKEID1338")
+	pk2 := records.GetKeyByID("FAKEID1340")
+
+	payload := ocrypto.WrapOnion(pk2.Pk, "myHome", new(coin.Coin).Bytes(), []byte("msg received"))
+	p2 := ocrypto.WrapOnion(pk.Pk, "FAKEID1340", new(coin.Coin).Bytes(), payload)
+	m := records.MarshalOMsg(FWD,p2,n.ID,n.sk,pk.Pk)
+	n.sendActive(string(m),"1338")
 }
