@@ -10,12 +10,8 @@ import (
 )
 
 func print(str ...interface{}) {
-	fmt.Print("OCSYS:")
+	fmt.Print("OCSYS:$ ")
 	fmt.Print(str...)
-}
-
-func NewCommand() {
-	println("creating new command.")
 }
 
 func Listen(n *node.Node) {
@@ -23,7 +19,8 @@ func Listen(n *node.Node) {
 		print()
 		reader := bufio.NewReader(os.Stdin)
 		text, _ := reader.ReadString('\n')
-		print(text)
+
+		print("["+text+"]")
 
 		matched, _ := regexp.MatchString("ex *", text)
 		if matched {

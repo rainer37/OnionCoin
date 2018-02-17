@@ -12,6 +12,10 @@ import(
 
 const LOCALHOST = "127.0.0.1"
 
+func loadSavedStates(n *node.Node) {
+
+}
+
 func main() {
 
 	if len(os.Args) < 2 || len(os.Args) > 5{
@@ -29,10 +33,12 @@ func main() {
 
 	cmd := os.Args[1]
 
-	n := node.NewNode()
+	port := os.Args[2]
+	n := node.NewNode(port)
 	n.IP = LOCALHOST
-	n.Port = os.Args[2]
-	n.ID = node.FAKE_ID+n.Port
+	n.ID = node.FAKEID +n.Port
+
+	loadSavedStates(n)
 
 	records.GenerateKeyRepo("")
 

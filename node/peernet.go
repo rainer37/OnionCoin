@@ -36,12 +36,12 @@ func (n *Node) IniJoin(address string) {
 	go n.SelfInit()
 
 	// request public key from target node if its pk is unknown
-	pk := records.GetKeyByID(FAKE_ID+address)
+	pk := records.GetKeyByID(FAKEID +address)
 	var tPk rsa.PublicKey
 	if pk == nil {
 		print("No Known Pub-Key Stored, Looking-UP")
 		tPk = n.LookUpPK(address)
-		records.InsertEntry(FAKE_ID+address, tPk, time.Now().Unix(), LOCALHOST, address) // record retrieved pub-key
+		records.InsertEntry(FAKEID+address, tPk, time.Now().Unix(), LOCALHOST, address) // record retrieved pub-key
 	} else {
 		tPk = pk.Pk
 	}

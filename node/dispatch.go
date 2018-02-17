@@ -32,7 +32,7 @@ func (n *Node) dispatch(incoming []byte) {
 	if string(incoming[:4]) == PKREQUEST {
 		spk := ocrypto.DecodePK(incoming[4:4+PKRQLEN])
 		senderAddr := string(incoming[4+PKRQLEN:])
-		records.InsertEntry(FAKE_ID+senderAddr, spk, time.Now().Unix(), LOCALHOST, senderAddr)
+		records.InsertEntry(FAKEID+senderAddr, spk, time.Now().Unix(), LOCALHOST, senderAddr)
 		// PKAK | EncodedPK | PortListening
 		n.sendActive([]byte(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port), senderAddr)
 		return

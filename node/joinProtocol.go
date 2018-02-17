@@ -22,7 +22,7 @@ func (n *Node) joinProtocol(payload []byte) bool {
 	print("starting handle JOIN from", address, isNew)
 
 	//TODO: alternatives on node discovery
-	senderID := FAKE_ID+strings.Split(address,":")[1]
+	senderID := FAKEID +strings.Split(address,":")[1]
 	senderPort := strings.Split(address,":")[1]
 	//n.insert(senderID, address)
 

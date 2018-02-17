@@ -5,7 +5,7 @@ import(
 	"github.com/rainer37/OnionCoin/coin"
 )
 
-const VAULT_PREFIX = "[VULT]"
+const VAULTPREFIX = "[VULT]"
 
 var debugged = false
 
@@ -14,7 +14,7 @@ type Vault struct {
 }
 
 func print(str ...interface{}) {
-	fmt.Print(VAULT_PREFIX+" ")
+	fmt.Print(VAULTPREFIX+" ")
 	fmt.Println(str...)
 }
 
