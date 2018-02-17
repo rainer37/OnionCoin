@@ -37,7 +37,7 @@ func (n *Node) joinProtocol(payload []byte) bool {
 		}
 		jack := records.MarshalOMsg(JOINACK, jackPayload, n.ID, n.sk, tpk.Pk)
 		records.KeyRepo[senderID].Port = senderPort
-		n.sendActive(string(jack), senderPort)
+		n.sendActive(jack, senderPort)
 	} else if isNew == "O" {
 
 	} else {
@@ -75,7 +75,7 @@ func (n *Node) gatherRoutingInfo() []byte {
 	 for id, v := range records.KeyRepo {
 	 	if newbieID != id && n.ID != id {
 	 		wpayload := records.MarshalOMsg(WELCOME,payload,n.ID,n.sk,v.Pk)
-			n.sendActive(string(wpayload), v.Port)
+			n.sendActive(wpayload, v.Port)
 		}
 	 }
  }

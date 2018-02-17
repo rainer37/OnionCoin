@@ -6,6 +6,7 @@ import (
 	"github.com/rainer37/OnionCoin/records"
 	"crypto/rsa"
 	"time"
+	"github.com/rainer37/OnionCoin/bank"
 )
 
 const BUFSIZE = 2048
@@ -13,6 +14,12 @@ const LOCALHOST = "127.0.0.1"
 
 func (n *Node) SelfInit() {
 	print("PeerNet Initiated.")
+
+	if n.iamBank() {
+		print("My Turn!")
+		n.bankProxy = bank.InitBank()
+	}
+
 	p,err := strconv.Atoi(n.Port)
 	checkErr(err)
 	n.Serve(":", p)
@@ -48,7 +55,7 @@ func (n *Node) IniJoin(address string) {
 	payload := []byte(n.IP+":"+n.Port+"@"+isNew)
 	joinMsg := records.MarshalOMsg(JOIN, payload, n.ID, n.sk, tPk)
 
-	n.sendActive(string(joinMsg), address)
+	n.sendActive(joinMsg, address)
 	select {}
 }
 
@@ -90,10 +97,28 @@ func (n *Node) send(msg []byte, con *net.UDPConn, add *net.UDPAddr) {
 /*
 	build a udp connection and send msg to add.
 */
-func (n *Node) sendActive(msg string, add string) {
+func (n *Node) sendActive(msg []byte, add string) {
 	con, err := net.Dial("udp", ":"+add)
 	checkErr(err)
-	_, err = con.Write([]byte(msg))
+	_, err = con.Write(msg)
 	checkErr(err)
 	con.Close()
+}
+
+func (n *Node) iamBank() bool {
+	return n.checkBankStatus(n.ID)
+}
+
+func (n *Node) isBank(id string) bool {
+	return n.checkBankStatus(id)
+}
+
+func (n *Node) checkBankStatus(id string) bool {
+	banks := bank.GetBankIDSet()
+	for _,bid := range banks {
+		if bid == id {
+			return true
+		}
+	}
+	return false
 }

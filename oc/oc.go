@@ -7,6 +7,7 @@ import(
 	"github.com/rainer37/OnionCoin/records"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"time"
+	"github.com/rainer37/OnionCoin/ui"
 )
 
 const LOCALHOST = "127.0.0.1"
@@ -45,8 +46,12 @@ func main() {
 
 	if cmd == "j" {
 		joinPort := os.Args[3]
-		n.IniJoin(joinPort)
+		go n.IniJoin(joinPort)
 	} else if cmd == "i" {
-		n.SelfInit()
+		go n.SelfInit()
 	}
+
+	go ui.Listen(n)
+
+	select {}
 }

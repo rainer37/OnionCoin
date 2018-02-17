@@ -17,6 +17,6 @@ func (n *Node) forwardProtocol(payload []byte) {
 	}
 
 	m := records.MarshalOMsg(FWD,iOnion,n.ID,n.sk,pe.Pk)
-	n.sendActive(string(m), pe.Port)
+	n.sendActive(m, pe.Port)
 
 }

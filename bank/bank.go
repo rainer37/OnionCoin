@@ -28,3 +28,7 @@ func (bank *Bank) MakeCoin() {}
 func (bank *Bank) GenFreeList() {}
 func (bank *Bank) send() {}
 func (bank *Bank) receive() {}
+
+func GetBankIDSet() []string {
+	return []string{"FAKEID1338"}
+}

@@ -19,6 +19,8 @@ const (
 	EXPT = '5'
 	JOINACK = '6'
 	WELCOME = '7'
+	COINEXCHANGE = 'A'
+	REJECT = 'F'
 )
 /*
 	Unmarshal the incoming packet to Omsg and verify the signature.
@@ -32,7 +34,7 @@ func (n *Node) dispatch(incoming []byte) {
 		senderAddr := string(incoming[4+PKRQLEN:])
 		records.InsertEntry(FAKE_ID+senderAddr, spk, time.Now().Unix(), LOCALHOST, senderAddr)
 		// PKAK | EncodedPK | PortListening
-		n.sendActive(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port, senderAddr)
+		n.sendActive([]byte(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port), senderAddr)
 		return
 	} else if string(incoming[:4]) == PKRQACK {
 		// return the pk to the requesting node to finish the join protocol.
@@ -54,13 +56,16 @@ func (n *Node) dispatch(incoming []byte) {
 
 	// check if the sender's id is known, otherwise cannot verify the signature.
 	if senderPK == nil {
-		print("Don't know who you are", omsg.GetSenderID())
+		rjmsg := "Don't know who you are"
+		print(rjmsg, omsg.GetSenderID())
 		return
 	}
 
 	// verifying the identity of claimed sender by its pk and signature.
 	if !n.VerifySig(omsg, &senderPK.Pk) {
-		print("Cannot verify sig from msg, discard it.")
+		rjmsg := "Cannot verify sig from msg, discard it."
+		print(rjmsg)
+		n.sendReject(rjmsg, senderPK)
 		return
 	}
 
@@ -90,7 +95,7 @@ func (n *Node) dispatch(incoming []byte) {
 	case JOINACK:
 		print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
 		unmarshalRoutingInfo(payload)
-		n.foo()
+		//n.foo()
 	case WELCOME:
 		print("WELCOME received from", omsg.GetSenderID())
 		idLen := binary.BigEndian.Uint32(payload[:4])
@@ -101,6 +106,17 @@ func (n *Node) dispatch(incoming []byte) {
 		e := records.BytesToPKEntry(payload[8+idLen:8+idLen+eLen])
 		records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
 		print(records.KeyRepo)
+	case COINEXCHANGE:
+		if !n.iamBank() {
+			//rej := n.formalRejectPacket("SRY IM NOT BANK", senderPK.Pk)
+			//n.sendActive(rej, senderPK.Port)
+			n.sendReject("SRY IM NOT BANK", senderPK)
+			return
+		}
+
+		print("Make a wish")
+	case REJECT:
+		print(string(omsg.GetPayload()))
 	default:
 		print("Unknown Msg, discard.")
 	}
@@ -156,5 +172,14 @@ func (n *Node) foo() {
 	payload := ocrypto.WrapOnion(pk2.Pk, "myHome", new(coin.Coin).Bytes(), []byte("msg received"))
 	p2 := ocrypto.WrapOnion(pk.Pk, "FAKEID1340", new(coin.Coin).Bytes(), payload)
 	m := records.MarshalOMsg(FWD,p2,n.ID,n.sk,pk.Pk)
-	n.sendActive(string(m),"1338")
+	n.sendActive(m,"1338")
+}
+
+func (n *Node) formalRejectPacket(msg string, pk rsa.PublicKey) []byte {
+	return records.MarshalOMsg(REJECT,[]byte(msg),n.ID,n.sk,pk)
+}
+
+func (n *Node) sendReject(msg string, senderPK *records.PKEntry) {
+	rej := n.formalRejectPacket(msg, senderPK.Pk)
+	n.sendActive(rej, senderPK.Port)
 }

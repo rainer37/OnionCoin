@@ -8,6 +8,7 @@ import(
 	"crypto/rsa"
 	"github.com/rainer37/OnionCoin/records"
 	"github.com/rainer37/OnionCoin/ocrypto"
+	"github.com/rainer37/OnionCoin/bank"
 )
 
 const NODE_PREFIX = "[NODE]"
@@ -24,6 +25,7 @@ type Node struct {
 	*vault.Vault
 	sk *rsa.PrivateKey
 	pkChan chan []byte // for pk lookup await
+	bankProxy *bank.Bank
 }
 
 func checkErr(err error){
