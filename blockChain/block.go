@@ -7,6 +7,8 @@ import (
 	"crypto/sha256"
 )
 
+const MAXNUMTXN = 10
+
 type Block struct {
 	prevHash []byte
 	curHash []byte

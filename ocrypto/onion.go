@@ -45,8 +45,8 @@ func WrapOnion(pk rsa.PublicKey, nextID string, coin []byte, content []byte) []b
 	remove one layer of onion and return nexthopID, CoinBytes, and InnerOnion
  */
 func PeelOnion(sk *rsa.PrivateKey, fullOnion []byte) (string, []byte, []byte) {
-	// First SYM_KEY_LEN == 32 is the symmetric key.
-	cKey, onion := fullOnion[:SYM_KEY_LEN], fullOnion[SYM_KEY_LEN:]
+	// First SYMKEYLEN == 32 is the symmetric key.
+	cKey, onion := fullOnion[:SYMKEYLEN], fullOnion[SYMKEYLEN:]
 	decryptedOnion, err := BlockDecrypt(onion, cKey, sk)
 	checkErr(err)
 	return string(bytes.Trim(decryptedOnion[:IDLEN], "\x00")), decryptedOnion[IDLEN:IDLEN+coin.COIN_LEN], decryptedOnion[IDLEN+coin.COIN_LEN:]

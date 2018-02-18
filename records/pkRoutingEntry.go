@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"io/ioutil"
 	"strings"
+	"log"
 )
 
 type PKEntry struct {
@@ -19,10 +20,22 @@ type PKEntry struct {
 }
 
 const KEYDIR = "keys/"
+const RECORDPREFIX = "[RCOD]"
 var KeyRepo map[string]*PKEntry // map[id:string] entry:PKEntry
 
+/*
+	check if there is PKEntry associated with id in memory and on disk.
+ */
 func GetKeyByID(id string) *PKEntry {
-	return KeyRepo[id]
+	pe := KeyRepo[id]
+	if pe != nil { return pe }
+	if yes,_:=exists(KEYDIR+id); yes {
+		dat, err := ioutil.ReadFile(KEYDIR+id)
+		checkErr(err)
+		pe = BytesToPKEntry(dat)
+		return pe
+	}
+	return nil
 }
 
 func InsertEntry(id string, pk rsa.PublicKey, recTime int64, ip string, port string) {
@@ -44,9 +57,10 @@ func InsertEntry(id string, pk rsa.PublicKey, recTime int64, ip string, port str
 	read key repo blockchain file from disk and load entries into KeyRepo
  */
 func GenerateKeyRepo() {
+	print("Generating Key Repo")
 	KeyRepo = make(map[string]*PKEntry)
 	if yes, _ := exists(KEYDIR); !yes {
-		os.Mkdir(KEYDIR, 0600)
+		os.Mkdir(KEYDIR, 0777)
 	}
 	populatePKEntry()
 }
@@ -58,9 +72,7 @@ func (e PKEntry) Bytes() []byte {
 	var b bytes.Buffer
 	enc := gob.NewEncoder(&b)
 	err := enc.Encode(PKEntry{e.Pk, e.IP, e.Port, e.Time})
-	if err != nil {
-		fmt.Println(err)
-	}
+	checkErr(err)
 	return b.Bytes()
 }
 
@@ -73,7 +85,6 @@ func BytesToPKEntry(data []byte) *PKEntry {
 	e := new(PKEntry)
 	err := dec.Decode(e)
 	if err != nil {
-		//fmt.Println(err)
 		return nil
 	}
 	return e
@@ -86,20 +97,10 @@ func writePE(pe *PKEntry, id string) {
 	path := KEYDIR+id
 	os.Remove(path)
 	os.Create(path)
-	file, err := os.OpenFile(path, os.O_WRONLY, 0666)
+	file, err := os.OpenFile(path, os.O_RDWR, 0777)
 	defer file.Close()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
+	checkErr(err)
 	fmt.Fprintf(file, "%s", pe.Bytes())
-}
-
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil { return true, nil }
-	if os.IsNotExist(err) { return false, nil }
-	return true, err
 }
 
 /*
@@ -108,11 +109,7 @@ func exists(path string) (bool, error) {
 func populatePKEntry() {
 	dir := KEYDIR
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", dir, err)
-			return err
-		}
-
+		checkErr(err)
 		dat, err := ioutil.ReadFile(path)
 		id := strings.Split(path, "/")[len(strings.Split(path, "/"))-1]
 		pe := BytesToPKEntry(dat)
@@ -121,8 +118,22 @@ func populatePKEntry() {
 		}
 		return nil
 	})
+	checkErr(err)
+}
 
-	if err != nil {
-		fmt.Printf("error walking the path %q: %v\n", dir, err)
-	}
+
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil { return true, nil }
+	if os.IsNotExist(err) { return false, nil }
+	return true, err
+}
+
+func checkErr(err error){
+	if err != nil { log.Fatal(err) }
+}
+
+func print(str ...interface{}) {
+	fmt.Print(RECORDPREFIX+" ")
+	fmt.Println(str...)
 }

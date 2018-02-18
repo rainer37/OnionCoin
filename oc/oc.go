@@ -12,6 +12,9 @@ import(
 
 const LOCALHOST = "127.0.0.1"
 
+/*
+	Load saved local states and sync the blockchain
+ */
 func loadSavedStates(n *node.Node) {
 
 }

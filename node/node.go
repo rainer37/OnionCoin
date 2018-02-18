@@ -18,8 +18,6 @@ const NODEPREFIX = "[NODE]"
 const FAKEID = "FAKEID"
 const NEWBIE = "N"
 const OLDBIE = "O"
-const PKREQUEST  = "PKRQ"
-const PKRQACK  = "PKAK"
 const SELFSKEYPATH = "self.sk"
 
 type Node struct {
@@ -70,9 +68,9 @@ func (n *Node) Withdraw(rid string) *coin.Coin {
  */
 
 func (n *Node) DecryptOMsg(incoming []byte) *records.OMsg {
-	ckey := ocrypto.PKDecrypt(n.sk, incoming[:ocrypto.SYM_KEY_LEN])
+	ckey := ocrypto.PKDecrypt(n.sk, incoming[:ocrypto.SYMKEYLEN])
 	omsg := new(records.OMsg)
-	b, err := ocrypto.AESDecrypt(ckey, incoming[ocrypto.SYM_KEY_LEN:])
+	b, err := ocrypto.AESDecrypt(ckey, incoming[ocrypto.SYMKEYLEN:])
 	if err == nil { return nil }
 	omsg.B = b
 	return omsg
@@ -90,10 +88,10 @@ func exists(path string) (bool, error) {
  */
 func produceSK(port string) *rsa.PrivateKey {
 	if yes,_ := exists(port);!yes {
-		os.Mkdir(port, 0600)
+		os.Mkdir(port, 0777)
 	}
 
-	os.Chdir(port)
+	os.Chdir(port) // go into oc info dir
 
 	if yes, _ := exists(SELFSKEYPATH); yes {
 		dat, err := ioutil.ReadFile(SELFSKEYPATH)
@@ -103,12 +101,12 @@ func produceSK(port string) *rsa.PrivateKey {
 		return sk
 	}
 
+	fmt.Println(os.Getwd())
 	file, err := os.Create(SELFSKEYPATH)
 	defer file.Close()
+	checkErr(err)
 	sk := ocrypto.RSAKeyGen()
 	skBytes := x509.MarshalPKCS1PrivateKey(sk)
-	ioutil.WriteFile(SELFSKEYPATH, skBytes, 0644)
-	//fmt.Fprintf(file, string(skBytes))
-	checkErr(err)
+	go ioutil.WriteFile(SELFSKEYPATH, skBytes, 0644)
 	return sk
 }

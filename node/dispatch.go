@@ -4,7 +4,6 @@ import (
 	"github.com/rainer37/OnionCoin/records"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/rsa"
-	"time"
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/coin"
 )
@@ -14,7 +13,6 @@ const (
 	FWD = '0'
 	JOIN = '1'
 	FIND = '2'
-	FREE = '3'
 	COIN = '4'
 	EXPT = '5'
 	JOINACK = '6'
@@ -28,20 +26,8 @@ const (
  */
 func (n *Node) dispatch(incoming []byte) {
 
-	// if the newbie is joining, special protocol is invoked.
-	if string(incoming[:4]) == PKREQUEST {
-		spk := ocrypto.DecodePK(incoming[4:4+PKRQLEN])
-		senderAddr := string(incoming[4+PKRQLEN:])
-		records.InsertEntry(FAKEID+senderAddr, spk, time.Now().Unix(), LOCALHOST, senderAddr)
-		// PKAK | EncodedPK | PortListening
-		n.sendActive([]byte(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port), senderAddr)
-		return
-	} else if string(incoming[:4]) == PKRQACK {
-		// return the pk to the requesting node to finish the join protocol.
-		print("thank you for the pub-key")
-		n.pkChan <- incoming[4:4+PKRQLEN]
-		return
-	}
+	ok := n.newbieJoin(incoming)
+	if ok { return }
 
 	omsg, ok := n.UnmarshalOMsg(incoming)
 
@@ -52,12 +38,13 @@ func (n *Node) dispatch(incoming []byte) {
 
 	print("valid OMsg, continue...")
 
-	senderPK := records.KeyRepo[omsg.GetSenderID()] // TODO: check if there is no known pk.
+	senderID := omsg.GetSenderID()
+	senderPK := records.KeyRepo[senderID]
 
 	// check if the sender's id is known, otherwise cannot verify the signature.
 	if senderPK == nil {
 		rjmsg := "Don't know who you are"
-		print(rjmsg, omsg.GetSenderID())
+		print(rjmsg, senderID)
 		return
 	}
 
@@ -69,7 +56,7 @@ func (n *Node) dispatch(incoming []byte) {
 		return
 	}
 
-	print("verified ID", omsg.GetSenderID())
+	print("verified ID", senderID)
 
 	payload := omsg.GetPayload()
 
@@ -80,43 +67,29 @@ func (n *Node) dispatch(incoming []byte) {
 	case JOIN:
 		print("Joining")
 		ok := n.joinProtocol(payload)
-		print(records.KeyRepo)
 		if ok {
-			n.welcomeNewBie(omsg.GetSenderID())
+			n.welcomeNewBie(senderID)
 		}
 	case FIND:
 		print("Finding")
-	case FREE:
-		//receive the free list
-	case COIN:
-		//receive the coin
-	case EXPT:
-		//any exception
 	case JOINACK:
 		print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
 		unmarshalRoutingInfo(payload)
 		//n.foo()
 	case WELCOME:
-		print("WELCOME received from", omsg.GetSenderID())
-		idLen := binary.BigEndian.Uint32(payload[:4])
-		id := string(payload[4:4+idLen])
-		print(id, idLen)
-
-		eLen := binary.BigEndian.Uint32(payload[4+idLen:8+idLen])
-		e := records.BytesToPKEntry(payload[8+idLen:8+idLen+eLen])
-		records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
-		print(records.KeyRepo)
+		print("WELCOME received from", senderID)
+		welcomeProtocol(payload)
 	case COINEXCHANGE:
+		print("COIN Exchange Requesting by", senderID)
 		if !n.iamBank() {
-			//rej := n.formalRejectPacket("SRY IM NOT BANK", senderPK.Pk)
-			//n.sendActive(rej, senderPK.Port)
 			n.sendReject("SRY IM NOT BANK", senderPK)
 			return
 		}
-
-		print("Make a wish")
+		coinExProtocol(payload)
 	case REJECT:
-		print(string(omsg.GetPayload()))
+		print(string(payload))
+	case EXPT:
+		//any exception
 	default:
 		print("Unknown Msg, discard.")
 	}
@@ -130,17 +103,11 @@ func (n* Node) UnmarshalOMsg(incoming []byte) (*records.OMsg, bool) {
 	return records.UnmarshalOMsg(incoming, n.sk)
 }
 
+/*
+	verified the signature with claimed senderID.
+ */
 func (n* Node) VerifySig(omsg *records.OMsg, pk *rsa.PublicKey) bool {
 	return omsg.VerifySig(pk)
-}
-
-/*
-	return len(b):b in bytes
- */
-func makeBytesLen(b []byte) []byte {
-	lb := make([]byte, 4)
-	binary.BigEndian.PutUint32(lb,uint32(len(b)))
-	return append(lb, b...)
 }
 
 /*
@@ -160,6 +127,16 @@ func unmarshalRoutingInfo(b []byte) {
 
 		records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
 	}
+}
+
+func welcomeProtocol(payload []byte) {
+	idLen := binary.BigEndian.Uint32(payload[:4])
+	id := string(payload[4:4+idLen])
+	print(id, idLen)
+
+	eLen := binary.BigEndian.Uint32(payload[4+idLen:8+idLen])
+	e := records.BytesToPKEntry(payload[8+idLen:8+idLen+eLen])
+	records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
 }
 
 func (n *Node) foo() {

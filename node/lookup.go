@@ -11,3 +11,7 @@ func (n *Node) LookUpPK(address string) rsa.PublicKey {
 	enPk := <-n.pkChan
 	return ocrypto.DecodePK(enPk)
 }
+
+func (n *Node) LookUpIP(id string) {
+
+}

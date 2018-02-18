@@ -14,9 +14,9 @@ import(
 	"math/big"
 )
 
-const CRYPTO_PREFIX = "[CRYP]"
-const KEY_LEN = 1024
-const SYM_KEY_LEN = 128
+const CRYPTOPREFIX = "[CRYP]"
+const RSAKEYLEN = 1024
+const SYMKEYLEN = 128
 
 var LABEL = []byte("orders")
 var rng = rand.Reader
@@ -30,14 +30,14 @@ func checkErr(err error){
 }
 
 func print(str ...interface{}) {
-	fmt.Print(CRYPTO_PREFIX+" ")
+	fmt.Print(CRYPTOPREFIX+" ")
 	fmt.Println(str...)
 }
 
 // generate a pub/private key pair.
 // public key is inside of PrivateKey by invoking .PublicKey
 func RSAKeyGen() *rsa.PrivateKey {
-	key, err := rsa.GenerateKey(rng, KEY_LEN)
+	key, err := rsa.GenerateKey(rng, RSAKEYLEN)
 	checkErr(err)
 	return key
 }

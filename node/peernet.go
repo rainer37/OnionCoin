@@ -22,7 +22,7 @@ func (n *Node) SelfInit() {
 
 	p,err := strconv.Atoi(n.Port)
 	checkErr(err)
-	n.Serve(":", p)
+	n.Serve(LOCALHOST, p)
 }
 
 /*
@@ -41,7 +41,7 @@ func (n *Node) IniJoin(address string) {
 	if pk == nil {
 		print("No Known Pub-Key Stored, Looking-UP")
 		tPk = n.LookUpPK(address)
-		records.InsertEntry(FAKEID+address, tPk, time.Now().Unix(), LOCALHOST, address) // record retrieved pub-key
+		records.InsertEntry(FAKEID+address, tPk, time.Now().Unix(), LOCALHOST, address)
 	} else {
 		tPk = pk.Pk
 	}

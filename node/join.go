@@ -4,9 +4,15 @@ import (
 	"strings"
 	"fmt"
 	"github.com/rainer37/OnionCoin/records"
+	"encoding/binary"
+	"github.com/rainer37/OnionCoin/ocrypto"
+	"time"
 )
 
 const NUMNODEINFO = 3
+const PKREQUEST  = "PKRQ"
+const PKRQACK  = "PKAK"
+const PKRQCODELEN = 4
 
 func (n *Node) joinProtocol(payload []byte) bool {
 
@@ -39,13 +45,31 @@ func (n *Node) joinProtocol(payload []byte) bool {
 		records.KeyRepo[senderID].Port = senderPort
 		n.sendActive(jack, senderPort)
 	} else if isNew == "O" {
-
+		return false
 	} else {
 		fmt.Println("Invalid JOIN status, reject")
 		return false
 	}
 
 	return true
+}
+
+func (n* Node) newbieJoin(incoming []byte) bool {
+	// if the newbie is joining, special protocol is invoked.
+	if string(incoming[:PKRQCODELEN]) == PKREQUEST {
+		spk := ocrypto.DecodePK(incoming[PKRQCODELEN:PKRQCODELEN+PKRQLEN])
+		senderAddr := string(incoming[PKRQCODELEN+PKRQLEN:])
+		records.InsertEntry(FAKEID+senderAddr, spk, time.Now().Unix(), LOCALHOST, senderAddr)
+		// PKAK | EncodedPK | PortListening
+		n.sendActive([]byte(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port), senderAddr)
+		return true
+	} else if string(incoming[:PKRQCODELEN]) == PKRQACK {
+		// return the pk to the requesting node to finish the join protocol.
+		print("thank you for the pub-key")
+		n.pkChan <- incoming[PKRQCODELEN:PKRQCODELEN+PKRQLEN]
+		return true
+	}
+	return false
 }
 
 /*
@@ -79,3 +103,12 @@ func (n *Node) gatherRoutingInfo() []byte {
 		}
 	 }
  }
+
+/*
+   return len(b):b in bytes
+*/
+func makeBytesLen(b []byte) []byte {
+	lb := make([]byte, 4)
+	binary.BigEndian.PutUint32(lb,uint32(len(b)))
+	return append(lb, b...)
+}
