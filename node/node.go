@@ -104,9 +104,11 @@ func produceSK(port string) *rsa.PrivateKey {
 	}
 
 	file, err := os.Create(SELFSKEYPATH)
+	defer file.Close()
 	sk := ocrypto.RSAKeyGen()
 	skBytes := x509.MarshalPKCS1PrivateKey(sk)
-	fmt.Fprintf(file, string(skBytes))
+	ioutil.WriteFile(SELFSKEYPATH, skBytes, 0644)
+	//fmt.Fprintf(file, string(skBytes))
 	checkErr(err)
 	return sk
 }

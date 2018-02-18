@@ -5,6 +5,10 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"os"
+	"path/filepath"
+	"io/ioutil"
+	"strings"
 )
 
 type PKEntry struct {
@@ -14,6 +18,7 @@ type PKEntry struct {
 	Time int64
 }
 
+const KEYDIR = "keys/"
 var KeyRepo map[string]*PKEntry // map[id:string] entry:PKEntry
 
 func GetKeyByID(id string) *PKEntry {
@@ -26,22 +31,24 @@ func InsertEntry(id string, pk rsa.PublicKey, recTime int64, ip string, port str
 			pe.IP = ip
 			pe.Port = port
 			pe.Time = recTime
+			writePE(pe, id)
 		}
 	} else {
-		e := new(PKEntry)
-		e.Pk = pk // TODO: verify pub key from block chain.
-		e.Time = recTime
-		e.IP = ip
-		e.Port = port
+		e := &PKEntry{pk, ip, port, recTime}
 		KeyRepo[id] = e
+		writePE(e, id)
 	}
 }
 
 /*
 	read key repo blockchain file from disk and load entries into KeyRepo
  */
-func GenerateKeyRepo(regfilename string) {
+func GenerateKeyRepo() {
 	KeyRepo = make(map[string]*PKEntry)
+	if yes, _ := exists(KEYDIR); !yes {
+		os.Mkdir(KEYDIR, 0600)
+	}
+	populatePKEntry()
 }
 
 /*
@@ -66,8 +73,56 @@ func BytesToPKEntry(data []byte) *PKEntry {
 	e := new(PKEntry)
 	err := dec.Decode(e)
 	if err != nil {
-		fmt.Println(err)
+		//fmt.Println(err)
 		return nil
 	}
 	return e
+}
+
+/*
+	Write a PKEntry to disk.
+ */
+func writePE(pe *PKEntry, id string) {
+	path := KEYDIR+id
+	os.Remove(path)
+	os.Create(path)
+	file, err := os.OpenFile(path, os.O_WRONLY, 0666)
+	defer file.Close()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	fmt.Fprintf(file, "%s", pe.Bytes())
+}
+
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil { return true, nil }
+	if os.IsNotExist(err) { return false, nil }
+	return true, err
+}
+
+/*
+	Read all saved PKEntry from disk.
+ */
+func populatePKEntry() {
+	dir := KEYDIR
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", dir, err)
+			return err
+		}
+
+		dat, err := ioutil.ReadFile(path)
+		id := strings.Split(path, "/")[len(strings.Split(path, "/"))-1]
+		pe := BytesToPKEntry(dat)
+		if pe != nil {
+			KeyRepo[id] = pe
+		}
+		return nil
+	})
+
+	if err != nil {
+		fmt.Printf("error walking the path %q: %v\n", dir, err)
+	}
 }

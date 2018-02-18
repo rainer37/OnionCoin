@@ -39,8 +39,7 @@ func main() {
 	n.ID = node.FAKEID +n.Port
 
 	loadSavedStates(n)
-
-	records.GenerateKeyRepo("")
+	records.GenerateKeyRepo()
 
 	// for testing
 	now := time.Now().Unix()

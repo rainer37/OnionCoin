@@ -26,7 +26,7 @@ func NewBlock(prevHash []byte, payload []byte) *Block {
 
 func (b *Block) GetCurHash() []byte {
 	timestamp := []byte(strconv.FormatInt(b.ts, 10))
-	data := bytes.Join([][]byte{b.prevHash, b.txns.toBytes(), timestamp}, []byte{})
+	data := bytes.Join([][]byte{b.prevHash, b.txns.txnToBytes(), timestamp}, []byte{})
 	hash := sha256.Sum256(data)
 	return hash[:]
 }
