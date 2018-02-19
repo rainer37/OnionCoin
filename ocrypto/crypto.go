@@ -1,7 +1,7 @@
 package ocrypto
 
 import(
-	"crypto/rand"
+	crand "crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"log"
@@ -12,6 +12,7 @@ import(
 	"fmt"
 	"encoding/binary"
 	"math/big"
+	"math/rand"
 )
 
 const CRYPTOPREFIX = "[CRYP]"
@@ -19,11 +20,7 @@ const RSAKEYLEN = 1024
 const SYMKEYLEN = 128
 
 var LABEL = []byte("orders")
-var rng = rand.Reader
-
-type CryptoTK struct {
-	Bsig BlindSig
-}
+var rng = crand.Reader
 
 func checkErr(err error){
 	if err != nil { log.Fatal(err) }
@@ -62,7 +59,7 @@ func AESEncrypt(key []byte, payload []byte) ([]byte, error) {
 	if err != nil { return nil, err}
 
 	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+	if _, err = io.ReadFull(rng, nonce); err != nil {
 		return nil, err
 	}
 
@@ -86,7 +83,10 @@ func AESDecrypt(key []byte, cipherText []byte) ([]byte, error){
 }
 
 func BlockEncrypt(msg []byte, pk rsa.PublicKey) ([]byte, []byte , error) {
-	symkey := []byte("the-key-has-to-be-32-bytes-long!")
+
+	buf := make([]byte, 32) // generate random bytes
+	rand.Read(buf)
+	symkey := buf
 	cipher, err := AESEncrypt(symkey, msg)
 	if err != nil { return nil, nil, err}
 	cipherKey := PKEncrypt(pk, symkey)

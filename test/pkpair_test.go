@@ -6,7 +6,7 @@ import (
 )
 
 func TestPKEncrypt(t *testing.T) {
-	msg := "the-key-has-to-be-32-bytes-long!"
+	msg := "the-key-has-to-be-32-bytes-lon!"
 
 	sk := ocrypto.RSAKeyGen()
 	pk := sk.PublicKey
