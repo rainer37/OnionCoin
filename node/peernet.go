@@ -16,8 +16,8 @@ func (n *Node) SelfInit() {
 	print("PeerNet Initiated.")
 
 	if n.iamBank() {
-		print("My Turn!")
-		n.bankProxy = bank.InitBank()
+		print("My Turn To be Bank!")
+		n.bankProxy = bank.InitBank(n.sk)
 	}
 
 	p,err := strconv.Atoi(n.Port)

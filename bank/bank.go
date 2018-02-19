@@ -3,11 +3,13 @@ package bank
 import (
 	"fmt"
 	"github.com/rainer37/OnionCoin/coin"
+	"github.com/rainer37/OnionCoin/ocrypto"
+	"crypto/rsa"
 )
 const BANK_PREFIX = "[BANK]"
 
 type Bank struct {
-	FCL *FreeCoinList
+	sk *rsa.PrivateKey
 }
 
 func print(str ...interface{}) {
@@ -15,20 +17,24 @@ func print(str ...interface{}) {
 	fmt.Println(str...)
 }
 
-func InitBank() *Bank{
+func InitBank(sk *rsa.PrivateKey) *Bank{
 	print("i'm a bank!")
 	bank := new(Bank)
-	bank.FCL = NewFCL()
+	bank.sk = sk
 	return bank
 }
 
-func (bank *Bank) Sign(coinSeg []byte) []byte { return nil }
+/*
+	Blindly sign the RawCoin received.
+ */
+func (bank *Bank) SignRawCoin(coinSeg []byte) []byte {
+	return ocrypto.BlindSign(bank.sk, coinSeg)
+}
+
 func (bank *Bank) VerifyCoin(c *coin.Coin) bool { return false }
 func (bank *Bank) MakeCoin() {}
-func (bank *Bank) GenFreeList() {}
-func (bank *Bank) send() {}
-func (bank *Bank) receive() {}
 
 func GetBankIDSet() []string {
+	// TODO: generate set of bank based on cur time.
 	return []string{"FAKEID1338"}
 }

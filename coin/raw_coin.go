@@ -12,6 +12,8 @@ type RawCoin struct {
 	coinNum uint64
 }
 
+var rawCoinBFs = make(map[string][]byte)
+
 func NewRawCoin(rid string) *RawCoin {
 	rwcoin := new(RawCoin)
 	rwcoin.rid = rid
@@ -32,6 +34,14 @@ func (c *RawCoin) GetRIDHash() [32]byte {
 	return c.ridHash
 }
 
+func RecordBF(rwid string, bf []byte) {
+	rawCoinBFs[rwid] = bf
+}
+
+func GetBF(bfid string) []byte {
+	return rawCoinBFs[bfid]
+}
+
 /*
 	raw coin to bytes of size 40.
  */
@@ -47,7 +57,7 @@ func (c *RawCoin) ToBytes() []byte {
 func genFreeCN() uint64 {
 	for {
 		cn := rand.Uint64()
-		if isFreeCoinNum(cn) {
+		if IsFreeCoinNum(cn) {
 			return cn
 		}
 	}
@@ -57,6 +67,6 @@ func genFreeCN() uint64 {
 	check against the free coin list on blockchain to see if this num is free to use.
 	TODO: check against blockchain
  */
-func isFreeCoinNum(coinNum uint64) bool {
+func IsFreeCoinNum(coinNum uint64) bool {
 	return true
 }

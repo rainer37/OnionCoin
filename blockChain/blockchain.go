@@ -6,6 +6,7 @@ package blockChain
 
 import(
 	"fmt"
+	"crypto/rsa"
 )
 
 const BKCHPREFIX = "BKCH"
@@ -28,4 +29,11 @@ func (chain *BlockChain) AddBlock(data []byte) {
 
 func NewBlockChain() *BlockChain {
 	return &BlockChain{[]*Block{GENESISBLOCK}}
+}
+
+/*
+	return the pub-key associated with id from blockchain.
+ */
+func GetPKFromChain() *rsa.PublicKey {
+	return nil
 }
