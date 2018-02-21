@@ -34,6 +34,9 @@ func (c *RawCoin) GetRIDHash() [32]byte {
 	return c.ridHash
 }
 
+/*
+	Record blind factor of the exchanging RawCoins.
+ */
 func RecordBF(rwid string, bf []byte) {
 	rawCoinBFs[rwid] = bf
 }
@@ -51,6 +54,7 @@ func (c *RawCoin) ToBytes() []byte {
 	bytes := append(c.ridHash[:], b[:]...)
 	return bytes
 }
+
 /*
 	generate a random free coin num.
  */

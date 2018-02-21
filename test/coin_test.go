@@ -6,6 +6,9 @@ import (
 	"crypto/sha256"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/node"
+	"fmt"
+	"math/big"
+	"encoding/binary"
 )
 
 func TestRawCoinToBytes(t *testing.T) {
@@ -28,7 +31,35 @@ func TestRawCoinBlindbyBank(t *testing.T) {
 	rwcn := coin.NewRawCoin("rainer")
 	bankSK := ocrypto.RSAKeyGen()
 
-	brc, bfid := node.BlindRawCoin(rwcn, &bankSK.PublicKey)
+	brc, bfid := node.BlindBytes(rwcn.ToBytes(), &bankSK.PublicKey)
+
+	fmt.Println(len(brc))
+
+	signedBRC := ocrypto.BlindSign(bankSK, brc)
+
+	fmt.Println(len(signedBRC))
+
+	coin := node.UnBlindSignedRawCoin(signedBRC, bfid, &bankSK.PublicKey)
+
+	fmt.Println(len(coin))
+
+	if !ocrypto.VerifyBlindSig(&bankSK.PublicKey,rwcn.ToBytes(),coin) {
+		t.Error("wrong raw coin ex")
+	}
+
+	if !node.ValidateCoinByKey(coin, "rainer", &bankSK.PublicKey) {
+		t.Error("invalid coin")
+	}
+
+
+}
+
+func TestRawCoinBlindbyBanks(t *testing.T) {
+	rwcn := coin.NewRawCoin("rainer")
+	bankSK := ocrypto.RSAKeyGen()
+	bankSK1 := ocrypto.RSAKeyGen()
+
+	brc, bfid := node.BlindBytes(rwcn.ToBytes(), &bankSK.PublicKey)
 
 	signedBRC := ocrypto.BlindSign(bankSK, brc)
 
@@ -40,5 +71,23 @@ func TestRawCoinBlindbyBank(t *testing.T) {
 
 	if !node.ValidateCoinByKey(coin, "rainer", &bankSK.PublicKey) {
 		t.Error("invalid coin")
+	}
+
+	nbrc, nbfid := ocrypto.Blind(&bankSK1.PublicKey, coin)
+
+	nsignedBRC := ocrypto.BlindSign(bankSK1, nbrc)
+
+	ncoin := ocrypto.Unblind(&bankSK1.PublicKey, nsignedBRC, nbfid)
+
+	if !ocrypto.VerifyBlindSig(&bankSK1.PublicKey,coin,ncoin) {
+		t.Error("wrong raw coin ex")
+	}
+
+	c := ocrypto.Encrypt(new(big.Int), &bankSK1.PublicKey, new(big.Int).SetBytes(ncoin)).Bytes()
+
+	cc := ocrypto.Encrypt(new(big.Int), &bankSK.PublicKey, new(big.Int).SetBytes(c)).Bytes()
+
+	if rwcn.GetCoinNum() != binary.BigEndian.Uint64(cc[32:]) {
+		t.Error("Cannot decrypt second layer")
 	}
 }

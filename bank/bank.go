@@ -36,5 +36,5 @@ func (bank *Bank) MakeCoin() {}
 
 func GetBankIDSet() []string {
 	// TODO: generate set of bank based on cur time.
-	return []string{"FAKEID1338"}
+	return []string{"FAKEID1338", "FAKEID1339"}
 }

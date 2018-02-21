@@ -2,7 +2,6 @@ package node
 
 import(
 	"fmt"
-	"github.com/rainer37/OnionCoin/vault"
 	"github.com/rainer37/OnionCoin/coin"
 	"log"
 	"crypto/rsa"
@@ -24,7 +23,7 @@ type Node struct {
 	ID string
 	IP string
 	Port string
-	*vault.Vault
+	*coin.Vault
 	sk *rsa.PrivateKey
 	pkChan chan []byte // for pk lookup await
 	bankProxy *bank.Bank
@@ -42,7 +41,7 @@ func print(str ...interface{}) {
 func NewNode(port string) *Node {
 	print("Create a new node.")
 	n := new(Node)
-	n.Vault = new(vault.Vault)
+	n.Vault = new(coin.Vault)
 	n.InitVault()
 	n.Port = port
 	n.pkChan = make(chan []byte)

@@ -17,7 +17,8 @@ const (
 	EXPT = '5'
 	JOINACK = '6'
 	WELCOME = '7'
-	COINEXCHANGE = 'A'
+	RAWCOINEXCHANGE = 'A'
+	RAWCOINSIGNED = 'B'
 	REJECT = 'F'
 )
 /*
@@ -79,13 +80,16 @@ func (n *Node) dispatch(incoming []byte) {
 	case WELCOME:
 		print("WELCOME received from", senderID)
 		welcomeProtocol(payload)
-	case COINEXCHANGE:
+	case RAWCOINEXCHANGE:
 		print("COIN Exchange Requesting by", senderID)
 		if !n.iamBank() {
 			n.sendReject("SRY IM NOT BANK", senderPK)
 			return
 		}
-		coinExProtocol(payload)
+		n.receiveRawCoin(payload, senderID)
+	case RAWCOINSIGNED:
+		print("My Signed RawCoin received.")
+		n.receiveNewCoin(payload, senderID)
 	case REJECT:
 		print(string(payload))
 	case EXPT:

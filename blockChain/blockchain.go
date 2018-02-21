@@ -34,6 +34,6 @@ func NewBlockChain() *BlockChain {
 /*
 	return the pub-key associated with id from blockchain.
  */
-func GetPKFromChain() *rsa.PublicKey {
+func GetPKFromChain(id string) *rsa.PublicKey {
 	return nil
 }
