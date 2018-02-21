@@ -8,8 +8,12 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"math/big"
 	"time"
+	"crypto/sha256"
+	"encoding/binary"
 )
 
+const COSIGNTIMEOUT = 2
+const NUMCOSIGNER = 2
 /*
 	Exchanging an existing coin to a newCoin with dstID, and random coinNum.
 	1. generate a rawCoin with dstID.
@@ -47,7 +51,7 @@ func (n *Node) CoinExchange(dstID string) {
 		blindrwcn, bfid := BlindBytes(rc, &bpe.Pk)
 
 		payload := append(blindrwcn, []byte(bfid)...)
-		payload = append(payload, blindrwcn...)
+		payload = append(payload, blindrwcn...) // TODO: append a real COIN
 
 		fo := records.MarshalOMsg(RAWCOINEXCHANGE,payload,n.ID,n.sk,bpe.Pk)
 
@@ -55,20 +59,19 @@ func (n *Node) CoinExchange(dstID string) {
 
 		n.sendActive(fo, bpe.Port)
 
-		// TODO: start a timer for network timeout
-
 		var realCoin []byte
 
 		select{
 		case reply := <-exMap[bfid]:
 			realCoin = reply
-		case <-time.After(3 * time.Second):
+			close(exMap[bfid])
+		case <-time.After(COSIGNTIMEOUT * time.Second):
 			print(b, "no response, try next bank")
 			counter++
 			continue
 		}
 
-		print("waiting for response")
+		print("waiting for response from", b)
 
 		revealedCoin := UnBlindSignedRawCoin(realCoin, bfid, &bpe.Pk)
 
@@ -88,7 +91,35 @@ func (n *Node) CoinExchange(dstID string) {
 
 	if layers == NUMSIGNINGBANK {
 		print("New Coin Forged, Thanks Fellas!")
+		n.Deposit(coin.NewCoin(dstID, rc))
 	} else {
 		print("Not Enough Banks To Forge a Coin, Try Next Epoch")
 	}
+}
+
+/*
+	Upon received a valid coin, the bank signs the coin and pass it to other banks
+	Till enough signatures gained, then publish it as a transaction.
+ */
+func (n *Node) CoSignValidCoin(c []byte, counter uint16) {
+
+	hash := sha256.Sum256(c[:128])
+	signedHash := n.blindSign(hash[:])
+
+	signedHash = append(c, signedHash...)
+	newCounter := make([]byte, 2)
+	binary.BigEndian.PutUint16(newCounter, counter+1)
+	signedHash = append(newCounter, signedHash...)
+
+	if counter+1 == NUMCOSIGNER {
+		print("Publish it")
+		return
+	}
+
+	bid := bank.GetBankIDSet()[counter]
+	tpk := records.GetKeyByID(bid)
+	payload := records.MarshalOMsg(COSIGN, signedHash, n.ID, n.sk, tpk.Pk)
+
+	print("sending cosign counter", counter+1)
+	n.sendActive(payload, tpk.Port)
 }

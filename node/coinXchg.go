@@ -13,11 +13,13 @@ import (
 
 const BCOINSIZE = 128
 const NUMSIGNINGBANK = 2
-var exMap = map[string]chan []byte{}
+var exMap = map[string]chan []byte{} // channels for coin exchanging
+
 /*
 	bank processing coin exchange request.
 	RAWCOIN(128) | BFID(8) | COIN(128) |
 	If valid coin received, sign the rawCoin and send it back.
+	meanwhile starting coSign protocol to get coin published.
  */
 func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 	print("Make a wish")
@@ -25,15 +27,20 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 
 	c := payload[BCOINSIZE+8:]
 	if !n.ValidateCoin(c, senderID) { return }
-
 	print("valid coin, continue")
+
+	n.CoSignValidCoin(c, 0)
+
 	rwcn := payload[:BCOINSIZE]
 	bfid := payload[BCOINSIZE:BCOINSIZE+8]
 
 	newCoin := n.blindSign(rwcn)
 	spk := records.GetKeyByID(senderID)
 	p := records.MarshalOMsg(RAWCOINSIGNED,append(newCoin, bfid...),n.ID,n.sk,spk.Pk)
+
+	print("reply with partial newCoin")
 	n.sendActive(p, spk.Port)
+
 }
 
 /*

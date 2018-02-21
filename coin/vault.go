@@ -39,7 +39,6 @@ func (vault *Vault) Withdraw(id string) *Coin {
 	print("Withdrawing Coin :"+id)
 	defer func(){
 		delete(vault.Coins, id)
-		print(vault.Len())
 	}()
 	return vault.Coins[id]
 } 

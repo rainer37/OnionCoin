@@ -17,11 +17,10 @@ func print(str ...interface{}) {
 	fmt.Println(str...)
 }
 
-func NewCoin() *Coin {
+func NewCoin(rid string, content []byte) *Coin {
 	coin := new(Coin)
-	coin.RID = "1338"
-	coin.Content = []byte("hello world")
-	//print("Coin is an Onion : " + string(coin.RID))
+	coin.RID = rid
+	coin.Content = content
 	return coin
 }
 
@@ -40,4 +39,8 @@ func (c *Coin) Bytes() []byte {
 		b[i] = cmsg[i]
 	}
 	return b
+}
+
+func (c *Coin) String() string {
+	return c.RID + " : " + string(c.Content)
 }

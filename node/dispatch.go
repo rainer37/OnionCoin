@@ -13,7 +13,7 @@ const (
 	FWD = '0'
 	JOIN = '1'
 	FIND = '2'
-	COIN = '4'
+	COSIGN = '4'
 	EXPT = '5'
 	JOINACK = '6'
 	WELCOME = '7'
@@ -33,7 +33,7 @@ func (n *Node) dispatch(incoming []byte) {
 	omsg, ok := n.UnmarshalOMsg(incoming)
 
 	if !ok {
-		print("Cannot Unmarshal Msg, discard it.")
+		print("Cannot Unmarshal Msg, discard it.", len(incoming))
 		return
 	}
 
@@ -88,8 +88,13 @@ func (n *Node) dispatch(incoming []byte) {
 		}
 		n.receiveRawCoin(payload, senderID)
 	case RAWCOINSIGNED:
-		print("My Signed RawCoin received.")
+		print("My Signed RawCoin received.", senderID)
 		n.receiveNewCoin(payload, senderID)
+	case COSIGN:
+		print("Let's make fortune")
+		counter := binary.BigEndian.Uint16(payload[:2])
+		c := payload[2:]
+		n.CoSignValidCoin(c, counter)
 	case REJECT:
 		print(string(payload))
 	case EXPT:

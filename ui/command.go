@@ -20,7 +20,7 @@ func Listen(n *node.Node) {
 		reader := bufio.NewReader(os.Stdin)
 		text, _ := reader.ReadString('\n')
 
-		print("["+text+"]")
+		print("["+text[:len(text)-1]+"]\n")
 
 		matched, _ := regexp.MatchString("ex *", text)
 		if matched {

@@ -54,7 +54,7 @@ func (n *Node) GetBalance() int {
 }
 
 func (n *Node) Deposit(coin *coin.Coin) error {
-	return n.Deposit(coin)
+	return n.Vault.Deposit(coin)
 }
 
 func (n *Node) Withdraw(rid string) *coin.Coin {
