@@ -4,6 +4,10 @@ import (
 	"github.com/rainer37/OnionCoin/records"
 	"github.com/rainer37/OnionCoin/coin"
 	"github.com/rainer37/OnionCoin/bank"
+	"crypto/rsa"
+	"github.com/rainer37/OnionCoin/ocrypto"
+	"math/big"
+	"time"
 )
 
 /*
@@ -23,10 +27,13 @@ func (n *Node) CoinExchange(dstID string) {
 
 	banks := bank.GetBankIDSet()
 	print(banks)
+	banksPk := []rsa.PublicKey{}
 
 	counter := 0
+	layers := 0
 	rc := rwcn.ToBytes()
-	for counter < NUMSIGNINGBANK {
+
+	for layers < NUMSIGNINGBANK && counter < len(banks) {
 		b := banks[counter]
 		bpe := records.GetKeyByID(b)
 
@@ -38,28 +45,50 @@ func (n *Node) CoinExchange(dstID string) {
 		print("Requesting", b, "for signing rawCoin")
 
 		blindrwcn, bfid := BlindBytes(rc, &bpe.Pk)
-		print(blindrwcn, bfid)
 
 		payload := append(blindrwcn, []byte(bfid)...)
 		payload = append(payload, blindrwcn...)
-		print(len(payload))
 
 		fo := records.MarshalOMsg(RAWCOINEXCHANGE,payload,n.ID,n.sk,bpe.Pk)
+
+		exMap[bfid] = make(chan []byte)
+
 		n.sendActive(fo, bpe.Port)
+
+		// TODO: start a timer for network timeout
+
+		var realCoin []byte
+
+		select{
+		case reply := <-exMap[bfid]:
+			realCoin = reply
+		case <-time.After(3 * time.Second):
+			print(b, "no response, try next bank")
+			counter++
+			continue
+		}
 
 		print("waiting for response")
 
-		exMap[bfid] = make(chan []byte)
-		realCoin := <-exMap[bfid]
+		revealedCoin := UnBlindSignedRawCoin(realCoin, bfid, &bpe.Pk)
 
 		counter++
 
-		if string(realCoin) == "BADBANK" {
-			print("C'mon man, sign it properly!")
+		expected := ocrypto.Encrypt(new(big.Int), &bpe.Pk, new(big.Int).SetBytes(revealedCoin)).Bytes()
+
+		if string(expected) != string(rc) {
+			print("not equal, bad bank!", b)
+			continue
 		}
 
-		rc = realCoin
-
+		rc = revealedCoin
+		banksPk = append(banksPk, bpe.Pk)
+		layers++
 	}
-	print("new coin got", len(rc))
+
+	if layers == NUMSIGNINGBANK {
+		print("New Coin Forged, Thanks Fellas!")
+	} else {
+		print("Not Enough Banks To Forge a Coin, Try Next Epoch")
+	}
 }

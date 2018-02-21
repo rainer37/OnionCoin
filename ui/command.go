@@ -25,7 +25,7 @@ func Listen(n *node.Node) {
 		matched, _ := regexp.MatchString("ex *", text)
 		if matched {
 			tokens := strings.Split(text, " ")
-			n.CoinExchange(tokens[1][:len(tokens[1])-1])
+			go n.CoinExchange(tokens[1][:len(tokens[1])-1])
 		}
 		matched, _ = regexp.MatchString("fwd *", text)
 		if matched {

@@ -41,20 +41,14 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 	| newCoin(128) | bfid(8) |
  */
 func (n *Node) receiveNewCoin(payload []byte, senderID string) {
-	if len(payload) != BCOINSIZE+8 { return }
+
+	if len(payload) != BCOINSIZE+8 {
+		return
+	}
+
 	newCoin := payload[:BCOINSIZE]
 	bfid := payload[BCOINSIZE:]
-	bpk := records.GetKeyByID(senderID)
-	realCoin := UnBlindSignedRawCoin(newCoin, string(bfid), &bpk.Pk)
-	print(len(realCoin))
-
-	if ValidateCoinByKey(realCoin, senderID, &bpk.Pk) {
-		print("Man i got a coin")
-		exMap[string(bfid)] <- realCoin
-	} else {
-		print("Bad bank sucks")
-		exMap[string(bfid)] <- []byte("BADBANK")
-	}
+	exMap[string(bfid)] <- newCoin
 }
 
 /*
@@ -63,11 +57,9 @@ func (n *Node) receiveNewCoin(payload []byte, senderID string) {
  */
 func BlindBytes(b []byte, bankPK *rsa.PublicKey) ([]byte, string) {
 	brwcn, bfac := ocrypto.Blind(bankPK, b)
-
 	bfid := make([]byte, 8)
 	binary.BigEndian.PutUint64(bfid,rand.Uint64())
 	coin.RecordBF(string(bfid) ,bfac)
-
 	return brwcn, string(bfid)
 }
 
