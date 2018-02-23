@@ -36,7 +36,7 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 
 	newCoin := n.blindSign(rwcn)
 	spk := records.GetKeyByID(senderID)
-	p := records.MarshalOMsg(RAWCOINSIGNED,append(newCoin, bfid...),n.ID,n.sk,spk.Pk)
+	p := n.prepareOMsg(RAWCOINSIGNED,append(newCoin, bfid...),spk.Pk)
 
 	print("reply with partial newCoin")
 	n.sendActive(p, spk.Port)

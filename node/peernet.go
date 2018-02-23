@@ -22,6 +22,7 @@ func (n *Node) SelfInit() {
 
 	p,err := strconv.Atoi(n.Port)
 	checkErr(err)
+	go n.syncBlockChain()
 	n.Serve(LOCALHOST, p)
 }
 
@@ -53,8 +54,7 @@ func (n *Node) IniJoin(address string) {
 	}
 
 	payload := []byte(n.IP+":"+n.Port+"@"+isNew)
-	joinMsg := records.MarshalOMsg(JOIN, payload, n.ID, n.sk, tPk)
-
+	joinMsg := n.prepareOMsg(JOIN, payload, tPk)
 	n.sendActive(joinMsg, address)
 	select {}
 }
@@ -105,15 +105,18 @@ func (n *Node) sendActive(msg []byte, add string) {
 	con.Close()
 }
 
+/*
+	check if n.ID is one of current bank ids.
+ */
 func (n *Node) iamBank() bool {
-	return n.checkBankStatus(n.ID)
+	return checkBankStatus(n.ID)
 }
 
-func (n *Node) isBank(id string) bool {
-	return n.checkBankStatus(id)
+func isBank(id string) bool {
+	return checkBankStatus(id)
 }
 
-func (n *Node) checkBankStatus(id string) bool {
+func checkBankStatus(id string) bool {
 	banks := bank.GetBankIDSet()
 	for _,bid := range banks {
 		if bid == id {

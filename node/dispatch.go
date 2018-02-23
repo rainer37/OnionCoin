@@ -13,6 +13,7 @@ const (
 	FWD = '0'
 	JOIN = '1'
 	FIND = '2'
+	COIN = '3'
 	COSIGN = '4'
 	EXPT = '5'
 	JOINACK = '6'
@@ -50,7 +51,7 @@ func (n *Node) dispatch(incoming []byte) {
 	}
 
 	// verifying the identity of claimed sender by its pk and signature.
-	if !n.VerifySig(omsg, &senderPK.Pk) {
+	if !verifySig(omsg, &senderPK.Pk) {
 		rjmsg := "Cannot verify sig from msg, discard it."
 		print(rjmsg)
 		n.sendReject(rjmsg, senderPK)
@@ -64,7 +65,7 @@ func (n *Node) dispatch(incoming []byte) {
 	switch omsg.GetOPCode() {
 	case FWD:
 		print("Forwarding")
-		n.forwardProtocol(payload)
+		n.forwardProtocol(payload, senderID)
 	case JOIN:
 		print("Joining")
 		ok := n.joinProtocol(payload)
@@ -73,6 +74,8 @@ func (n *Node) dispatch(incoming []byte) {
 		}
 	case FIND:
 		print("Finding")
+	case COIN:
+		print("Receiving a Coin")
 	case JOINACK:
 		print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
 		unmarshalRoutingInfo(payload)
@@ -104,6 +107,23 @@ func (n *Node) dispatch(incoming []byte) {
 	}
 }
 
+
+func (n *Node) formalRejectPacket(msg string, pk rsa.PublicKey) []byte {
+	return n.prepareOMsg(REJECT,[]byte(msg),pk)
+}
+
+func (n *Node) sendReject(msg string, senderPK *records.PKEntry) {
+	rej := n.formalRejectPacket(msg, senderPK.Pk)
+	n.sendActive(rej, senderPK.Port)
+}
+
+/*
+	Wrap payload into OMsg and encrypt it with target pk.
+ */
+func (n *Node) prepareOMsg(opcode rune, payload []byte, pk rsa.PublicKey) []byte {
+	return records.MarshalOMsg(opcode,payload, n.ID, n.sk, pk)
+}
+
 /*
 	Retrieve the encrypted symmetric key, and decrypt it
 	Decrypt the rest of incoming packet, and return it as OMsg
@@ -115,7 +135,7 @@ func (n* Node) UnmarshalOMsg(incoming []byte) (*records.OMsg, bool) {
 /*
 	verified the signature with claimed senderID.
  */
-func (n* Node) VerifySig(omsg *records.OMsg, pk *rsa.PublicKey) bool {
+func verifySig(omsg *records.OMsg, pk *rsa.PublicKey) bool {
 	return omsg.VerifySig(pk)
 }
 
@@ -138,6 +158,9 @@ func unmarshalRoutingInfo(b []byte) {
 	}
 }
 
+/*
+	a warm welcome to newbie.
+ */
 func welcomeProtocol(payload []byte) {
 	idLen := binary.BigEndian.Uint32(payload[:4])
 	id := string(payload[4:4+idLen])
@@ -157,15 +180,6 @@ func (n *Node) foo() {
 
 	payload := ocrypto.WrapOnion(pk2.Pk, "myHome", new(coin.Coin).Bytes(), []byte("msg received"))
 	p2 := ocrypto.WrapOnion(pk.Pk, "FAKEID1340", new(coin.Coin).Bytes(), payload)
-	m := records.MarshalOMsg(FWD,p2,n.ID,n.sk,pk.Pk)
+	m := n.prepareOMsg(FWD,p2,pk.Pk)
 	n.sendActive(m,"1338")
-}
-
-func (n *Node) formalRejectPacket(msg string, pk rsa.PublicKey) []byte {
-	return records.MarshalOMsg(REJECT,[]byte(msg),n.ID,n.sk,pk)
-}
-
-func (n *Node) sendReject(msg string, senderPK *records.PKEntry) {
-	rej := n.formalRejectPacket(msg, senderPK.Pk)
-	n.sendActive(rej, senderPK.Port)
 }

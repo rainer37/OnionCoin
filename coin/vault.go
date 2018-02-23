@@ -2,6 +2,7 @@ package coin
 
 import(
 	"fmt"
+	"os"
 )
 
 var debugged = false
@@ -16,6 +17,9 @@ func (vault *Vault) Len() int {
 
 func (vault *Vault) InitVault() {
 	vault.Coins = make(map[string]*Coin)
+	if ok, _ := exists("coin"); !ok {
+		os.Mkdir(COINDIR, 0777)
+	}
 	print("Vault Created.")
 }
 
@@ -30,6 +34,7 @@ func (vault *Vault) Deposit(coin *Coin) error {
 	print("Depositing Coin :"+coin.GetRID())
 	if !vault.Contains(coin) {
 		vault.Coins[coin.GetRID()] = coin
+		coin.Store() // store the coin on disk
 		return nil
 	}
 	return fmt.Errorf("error: %s is in the vault", coin.GetRID())

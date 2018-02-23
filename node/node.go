@@ -2,15 +2,17 @@ package node
 
 import(
 	"fmt"
-	"github.com/rainer37/OnionCoin/coin"
 	"log"
 	"crypto/rsa"
-	"github.com/rainer37/OnionCoin/records"
-	"github.com/rainer37/OnionCoin/ocrypto"
-	"github.com/rainer37/OnionCoin/bank"
 	"crypto/x509"
 	"os"
 	"io/ioutil"
+	"time"
+	"github.com/rainer37/OnionCoin/coin"
+	"github.com/rainer37/OnionCoin/records"
+	"github.com/rainer37/OnionCoin/ocrypto"
+	"github.com/rainer37/OnionCoin/bank"
+	bc "github.com/rainer37/OnionCoin/blockChain"
 )
 
 const NODEPREFIX = "[NODE]"
@@ -25,7 +27,7 @@ type Node struct {
 	Port string
 	*coin.Vault
 	sk *rsa.PrivateKey
-	pkChan chan []byte // for pk lookup await
+	pkChan chan []byte // for pk lookup await when joining
 	bankProxy *bank.Bank
 }
 
@@ -42,10 +44,11 @@ func NewNode(port string) *Node {
 	print("Create a new node.")
 	n := new(Node)
 	n.Vault = new(coin.Vault)
-	n.InitVault()
 	n.Port = port
 	n.pkChan = make(chan []byte)
 	n.sk = produceSK(port)
+	n.InitVault()
+	bc.InitBlockChain()
 	return n
 }
 
@@ -108,4 +111,14 @@ func produceSK(port string) *rsa.PrivateKey {
 	skBytes := x509.MarshalPKCS1PrivateKey(sk)
 	go ioutil.WriteFile(SELFSKEYPATH, skBytes, 0644)
 	return sk
+}
+
+/*
+	Try sync block chain with peers.
+ */
+func (n *Node) syncBlockChain() {
+	ticker := time.NewTicker(time.Millisecond * 10000)
+	for t := range ticker.C {
+		fmt.Println("Tick at", t.Unix())
+	}
 }

@@ -41,7 +41,7 @@ func (n *Node) joinProtocol(payload []byte) bool {
 			// TODO: handle unknown joiner protocol
 			return false
 		}
-		jack := records.MarshalOMsg(JOINACK, jackPayload, n.ID, n.sk, tpk.Pk)
+		jack := n.prepareOMsg(JOINACK, jackPayload, tpk.Pk)
 		records.KeyRepo[senderID].Port = senderPort
 		n.sendActive(jack, senderPort)
 	} else if isNew == "O" {
@@ -98,7 +98,7 @@ func (n *Node) gatherRoutingInfo() []byte {
 	 payload := append(makeBytesLen([]byte(newbieID)), makeBytesLen(pe.Bytes())...)
 	 for id, v := range records.KeyRepo {
 	 	if newbieID != id && n.ID != id {
-	 		wpayload := records.MarshalOMsg(WELCOME,payload,n.ID,n.sk,v.Pk)
+			wpayload := n.prepareOMsg(WELCOME,payload,v.Pk)
 			n.sendActive(wpayload, v.Port)
 		}
 	 }

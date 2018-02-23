@@ -7,10 +7,12 @@ package blockChain
 import(
 	"fmt"
 	"crypto/rsa"
+	"os"
 )
 
 const BKCHPREFIX = "BKCH"
-var GENESISBLOCK = NewBlock([]byte{}, []byte("WHERE OC BEGINS"))
+const CHAINDIR = "chainData"
+var GENESISBLOCK = NewBlock([]byte("0000000000000000"), []byte("WHERE OC BEGINS"))
 
 func print(str ...interface{}) {
 	fmt.Print(BKCHPREFIX+" ")
@@ -19,6 +21,14 @@ func print(str ...interface{}) {
 
 type BlockChain struct {
 	blocks []*Block
+}
+
+func InitBlockChain() {
+	chain := new(BlockChain)
+	chain.blocks = append(chain.blocks, GENESISBLOCK)
+	if ok, _ := exists(CHAINDIR); !ok {
+		os.Mkdir(CHAINDIR, 0777)
+	}
 }
 
 func (chain *BlockChain) AddBlock(data []byte) {
@@ -36,4 +46,11 @@ func NewBlockChain() *BlockChain {
  */
 func GetPKFromChain(id string) *rsa.PublicKey {
 	return nil
+}
+
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil { return true, nil }
+	if os.IsNotExist(err) { return false, nil }
+	return true, err
 }

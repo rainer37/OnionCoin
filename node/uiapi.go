@@ -53,7 +53,7 @@ func (n *Node) CoinExchange(dstID string) {
 		payload := append(blindrwcn, []byte(bfid)...)
 		payload = append(payload, blindrwcn...) // TODO: append a real COIN
 
-		fo := records.MarshalOMsg(RAWCOINEXCHANGE,payload,n.ID,n.sk,bpe.Pk)
+		fo := n.prepareOMsg(RAWCOINEXCHANGE,payload,bpe.Pk)
 
 		exMap[bfid] = make(chan []byte)
 
@@ -118,7 +118,7 @@ func (n *Node) CoSignValidCoin(c []byte, counter uint16) {
 
 	bid := bank.GetBankIDSet()[counter]
 	tpk := records.GetKeyByID(bid)
-	payload := records.MarshalOMsg(COSIGN, signedHash, n.ID, n.sk, tpk.Pk)
+	payload := n.prepareOMsg(COSIGN, signedHash, tpk.Pk)
 
 	print("sending cosign counter", counter+1)
 	n.sendActive(payload, tpk.Port)

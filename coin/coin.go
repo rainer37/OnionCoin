@@ -2,10 +2,12 @@ package coin
 
 import(
 	"fmt"
+	"os"
 )
 
 const COIN_PREFIX = "[COIN]"
 const COIN_LEN = 32
+const COINDIR = "coin"
 
 type Coin struct {
 	RID string // receiver's ID
@@ -43,4 +45,17 @@ func (c *Coin) Bytes() []byte {
 
 func (c *Coin) String() string {
 	return c.RID + " : " + string(c.Content)
+}
+
+func (c *Coin) Store() {
+	if ok, _ := exists(c.RID); !ok {
+		os.Mkdir(COINDIR, 0777)
+	}
+}
+
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil { return true, nil }
+	if os.IsNotExist(err) { return false, nil }
+	return true, err
 }

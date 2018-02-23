@@ -45,7 +45,7 @@ func (pkr *PKRegTxn) getVerifiers() []string { return []string{} }
 func (t Txns) txnToBytes() []byte {
 	aggre := []byte{}
 	for _,txn := range t {
-		aggre = append(aggre, Txn(txn).toBytes()...)
+		aggre = append(aggre, Txn(*txn).toBytes()...)
 	}
 	return aggre
 }
