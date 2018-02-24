@@ -39,7 +39,7 @@ func TestRawCoinBlindbyBank(t *testing.T) {
 
 	fmt.Println(len(signedBRC))
 
-	coin := node.UnBlindSignedRawCoin(signedBRC, bfid, &bankSK.PublicKey)
+	coin := node.UnBlindBytes(signedBRC, bfid, &bankSK.PublicKey)
 
 	fmt.Println(len(coin))
 
@@ -63,7 +63,7 @@ func TestRawCoinBlindbyBanks(t *testing.T) {
 
 	signedBRC := ocrypto.BlindSign(bankSK, brc)
 
-	coin := node.UnBlindSignedRawCoin(signedBRC, bfid, &bankSK.PublicKey)
+	coin := node.UnBlindBytes(signedBRC, bfid, &bankSK.PublicKey)
 
 	if !ocrypto.VerifyBlindSig(&bankSK.PublicKey,rwcn.ToBytes(),coin) {
 		t.Error("wrong raw coin ex")

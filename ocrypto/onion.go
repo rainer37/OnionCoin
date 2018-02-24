@@ -10,7 +10,7 @@ import (
 /*
 	Onion Bytes Format(bytes):
 
-	| cipherKey(32)	| next_ID(16) | coin(COIN_LEN) | innerOnion | chaos |
+	| cipherKey(32)	| next_ID(16) | coin(COINLEN) | innerOnion | chaos |
  */
 const IDLEN = 16
 
@@ -49,7 +49,7 @@ func PeelOnion(sk *rsa.PrivateKey, fullOnion []byte) (string, []byte, []byte) {
 	cKey, onion := fullOnion[:SYMKEYLEN], fullOnion[SYMKEYLEN:]
 	decryptedOnion, err := BlockDecrypt(onion, cKey, sk)
 	checkErr(err)
-	return string(bytes.Trim(decryptedOnion[:IDLEN], "\x00")), decryptedOnion[IDLEN:IDLEN+coin.COIN_LEN], decryptedOnion[IDLEN+coin.COIN_LEN:]
+	return string(bytes.Trim(decryptedOnion[:IDLEN], "\x00")), decryptedOnion[IDLEN:IDLEN+coin.COINLEN], decryptedOnion[IDLEN+coin.COINLEN:]
 }
 
 func (o *Onion) String() string {

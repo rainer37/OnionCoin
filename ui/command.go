@@ -32,6 +32,16 @@ func Listen(n *node.Node) {
 			tokens := strings.Split(text, " ")
 			n.CoinExchange(tokens[1][:len(tokens[1])-1])
 		}
+		matched, _ = regexp.MatchString("pub *", text)
+		if matched {
+			tokens := strings.Split(text, " ")
+			n.CoinExchange(tokens[1][:len(tokens[1])-1])
+		}
 
+		matched, _ = regexp.MatchString("adv *", text)
+		if matched {
+			tokens := strings.Split(text, " ")
+			n.CoinExchange(tokens[1][:len(tokens[1])-1])
+		}
 	}
 }

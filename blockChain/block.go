@@ -38,5 +38,8 @@ func (b *Block) GetPrevHash() []byte { return b.prevHash }
 func (b *Block) GetNumTxn() int { return b.numTxn }
 func (b *Block) GetTxn(index int) *Txn { return b.txns[index]}
 func (b *Block) AddTxn(txn *Txn) {}
+/*
+	Store blockData to Disk.
+ */
 func (b *Block) Store() {}
 func BytesToBlock(blockBytes []byte) *Block { return nil }

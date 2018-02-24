@@ -4,9 +4,9 @@ import (
 	"net"
 	"strconv"
 	"github.com/rainer37/OnionCoin/records"
-	"crypto/rsa"
 	"time"
 	"github.com/rainer37/OnionCoin/bank"
+	"github.com/rainer37/OnionCoin/ocrypto"
 )
 
 const BUFSIZE = 2048
@@ -22,41 +22,48 @@ func (n *Node) SelfInit() {
 
 	p,err := strconv.Atoi(n.Port)
 	checkErr(err)
-	go n.syncBlockChain()
+	// go n.syncBlockChain()
 	n.Serve(LOCALHOST, p)
 }
 
 /*
 	Joining Routine:
-		0. request public from target node if public key unknown
-		1. send JOIN request to the joining node with [ip:port, isNew]
-		2. into joinProtocol.
+		A. No local SK found, considered as new node in the system.
+			0. generate a sk.
+			1. connect to one node in system.
+			2. send REGISTER request. [PK:Proposed ID:IP:Port]
+		B. Has a local SK, oldbie then.
+			0. retrieve routing information from keys dir.
+			1. connect to one of node.
+			2. send JOIN request. [IP:Port]
 
  */
-func (n *Node) IniJoin(address string) {
+func (n *Node) IniJoin(address string, status int) {
 	go n.SelfInit()
 
-	// request public key from target node if its pk is unknown
-	pk := records.GetKeyByID(FAKEID +address)
-	var tPk rsa.PublicKey
-	if pk == nil {
-		print("No Known Pub-Key Stored, Looking-UP")
-		tPk = n.LookUpPK(address)
-		records.InsertEntry(FAKEID+address, tPk, time.Now().Unix(), LOCALHOST, address)
-	} else {
-		tPk = pk.Pk
+	JID := FAKEID+address
+
+	if status == 0 {
+		payload := []byte(n.IP + ":" + n.Port + "@100000")
+		pe := n.getPubRoutingInfo(JID)
+		if pe == nil {
+			print("Cannot Join On this Unregistered Peer")
+			return
+		}
+		p := n.prepareOMsg(JOIN, payload, pe.Pk)
+		n.sendActive(p, address)
+	} else if status == 1 {
+		n.sendActive([]byte(REGISTER+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port), address)
+		enPk := <-n.pkChan
+		talkingPK := ocrypto.DecodePK(enPk)
+		records.InsertEntry(JID, talkingPK, time.Now().Unix(), LOCALHOST, address)
+
+		payload := []byte(n.IP+":"+n.Port+"@100000")
+		joinMsg := n.prepareOMsg(JOIN, payload, talkingPK)
+		n.sendActive(joinMsg, address)
 	}
 
-	isNew := NEWBIE
-	// TODO: check if it's old client.
-	if isNew != "N" {
-		isNew = OLDBIE
-	}
-
-	payload := []byte(n.IP+":"+n.Port+"@"+isNew)
-	joinMsg := n.prepareOMsg(JOIN, payload, tPk)
-	n.sendActive(joinMsg, address)
-	select {}
+	select{}
 }
 
 /*
@@ -99,10 +106,16 @@ func (n *Node) send(msg []byte, con *net.UDPConn, add *net.UDPAddr) {
 */
 func (n *Node) sendActive(msg []byte, add string) {
 	con, err := net.Dial("udp", ":"+add)
-	checkErr(err)
+	if err != nil {
+		print(err)
+		return
+	}
+	defer con.Close()
 	_, err = con.Write(msg)
-	checkErr(err)
-	con.Close()
+	if err != nil {
+		print(err)
+		return
+	}
 }
 
 /*

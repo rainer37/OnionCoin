@@ -1,14 +1,11 @@
 package coin
 
 import(
-	"fmt"
 	"os"
 )
 
-var debugged = false
-
 type Vault struct {
-	Coins map[string]*Coin
+	Coins map[string][]*Coin
 }
 
 func (vault *Vault) Len() int {
@@ -16,7 +13,7 @@ func (vault *Vault) Len() int {
 }
 
 func (vault *Vault) InitVault() {
-	vault.Coins = make(map[string]*Coin)
+	vault.Coins = make(map[string][]*Coin)
 	if ok, _ := exists("coin"); !ok {
 		os.Mkdir(COINDIR, 0777)
 	}
@@ -24,26 +21,43 @@ func (vault *Vault) InitVault() {
 }
 
 func (vault *Vault) Contains(coin *Coin) bool {
-	if _, ok := vault.Coins[coin.GetRID()]; ok {
-		return true
+	if coins, ok := vault.Coins[coin.RID]; ok {
+		if len(coins) > 0 {
+			return true
+		}
 	}
 	return false
 }
 
-func (vault *Vault) Deposit(coin *Coin) error {
-	print("Depositing Coin :"+coin.GetRID())
+func (vault *Vault) Deposit(coin *Coin) {
+	print("Depositing Coin :"+coin.RID)
 	if !vault.Contains(coin) {
-		vault.Coins[coin.GetRID()] = coin
-		coin.Store() // store the coin on disk
-		return nil
+		vault.Coins[coin.RID] = []*Coin{coin}
+	} else {
+		vault.Coins[coin.RID] = append(vault.Coins[coin.RID], coin)
 	}
-	return fmt.Errorf("error: %s is in the vault", coin.GetRID())
+	coin.Store() // store the coin on disk
 }
 
-func (vault *Vault) Withdraw(id string) *Coin {
-	print("Withdrawing Coin :"+id)
-	defer func(){
-		delete(vault.Coins, id)
-	}()
-	return vault.Coins[id]
-} 
+/*
+	withdraw a coin from vault
+ */
+func (vault *Vault) Withdraw(rid string) *Coin {
+	print("Withdrawing Coin :"+rid)
+	if vault.Coins[rid] == nil {
+		return nil
+	}
+	c := vault.Coins[rid][0]
+	// vault.Coins[id] = vault.Coins[id][1:]
+	return c
+}
+
+func (vault *Vault) String() string {
+	s := ""
+	for _, cs := range vault.Coins {
+		for _, c := range cs {
+			s += c.String() + "\n"
+		}
+	}
+	return s
+}

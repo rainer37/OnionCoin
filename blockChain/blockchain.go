@@ -23,22 +23,20 @@ type BlockChain struct {
 	blocks []*Block
 }
 
-func InitBlockChain() {
+func InitBlockChain() *BlockChain {
 	chain := new(BlockChain)
 	chain.blocks = append(chain.blocks, GENESISBLOCK)
 	if ok, _ := exists(CHAINDIR); !ok {
 		os.Mkdir(CHAINDIR, 0777)
 	}
+	return chain
 }
 
 func (chain *BlockChain) AddBlock(data []byte) {
 	prevBlock := chain.blocks[len(chain.blocks)-1]
 	nb := NewBlock(prevBlock.curHash, data)
+	nb.Store() // write to disk
 	chain.blocks = append(chain.blocks, nb)
-}
-
-func NewBlockChain() *BlockChain {
-	return &BlockChain{[]*Block{GENESISBLOCK}}
 }
 
 /*

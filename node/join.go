@@ -10,7 +10,7 @@ import (
 )
 
 const NUMNODEINFO = 3
-const PKREQUEST  = "PKRQ"
+const REGISTER = "PKRQ"
 const PKRQACK  = "PKAK"
 const PKRQCODELEN = 4
 
@@ -32,13 +32,12 @@ func (n *Node) joinProtocol(payload []byte) bool {
 	senderPort := strings.Split(address,":")[1]
 	//n.insert(senderID, address)
 
-	if isNew == "N" {
+	if isNew == "100000" {
 		print("Welcome to OnionCon")
 		jackPayload := n.gatherRoutingInfo()
 		// print(jackPayload)
 		tpk := records.GetKeyByID(senderID)
 		if tpk == nil {
-			// TODO: handle unknown joiner protocol
 			return false
 		}
 		jack := n.prepareOMsg(JOINACK, jackPayload, tpk.Pk)
@@ -56,7 +55,7 @@ func (n *Node) joinProtocol(payload []byte) bool {
 
 func (n* Node) newbieJoin(incoming []byte) bool {
 	// if the newbie is joining, special protocol is invoked.
-	if string(incoming[:PKRQCODELEN]) == PKREQUEST {
+	if string(incoming[:PKRQCODELEN]) == REGISTER {
 		spk := ocrypto.DecodePK(incoming[PKRQCODELEN:PKRQCODELEN+PKRQLEN])
 		senderAddr := string(incoming[PKRQCODELEN+PKRQLEN:])
 		records.InsertEntry(FAKEID+senderAddr, spk, time.Now().Unix(), LOCALHOST, senderAddr)
@@ -95,6 +94,10 @@ func (n *Node) gatherRoutingInfo() []byte {
  */
  func (n *Node) welcomeNewBie(newbieID string) {
 	 pe := records.GetKeyByID(newbieID)
+	 if pe == nil {
+	 	print("Cannot find pk by id")
+	 	return
+	 }
 	 payload := append(makeBytesLen([]byte(newbieID)), makeBytesLen(pe.Bytes())...)
 	 for id, v := range records.KeyRepo {
 	 	if newbieID != id && n.ID != id {

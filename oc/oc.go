@@ -5,23 +5,55 @@ import(
 	"os"
 	"github.com/rainer37/OnionCoin/node"
 	"github.com/rainer37/OnionCoin/records"
-	"github.com/rainer37/OnionCoin/ocrypto"
-	"time"
 	"github.com/rainer37/OnionCoin/ui"
+	"github.com/rainer37/OnionCoin/ocrypto"
+	"crypto/x509"
+	"io/ioutil"
+	"log"
 )
 
 const LOCALHOST = "127.0.0.1"
+const SELFSKEYPATH = "self.sk"
 
 /*
-	Load saved local states and sync the blockchain
+	Load saved local states.
+	0. check if there is local SK, if not generate one and write it to file.
  */
-func loadSavedStates(n *node.Node) {
+func loadSavedStates(addr string) (status int){
+	status = 0
 
+	if yes, _ := exists(addr); !yes {
+		os.Mkdir(addr, 0777)
+		status = 1
+	}
+
+	os.Chdir(addr) // go into oc info dir
+
+	if yes, _ := exists(SELFSKEYPATH); !yes {
+		file, err := os.Create(SELFSKEYPATH)
+		defer file.Close()
+		checkErr(err)
+		sk := ocrypto.RSAKeyGen()
+		skBytes := x509.MarshalPKCS1PrivateKey(sk)
+		ioutil.WriteFile(SELFSKEYPATH, skBytes, 0644)
+		status = 1
+	}
+
+	return
 }
 
 func main() {
 
 	if len(os.Args) < 2 || len(os.Args) > 5{
+		fmt.Println("[MAIN] Usage:" +
+			"\n\toc i [myport]" +
+			"\n\toc j [myport] [joinport]")
+		os.Exit(1)
+	}
+
+	cmd := os.Args[1]
+
+	if cmd != "i" && cmd != "j" {
 		fmt.Println("[MAIN] Usage:" +
 			"\n\toc i [myport]" +
 			"\n\toc j [myport] [joinport]")
@@ -34,27 +66,20 @@ func main() {
 		fmt.Println("[MAIN] OnionCoin shudown.")
 	}()
 
-	cmd := os.Args[1]
-
 	port := os.Args[2]
+
+	status := loadSavedStates(port)
+	fmt.Println("[MAIN] My Status:", status)
+
 	n := node.NewNode(port)
 	n.IP = LOCALHOST
-	n.ID = node.FAKEID +n.Port
+	n.ID = node.FAKEID+n.Port
 
-	loadSavedStates(n)
 	records.GenerateKeyRepo()
 
-	// for testing
-	now := time.Now().Unix()
-	if n.Port == "1337" {
-		records.InsertEntry("ID1", ocrypto.RSAKeyGen().PublicKey, now, LOCALHOST, "port1")
-		records.InsertEntry("MyID2", ocrypto.RSAKeyGen().PublicKey, now, LOCALHOST, "pt2")
-		records.InsertEntry("HIsID3", ocrypto.RSAKeyGen().PublicKey, now, LOCALHOST, "p3")
-	}
-
 	if cmd == "j" {
-		joinPort := os.Args[3]
-		go n.IniJoin(joinPort)
+		joinAddr := os.Args[3]
+		go n.IniJoin(joinAddr, status)
 	} else if cmd == "i" {
 		go n.SelfInit()
 	}
@@ -62,4 +87,15 @@ func main() {
 	go ui.Listen(n)
 
 	select {}
+}
+
+func checkErr(err error){
+	if err != nil { log.Fatal(err) }
+}
+
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil { return true, nil }
+	if os.IsNotExist(err) { return false, nil }
+	return true, err
 }

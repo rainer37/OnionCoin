@@ -36,9 +36,20 @@ type BCNRDMTxn struct {
 	verifiers []string
 }
 
-func (pkr *PKRegTxn) toBytes() []byte { return []byte{} }
-func (pkr *PKRegTxn) getVerifiers() []string { return []string{} }
+func (pkr PKRegTxn) toBytes() []byte { return []byte{} }
+func (pkr PKRegTxn) getVerifiers() []string { return []string{} }
 
+/*
+	CNEX format: coinNum(8) : signedCoin(128) : [S0, S1, S2...] : [V0, V1, V2...] : [VHash0, VHash1, VHash2...]
+	Si(16): coin signer i;
+	Vi(16): coin verifiers(cosigners);
+	VHashi(128) : cosigned hash of the signedCoin
+ */
+func (cnex CNEXTxn) toBytes() []byte { return []byte{} }
+func (cnex CNEXTxn) getVerifiers() []string { return cnex.verifiers }
+
+func (bcnrd BCNRDMTxn) toBytes() []byte { return []byte{} }
+func (bcnrd BCNRDMTxn) getVerifiers() []string { return []string{} }
 /*
 	translate []Txn into bytes
  */

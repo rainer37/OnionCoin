@@ -10,6 +10,7 @@ import (
 	"time"
 	"crypto/sha256"
 	"encoding/binary"
+	"github.com/rainer37/OnionCoin/blockChain"
 )
 
 const COSIGNTIMEOUT = 2
@@ -73,7 +74,7 @@ func (n *Node) CoinExchange(dstID string) {
 
 		print("waiting for response from", b)
 
-		revealedCoin := UnBlindSignedRawCoin(realCoin, bfid, &bpe.Pk)
+		revealedCoin := UnBlindBytes(realCoin, bfid, &bpe.Pk)
 
 		counter++
 
@@ -100,26 +101,43 @@ func (n *Node) CoinExchange(dstID string) {
 /*
 	Upon received a valid coin, the bank signs the coin and pass it to other banks
 	Till enough signatures gained, then publish it as a transaction.
+	Does the last CoSigner solves the puzzle of blind signers?
  */
-func (n *Node) CoSignValidCoin(c []byte, counter uint16) {
+func (n *Node) coSignValidCoin(c []byte, counter uint16) {
 
-	hash := sha256.Sum256(c[:128])
-	signedHash := n.blindSign(hash[:])
+	hash := sha256.Sum256(c[:128]) // get the hash(32) of coin
+	signedHash := n.blindSign(hash[:]) // sign the coin(128)
 
 	signedHash = append(c, signedHash...)
 	newCounter := make([]byte, 2)
 	binary.BigEndian.PutUint16(newCounter, counter+1)
-	signedHash = append(newCounter, signedHash...)
+	signedHash = append(newCounter, signedHash...) // add updated counter to the head.
 
-	if counter+1 == NUMCOSIGNER {
-		print("Publish it")
+	if counter == NUMCOSIGNER {
+		print("Enough verifiers got, publish it")
+		txn := new(blockChain.CNEXTxn)
+		n.publicTxn(txn)
 		return
 	}
 
-	bid := bank.GetBankIDSet()[counter]
+	i := 0
+	if time.Now().Unix() % 2 == 0{
+		i = 1
+	}
+	bid := bank.GetBankIDSet()[i] // TODO: randomly pick another bank.
 	tpk := records.GetKeyByID(bid)
+
+	if tpk == nil {
+		print("Cannot find the key by id")
+		return
+	}
+
 	payload := n.prepareOMsg(COSIGN, signedHash, tpk.Pk)
 
-	print("sending cosign counter", counter+1)
+	print("sending aggregated signed coin and cosign counter", newCounter)
 	n.sendActive(payload, tpk.Port)
+}
+
+func (n *Node) publicTxn(txn blockChain.Txn) {
+
 }

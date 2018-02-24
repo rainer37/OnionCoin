@@ -21,6 +21,8 @@ const (
 	RAWCOINEXCHANGE = 'A'
 	RAWCOINSIGNED = 'B'
 	REJECT = 'F'
+	RETURN = 'R'
+	ADV = 'G'
 )
 /*
 	Unmarshal the incoming packet to Omsg and verify the signature.
@@ -29,6 +31,8 @@ const (
 func (n *Node) dispatch(incoming []byte) {
 
 	ok := n.newbieJoin(incoming)
+
+	// if it's a newbie request, it cannot be a OMsg.
 	if ok { return }
 
 	omsg, ok := n.UnmarshalOMsg(incoming)
@@ -94,10 +98,9 @@ func (n *Node) dispatch(incoming []byte) {
 		print("My Signed RawCoin received.", senderID)
 		n.receiveNewCoin(payload, senderID)
 	case COSIGN:
-		print("Let's make fortune")
-		counter := binary.BigEndian.Uint16(payload[:2])
-		c := payload[2:]
-		n.CoSignValidCoin(c, counter)
+		print("Let's make fortune together")
+		counter := binary.BigEndian.Uint16(payload[:2]) // get cosign counter first 2 bytes
+		n.coSignValidCoin(payload[2:], counter)
 	case REJECT:
 		print(string(payload))
 	case EXPT:
@@ -107,11 +110,16 @@ func (n *Node) dispatch(incoming []byte) {
 	}
 }
 
-
+/*
+	format a reject OMsg with msg included.
+ */
 func (n *Node) formalRejectPacket(msg string, pk rsa.PublicKey) []byte {
 	return n.prepareOMsg(REJECT,[]byte(msg),pk)
 }
 
+/*
+	reject some one when exceptional cases came up.
+ */
 func (n *Node) sendReject(msg string, senderPK *records.PKEntry) {
 	rej := n.formalRejectPacket(msg, senderPK.Pk)
 	n.sendActive(rej, senderPK.Port)

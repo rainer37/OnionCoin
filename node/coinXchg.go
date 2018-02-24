@@ -26,21 +26,30 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 	if len(payload) != BCOINSIZE * 2 + 8 { return }
 
 	c := payload[BCOINSIZE+8:]
-	if !n.ValidateCoin(c, senderID) { return }
+	if !n.ValidateCoin(c, senderID) {
+		return
+	}
+
 	print("valid coin, continue")
 
-	n.CoSignValidCoin(c, 0)
+	// start CoSign protocol with counter 0.
+	n.coSignValidCoin(c, 0)
 
 	rwcn := payload[:BCOINSIZE]
 	bfid := payload[BCOINSIZE:BCOINSIZE+8]
 
 	newCoin := n.blindSign(rwcn)
 	spk := records.GetKeyByID(senderID)
-	p := n.prepareOMsg(RAWCOINSIGNED,append(newCoin, bfid...),spk.Pk)
+
+	if spk == nil {
+		print("Cannot find the key with senderID")
+		return
+	}
 
 	print("reply with partial newCoin")
-	n.sendActive(p, spk.Port)
 
+	p := n.prepareOMsg(RAWCOINSIGNED,append(newCoin, bfid...),spk.Pk)
+	n.sendActive(p, spk.Port)
 }
 
 /*
@@ -73,13 +82,13 @@ func BlindBytes(b []byte, bankPK *rsa.PublicKey) ([]byte, string) {
 /*
 	Unblind the SignedRawCoin received, using saved blind factor.
  */
-func UnBlindSignedRawCoin(signedRC []byte, bfID string, bankPK *rsa.PublicKey) []byte {
+func UnBlindBytes(signedRC []byte, bfID string, bankPK *rsa.PublicKey) []byte {
 	bf := coin.GetBF(bfID)
 	if bf == nil {
 		return nil
 	}
-	coin := ocrypto.Unblind(bankPK,signedRC, bf)
-	return coin
+	c := ocrypto.Unblind(bankPK,signedRC, bf)
+	return c
 }
 
 func (n *Node) blindSign(rawCoin []byte) []byte {
