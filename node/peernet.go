@@ -11,7 +11,7 @@ import (
 
 const BUFSIZE = 2048
 const LOCALHOST = "127.0.0.1"
-
+const NEWBIEMARKER = "100000"
 func (n *Node) SelfInit() {
 	print("PeerNet Initiated.")
 
@@ -19,6 +19,8 @@ func (n *Node) SelfInit() {
 		print("My Turn To be Bank!")
 		n.bankProxy = bank.InitBank(n.sk)
 	}
+
+	records.InsertEntry(n.ID, n.sk.PublicKey, time.Now().Unix(), n.IP, n.Port)
 
 	p,err := strconv.Atoi(n.Port)
 	checkErr(err)
@@ -41,10 +43,10 @@ func (n *Node) SelfInit() {
 func (n *Node) IniJoin(address string, status int) {
 	go n.SelfInit()
 
-	JID := FAKEID+address
-
+	JID := FAKEID + address // FOR NOW ONLY USE FAKEID + PORT AS THE ID.
+	print(status)
 	if status == 0 {
-		payload := []byte(n.IP + ":" + n.Port + "@100000")
+		payload := []byte(n.IP + ":" + n.Port + "@" + NEWBIEMARKER)
 		pe := n.getPubRoutingInfo(JID)
 		if pe == nil {
 			print("Cannot Join On this Unregistered Peer")
@@ -53,12 +55,23 @@ func (n *Node) IniJoin(address string, status int) {
 		p := n.prepareOMsg(JOIN, payload, pe.Pk)
 		n.sendActive(p, address)
 	} else if status == 1 {
+		print("Im Newbie")
+		if !isBank(JID) {
+			print("NewBie Please Join On The Bank Node For Registration.")
+			return
+		}
+
 		n.sendActive([]byte(REGISTER+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port), address)
-		enPk := <-n.pkChan
+
+		enPk := <-n.pkChan // waiting for registration cosign finish.
+
+		print("Good! I'm Now Registered")
+
 		talkingPK := ocrypto.DecodePK(enPk)
+
 		records.InsertEntry(JID, talkingPK, time.Now().Unix(), LOCALHOST, address)
 
-		payload := []byte(n.IP+":"+n.Port+"@100000")
+		payload := []byte(n.IP+":"+n.Port+"@"+NEWBIEMARKER)
 		joinMsg := n.prepareOMsg(JOIN, payload, talkingPK)
 		n.sendActive(joinMsg, address)
 	}
@@ -73,9 +86,9 @@ func (n *Node) IniJoin(address string, status int) {
 func (n *Node) Serve(ip string, port int) {
 	addr := net.UDPAddr{Port: port, IP: net.ParseIP(ip)}
 	con, err := net.ListenUDP("udp", &addr)
-	buffer := make([]byte, BUFSIZE)
-
 	checkErr(err)
+
+	buffer := make([]byte, BUFSIZE)
 
 	defer con.Close()
 	print("Serving ["+addr.String()+"]")

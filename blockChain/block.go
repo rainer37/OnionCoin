@@ -14,7 +14,7 @@ type Block struct {
 	curHash []byte
 	ts int64
 	numTxn int
-	txns Txns
+	txns []Txn
 }
 
 func NewBlock(prevHash []byte, payload []byte) *Block {
@@ -28,7 +28,8 @@ func NewBlock(prevHash []byte, payload []byte) *Block {
 
 func (b *Block) GetCurHash() []byte {
 	timestamp := []byte(strconv.FormatInt(b.ts, 10))
-	data := bytes.Join([][]byte{b.prevHash, b.txns.txnToBytes(), timestamp}, []byte{})
+	content := txnsToBytes(b.txns)
+	data := bytes.Join([][]byte{b.prevHash, content, timestamp}, []byte{})
 	hash := sha256.Sum256(data)
 	return hash[:]
 }
@@ -36,10 +37,13 @@ func (b *Block) GetCurHash() []byte {
 func (b *Block) GetTS() int64 { return b.ts}
 func (b *Block) GetPrevHash() []byte { return b.prevHash }
 func (b *Block) GetNumTxn() int { return b.numTxn }
-func (b *Block) GetTxn(index int) *Txn { return b.txns[index]}
+func (b *Block) GetTxn(index int) Txn { return b.txns[index]}
 func (b *Block) AddTxn(txn *Txn) {}
 /*
 	Store blockData to Disk.
  */
-func (b *Block) Store() {}
+func (b *Block) Store() {
+
+}
+
 func BytesToBlock(blockBytes []byte) *Block { return nil }

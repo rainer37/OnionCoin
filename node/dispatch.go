@@ -6,6 +6,8 @@ import (
 	"crypto/rsa"
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/coin"
+	"crypto/sha256"
+	"github.com/rainer37/OnionCoin/blockChain"
 )
 
 const (
@@ -20,6 +22,9 @@ const (
 	WELCOME = '7'
 	RAWCOINEXCHANGE = 'A'
 	RAWCOINSIGNED = 'B'
+	REGCOSIGNREQUEST = 'C'
+	REGCOSIGNREPLY = 'D'
+	TXNRECEIVE = 'G'
 	REJECT = 'F'
 	RETURN = 'R'
 	ADV = 'G'
@@ -101,6 +106,21 @@ func (n *Node) dispatch(incoming []byte) {
 		print("Let's make fortune together")
 		counter := binary.BigEndian.Uint16(payload[:2]) // get cosign counter first 2 bytes
 		n.coSignValidCoin(payload[2:], counter)
+	case REGCOSIGNREQUEST:
+		print("Helping Registering A New Node")
+		print(len(payload))
+		pkHash := sha256.Sum256(payload[:128])
+		mySig := n.blindSign(append(pkHash[:], payload[128:]...))
+		spk := n.getPubRoutingInfo(senderID)
+		p := n.prepareOMsg(REGCOSIGNREPLY, mySig, spk.Pk)
+		n.sendActive(p, spk.Port)
+	case REGCOSIGNREPLY:
+		print("Receive Reg CoSign from", senderID)
+		n.regChan <- payload
+	case TXNRECEIVE:
+		print("A Txn Received from", senderID)
+		txn := blockChain.ProduceTxn(payload, blockChain.PK)
+		n.bankProxy.AddTxn(txn)
 	case REJECT:
 		print(string(payload))
 	case EXPT:

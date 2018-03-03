@@ -29,6 +29,7 @@ type Node struct {
 	sk *rsa.PrivateKey
 	pkChan chan []byte // for pk lookup await when joining
 	bankProxy *bank.Bank
+	regChan chan []byte
 }
 
 func checkErr(err error){
@@ -46,6 +47,7 @@ func NewNode(port string) *Node {
 	n.Vault = new(coin.Vault)
 	n.Port = port
 	n.pkChan = make(chan []byte)
+	n.regChan = make(chan []byte)
 	n.sk = produceSK(port)
 	n.InitVault()
 	bc.InitBlockChain()

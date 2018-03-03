@@ -81,6 +81,9 @@ func (omsg *OMsg) VerifySig(pk *rsa.PublicKey) bool {
 
 func UnmarshalOMsg(msg []byte, sk *rsa.PrivateKey) (*OMsg, bool) {
 	omsg := new(OMsg)
+	if len(msg) < CIPHERKEYLEN {
+		return nil, false
+	}
 	b, err := ocrypto.BlockDecrypt(msg[CIPHERKEYLEN:], msg[:CIPHERKEYLEN], sk)
 	if err != nil {
 		fmt.Println(1,err.Error())
