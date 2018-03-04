@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	PKRQLEN = 132
 	FWD = '0'
 	JOIN = '1'
 	FIND = '2'
@@ -175,7 +174,7 @@ func unmarshalRoutingInfo(b []byte) {
 	for cur < len(b) {
 		idLen := binary.BigEndian.Uint32(b[cur:cur+4])
 		id := string(b[cur+4:cur+4+int(idLen)])
-		print(id, idLen)
+		print(id, len(records.KeyRepo))
 		cur += int(idLen) + 4
 
 		eLen := binary.BigEndian.Uint32(b[cur:cur+4])
@@ -192,7 +191,7 @@ func unmarshalRoutingInfo(b []byte) {
 func welcomeProtocol(payload []byte) {
 	idLen := binary.BigEndian.Uint32(payload[:4])
 	id := string(payload[4:4+idLen])
-	print(id, idLen)
+	print(id, len(records.KeyRepo))
 
 	eLen := binary.BigEndian.Uint32(payload[4+idLen:8+idLen])
 	e := records.BytesToPKEntry(payload[8+idLen:8+idLen+eLen])

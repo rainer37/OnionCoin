@@ -17,6 +17,7 @@ const NUMNODEINFO = 10
 const REGISTER = "PKRQ"
 const PKRQACK  = "PKAK"
 const PKRQCODELEN = 4
+const PKRQLEN = 132
 const NUMREGCOSIGNER = 2
 
 func (n *Node) joinProtocol(payload []byte) bool {
@@ -72,7 +73,11 @@ func (n* Node) newbieJoin(incoming []byte) bool {
 		newBie_pk := ocrypto.DecodePK(incoming[PKRQCODELEN:PKRQCODELEN+PKRQLEN])
 		senderAddr := string(incoming[PKRQCODELEN+PKRQLEN:])
 
-		n.registerCoSign(newBie_pk, FAKEID+senderAddr)
+
+		print(senderAddr+"@")
+		if senderAddr[:4] != "1339" {
+			n.registerCoSign(newBie_pk, FAKEID+senderAddr)
+		}
 
 		records.InsertEntry(FAKEID+senderAddr, newBie_pk, time.Now().Unix(), LOCALHOST, senderAddr)
 		// PKAK | EncodedPK | PortListening
@@ -168,10 +173,11 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	print("Enough Signing Received, Register", id)
 	print("Signer:", len(regBytes) / 128, signers)
 
-	txn := blockChain.NewPKRTxn(id, pk, time.Now().Unix(), regBytes, signers)
+	txn := blockChain.NewPKRTxn(id, pk, regBytes, signers)
 	print(len(txn.ToBytes()))
 	n.bankProxy.AddTxn(txn)
-	
+
+	// start broadcasting the new Txn.
 	for _, b := range banks {
 		if b != n.ID{
 			bpe := n.getPubRoutingInfo(b)

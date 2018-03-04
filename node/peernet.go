@@ -12,12 +12,13 @@ import (
 const BUFSIZE = 2048
 const LOCALHOST = "127.0.0.1"
 const NEWBIEMARKER = "100000"
+
 func (n *Node) SelfInit() {
 	print("PeerNet Initiated.")
 
 	if n.iamBank() {
 		print("My Turn To be Bank!")
-		n.bankProxy = bank.InitBank(n.sk)
+		n.bankProxy = bank.InitBank(n.sk, n.chain)
 	}
 
 	records.InsertEntry(n.ID, n.sk.PublicKey, time.Now().Unix(), n.IP, n.Port)
@@ -104,17 +105,6 @@ func (n *Node) Serve(ip string, port int) {
 }
 
 /*
-	msg: data as bytes to send
-	con: local udp connection
-	add: remote destination address
-	PROBABLY USELESS
-*/
-func (n *Node) send(msg []byte, con *net.UDPConn, add *net.UDPAddr) {
-	_, err := con.WriteTo(msg, add)
-	checkErr(err)
-}
-
-/*
 	build a udp connection and send msg to add.
 */
 func (n *Node) sendActive(msg []byte, add string) {
@@ -142,6 +132,9 @@ func isBank(id string) bool {
 	return checkBankStatus(id)
 }
 
+/*
+	Check if the id given is a current bank.
+ */
 func checkBankStatus(id string) bool {
 	banks := bank.GetBankIDSet()
 	for _,bid := range banks {

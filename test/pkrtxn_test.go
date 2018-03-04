@@ -30,7 +30,7 @@ func TestPKRTxnToBytes(t *testing.T) {
 
 	content := append(s1SigOnHash, s2SigOnHash...)
 
-	ptxn := blockChain.NewPKRTxn(newBieID, newBiePK, ts, content, signers)
+	ptxn := blockChain.NewPKRTxn(newBieID, newBiePK, content, signers)
 	txnBytes := ptxn.ToBytes()
 	fmt.Println(len(txnBytes))
 

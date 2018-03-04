@@ -83,8 +83,8 @@ func AESDecrypt(key []byte, cipherText []byte) ([]byte, error){
 }
 
 func BlockEncrypt(msg []byte, pk rsa.PublicKey) ([]byte, []byte , error) {
-	buf := make([]byte, 32) // generate random bytes
-	rand.Read(buf)
+	buf := make([]byte, 32)
+	rand.Read(buf) // generate random bytes for encryption
 	symkey := buf
 	cipher, err := AESEncrypt(symkey, msg)
 	if err != nil { return nil, nil, err}

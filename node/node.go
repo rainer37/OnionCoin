@@ -17,8 +17,6 @@ import(
 
 const NODEPREFIX = "[NODE]"
 const FAKEID = "FAKEID"
-const NEWBIE = "N"
-const OLDBIE = "O"
 const SELFSKEYPATH = "self.sk"
 
 type Node struct {
@@ -30,6 +28,7 @@ type Node struct {
 	pkChan chan []byte // for pk lookup await when joining
 	bankProxy *bank.Bank
 	regChan chan []byte
+	chain *bc.BlockChain
 }
 
 func checkErr(err error){
@@ -48,9 +47,9 @@ func NewNode(port string) *Node {
 	n.Port = port
 	n.pkChan = make(chan []byte)
 	n.regChan = make(chan []byte)
-	n.sk = produceSK(port)
+	n.sk = produceSK()
 	n.InitVault()
-	bc.InitBlockChain()
+	n.chain = bc.InitBlockChain()
 	return n
 }
 
@@ -87,7 +86,7 @@ func exists(path string) (bool, error) {
 	Check if there are sk stored locally, if not create one.
 	AND change dir into personal dir.
  */
-func produceSK(port string) *rsa.PrivateKey {
+func produceSK() *rsa.PrivateKey {
 	dat, err := ioutil.ReadFile(SELFSKEYPATH)
 	checkErr(err)
 	sk, err := x509.ParsePKCS1PrivateKey(dat)
@@ -115,5 +114,5 @@ func (n *Node) wrapABigOnion(msg []byte, ids []string) []byte {
 		c := n.Vault.Withdraw(ids[i])
 		o = ocrypto.WrapOnion(pe.Pk, ids[i+1], c.Bytes(), o)
 	}
-	return o;
+	return o
 }
