@@ -7,7 +7,6 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/node"
 	"fmt"
-	"math/big"
 	"encoding/binary"
 )
 
@@ -83,9 +82,9 @@ func TestRawCoinBlindbyBanks(t *testing.T) {
 		t.Error("wrong raw coin ex")
 	}
 
-	c := ocrypto.Encrypt(new(big.Int), &bankSK1.PublicKey, new(big.Int).SetBytes(ncoin)).Bytes()
+	c := ocrypto.EncryptBig(&bankSK1.PublicKey, ncoin)
 
-	cc := ocrypto.Encrypt(new(big.Int), &bankSK.PublicKey, new(big.Int).SetBytes(c)).Bytes()
+	cc := ocrypto.EncryptBig(&bankSK.PublicKey, c)
 
 	if rwcn.GetCoinNum() != binary.BigEndian.Uint64(cc[32:]) {
 		t.Error("Cannot decrypt second layer")

@@ -23,13 +23,13 @@ func print(str ...interface{}) {
 }
 
 type BlockChain struct {
-	blocks []*Block
+	Blocks []*Block
 }
 
 func InitBlockChain() *BlockChain {
 	chain := new(BlockChain)
 	GENESISBLOCK.CurHash = []byte("GENESIS_HASH_ON_MAR_2018")
-	chain.blocks = append(chain.blocks, GENESISBLOCK)
+	chain.Blocks = append(chain.Blocks, GENESISBLOCK)
 	if ok, _ := exists(CHAINDIR); !ok {
 		os.Mkdir(CHAINDIR, 0777)
 	}
@@ -38,33 +38,37 @@ func InitBlockChain() *BlockChain {
 
 func (chain *BlockChain) AddBlock(block *Block) {
 	print("Adding a block")
-	prevBlock := chain.blocks[len(chain.blocks)-1]
+	prevBlock := chain.Blocks[len(chain.Blocks)-1]
 
 	block.PrevHash = prevBlock.CurHash
 	block.Depth = chain.getNextDepth()
 	block.Ts = time.Now().Unix()
 	block.CurHash = block.GetCurHash()
 	block.Store() // write to disk
-	chain.blocks = append(chain.blocks, block)
+	chain.Blocks = append(chain.Blocks, block)
 }
-/*
-func (chain *BlockChain) AddBlock(data []byte) {
-	print("Add a block")
-	prevBlock := chain.blocks[len(chain.blocks)-1]
-	nb := NewBlock(prevBlock.CurHash, data)
-	nb.Depth = chain.getNextDepth()
-	nb.Store() // write to disk
-	chain.blocks = append(chain.blocks, nb)
-}
-*/
+
 func (chain *BlockChain) getNextDepth() int64 {
-	return int64(len(chain.blocks))
+	return int64(len(chain.Blocks))
 }
+
 /*
 	return the pub-key associated with Id from blockchain.
  */
 func GetPKFromChain(id string) *rsa.PublicKey {
 	return nil
+}
+
+func (chain *BlockChain) Size() int64 {
+	return int64(len(chain.Blocks))
+}
+
+func (chain *BlockChain) GetBlock(index int64) *Block {
+	return chain.Blocks[index]
+}
+
+func (chain *BlockChain) GetLastBlock() *Block {
+	return chain.GetBlock(int64(len(chain.Blocks)-1))
 }
 
 func exists(path string) (bool, error) {

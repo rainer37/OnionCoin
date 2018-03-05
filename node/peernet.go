@@ -9,7 +9,7 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 )
 
-const BUFSIZE = 2048
+const BUFSIZE = 4096
 const LOCALHOST = "127.0.0.1"
 const NEWBIEMARKER = "100000"
 

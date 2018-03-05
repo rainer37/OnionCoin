@@ -82,6 +82,9 @@ func AESDecrypt(key []byte, cipherText []byte) ([]byte, error){
 	return gcm.Open(nil, nonce, cipherText, nil)
 }
 
+/*
+	Return cipher, encrypted symkey, and err.
+ */
 func BlockEncrypt(msg []byte, pk rsa.PublicKey) ([]byte, []byte , error) {
 	buf := make([]byte, 32)
 	rand.Read(buf) // generate random bytes for encryption

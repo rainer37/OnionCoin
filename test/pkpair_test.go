@@ -20,6 +20,21 @@ func TestPKEncrypt(t *testing.T) {
 	}
 }
 
+func TestPKende(t *testing.T) {
+	msg := []byte("hello World")
+
+	sk := ocrypto.RSAKeyGen()
+	pk := sk.PublicKey
+
+	cipher := ocrypto.BlindSign(sk, msg)
+	plain := ocrypto.EncryptBig(&pk, cipher)
+
+	fmt.Println(string(plain), len(plain), len(cipher))
+	if string(plain) != string(msg) {
+		t.Error("Wrong pk en de")
+	}
+}
+
 func TestAESEncryption(t *testing.T) {
 	msg := []byte("hello world hello world")
 	key := []byte("the-key-has-to-be-32-bytes-long!")

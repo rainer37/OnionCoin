@@ -50,7 +50,7 @@ func (n *Node) joinProtocol(payload []byte) bool {
 		jack := n.prepareOMsg(JOINACK, jackPayload, tpk.Pk)
 		records.KeyRepo[senderID].Port = senderPort
 		n.sendActive(jack, senderPort)
-		print("JOINACK sent")
+		print("JOINACK sent", len(jack))
 	} else if isNew == "O" {
 		return false
 	} else {
@@ -149,6 +149,8 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	newBieInfo := append(ocrypto.EncodePK(pk), []byte(id)...)
 
 	pkHash := sha256.Sum256(ocrypto.EncodePK(pk))
+	print("HI",ocrypto.EncodePK(pk))
+	print("HI",pkHash)
 	mySig := n.blindSign(append(pkHash[:], []byte(id)...))
 	regBytes := mySig
 	signers := []string{n.ID}
@@ -158,7 +160,6 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 			break
 		}
 		if b != n.ID {
-			print(len(regBytes))
 			print("sending REGCOSIGNRQ to", b)
 			bpe := n.getPubRoutingInfo(b)
 			p := n.prepareOMsg(REGCOSIGNREQUEST,newBieInfo,bpe.Pk)

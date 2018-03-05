@@ -107,9 +107,8 @@ func (n *Node) dispatch(incoming []byte) {
 		n.coSignValidCoin(payload[2:], counter)
 	case REGCOSIGNREQUEST:
 		print("Helping Registering A New Node")
-		print(len(payload))
-		pkHash := sha256.Sum256(payload[:128])
-		mySig := n.blindSign(append(pkHash[:], payload[128:]...))
+		pkHash := sha256.Sum256(payload[:132])
+		mySig := n.blindSign(append(pkHash[:], payload[132:]...))
 		spk := n.getPubRoutingInfo(senderID)
 		p := n.prepareOMsg(REGCOSIGNREPLY, mySig, spk.Pk)
 		n.sendActive(p, spk.Port)

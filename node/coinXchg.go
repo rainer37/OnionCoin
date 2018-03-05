@@ -5,7 +5,6 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/rsa"
 	"crypto/sha256"
-	"math/big"
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/records"
 	"math/rand"
@@ -108,8 +107,7 @@ func (n *Node) ValidateCoin(coin []byte, senderID string) bool {
 	Validate a received coin by checking if the rid matches senderID, and if the coinNum is free.
  */
 func ValidateCoinByKey(coinBytes []byte, senderID string, pk *rsa.PublicKey) bool {
-	c := ocrypto.Encrypt(new(big.Int), pk, new(big.Int).SetBytes(coinBytes)).Bytes()
-
+	c := ocrypto.EncryptBig(pk, coinBytes)
 	if len(c) != 40 {
 		return false
 	}

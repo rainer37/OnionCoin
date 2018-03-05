@@ -7,9 +7,7 @@ import (
 	"crypto/sha256"
 )
 
-func TestAddBlock(t *testing.T) {
-	chain := blockChain.InitBlockChain()
-
+func GenTestBlockWithTwoTxn() *blockChain.Block {
 	id_1 := "rainer"
 	sk_1 := ocrypto.RSAKeyGen()
 	pk_1 := sk_1.PublicKey
@@ -37,10 +35,16 @@ func TestAddBlock(t *testing.T) {
 	txn2 := blockChain.NewPKRTxn(id_2, pk_2, append(hash21, hash22...), verifiers)
 
 	txns := []blockChain.Txn{txn1, txn2}
-
 	block := blockChain.NewBlock(txns)
+	return block
+}
 
-	// fmt.Println(block)
+func TestBlockGen(t *testing.T) {
+	// chain := blockChain.InitBlockChain()
 
-	chain.AddBlock(block)
+	block := GenTestBlockWithTwoTxn()
+
+	if block.NumTxn != 2 {
+		t.Error("wrong number of txns")
+	}
 }

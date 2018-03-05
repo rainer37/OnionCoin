@@ -6,7 +6,6 @@ import (
 	"github.com/rainer37/OnionCoin/bank"
 	"crypto/rsa"
 	"github.com/rainer37/OnionCoin/ocrypto"
-	"math/big"
 	"time"
 	"crypto/sha256"
 	"encoding/binary"
@@ -78,7 +77,7 @@ func (n *Node) CoinExchange(dstID string) {
 
 		counter++
 
-		expected := ocrypto.Encrypt(new(big.Int), &bpe.Pk, new(big.Int).SetBytes(revealedCoin)).Bytes()
+		expected := ocrypto.EncryptBig(&bpe.Pk, revealedCoin)
 
 		if string(expected) != string(rc) {
 			print("not equal, bad bank!", b)

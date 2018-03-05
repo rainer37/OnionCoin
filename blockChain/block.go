@@ -30,6 +30,7 @@ func NewBlock(txns []Txn) *Block {
 		b.TxnHashes[i] = h
 	}
 	b.NumTxn = len(txns)
+	b.Depth = -1 // default to -1
 	return b
 }
 
@@ -45,6 +46,7 @@ func (b *Block) GetTS() int64 { return b.Ts }
 func (b *Block) GetPrevHash() []byte { return b.PrevHash }
 func (b *Block) GetNumTxn() int { return b.NumTxn }
 func (b *Block) GetTxn(index int) Txn { return b.Txns[index]}
+func (b *Block) GetContent() []byte { return TxnsToBytes(b.Txns) }
 func (b *Block) AddTxn(txn *Txn) {}
 
 type User struct {
@@ -66,7 +68,7 @@ func (b *Block) Store() {
 }
 
 func (b *Block) String() string {
-	s := "\nCurHash: " + strconv.Itoa(len(b.CurHash)) + "\n"
+	s := "\nCurHash: " + string(b.CurHash) + "\n"
 	s += "PreHash: " + string(b.PrevHash) + "\n"
 	s += "TimeStamp: " + time.Unix(b.Ts, b.Ts).String() + "\n"
 	s += "Number of Txns: " + strconv.Itoa(b.NumTxn) + "\n"

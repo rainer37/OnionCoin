@@ -38,7 +38,7 @@ func Unblind(key *rsa.PublicKey, blindedSig, bfactor []byte) []byte {
  */
 func BlindSign(key *rsa.PrivateKey, data []byte) []byte {
 	c := new(big.Int).SetBytes(data)
-	m, err := Decrypt(rand.Reader, key, c)
+	m, err := decrypt(rand.Reader, key, c)
 	checkErr(err)
 	return m.Bytes()
 }
@@ -46,7 +46,7 @@ func BlindSign(key *rsa.PrivateKey, data []byte) []byte {
 func VerifyBlindSig(key *rsa.PublicKey, data, sig []byte) bool {
 	m := new(big.Int).SetBytes(data)
 	bigSig := new(big.Int).SetBytes(sig)
-	c := Encrypt(new(big.Int), key, bigSig)
+	c := encrypt(new(big.Int), key, bigSig)
 	return m.Cmp(c) == 0
 }
 
@@ -98,13 +98,20 @@ func modInverse(a, n *big.Int) (ia *big.Int, ok bool) {
 /*
 	from go's crypto/rsa, standard rsa encryption of m	m^e mod pub.N
  */
-func Encrypt(cipher *big.Int, pub *rsa.PublicKey, m *big.Int) *big.Int {
+func EncryptBig(pub *rsa.PublicKey, m []byte) []byte {
+	return encrypt(new(big.Int), pub, new(big.Int).SetBytes(m)).Bytes()
+}
+
+/*
+	from go's crypto/rsa, standard rsa encryption of m	m^e mod pub.N
+ */
+func encrypt(cipher *big.Int, pub *rsa.PublicKey, m *big.Int) *big.Int {
 	e := big.NewInt(int64(pub.E))
 	cipher.Exp(m, e, pub.N)
 	return cipher
 }
 
-func Decrypt(random io.Reader, priv *rsa.PrivateKey, c *big.Int) (m *big.Int, err error) {
+func decrypt(random io.Reader, priv *rsa.PrivateKey, c *big.Int) (m *big.Int, err error) {
 	if c.Cmp(priv.N) > 0 {
 		err = rsa.ErrDecryption
 		return
