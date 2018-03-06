@@ -14,6 +14,7 @@ import (
 
 const COSIGNTIMEOUT = 2
 const NUMCOSIGNER = 2
+
 /*
 	Exchanging an existing coin to a newCoin with dstID, and random coinNum.
 	1. generate a rawCoin with dstID.
@@ -22,7 +23,6 @@ const NUMCOSIGNER = 2
 	4. Unblind the signed rawCoin, go to 3 if not enough banks sign the rawCoin.
 	5. deposit the newCoin.
 */
-
 func (n *Node) CoinExchange(dstID string) {
 	dstID = "FAKEID" + dstID
 	rwcn := coin.NewRawCoin(dstID)
@@ -108,32 +108,36 @@ func (n *Node) coSignValidCoin(c []byte, counter uint16) {
 	signedHash := n.blindSign(hash[:]) // sign the coin(128)
 
 	signedHash = append(c, signedHash...)
+
 	newCounter := make([]byte, 2)
 	binary.BigEndian.PutUint16(newCounter, counter+1)
-	signedHash = append(newCounter, signedHash...) // add updated counter to the head.
 
-	if counter == NUMCOSIGNER {
+	if counter+1 == NUMCOSIGNER {
 		print("Enough verifiers got, publish it")
+		print(len(signedHash))
 		txn := new(blockChain.CNEXTxn)
 		n.publicTxn(txn)
 		return
 	}
+
+	signedHash = append(newCounter, signedHash...) // add updated counter to the head.cvx
 
 	i := 0
 	if time.Now().Unix() % 2 == 0{
 		i = 1
 	}
 	bid := bank.GetBankIDSet()[i] // TODO: randomly pick another bank.
+
 	tpk := records.GetKeyByID(bid)
 
-	if tpk == nil {
-		print("Cannot find the key by id")
-		return
-	}
+	//if tpk == nil {
+	//	print("Cannot find the key by id")
+	//	return
+	//}
 
 	payload := n.prepareOMsg(COSIGN, signedHash, tpk.Pk)
 
-	print("sending aggregated signed coin and cosign counter", newCounter)
+	print("sending aggregated signed coin and cosign counter:", newCounter)
 	n.sendActive(payload, tpk.Port)
 }
 

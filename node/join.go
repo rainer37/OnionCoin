@@ -149,8 +149,6 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	newBieInfo := append(ocrypto.EncodePK(pk), []byte(id)...)
 
 	pkHash := sha256.Sum256(ocrypto.EncodePK(pk))
-	print("HI",ocrypto.EncodePK(pk))
-	print("HI",pkHash)
 	mySig := n.blindSign(append(pkHash[:], []byte(id)...))
 	regBytes := mySig
 	signers := []string{n.ID}

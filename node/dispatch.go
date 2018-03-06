@@ -103,6 +103,7 @@ func (n *Node) dispatch(incoming []byte) {
 		n.receiveNewCoin(payload, senderID)
 	case COSIGN:
 		print("Let's make fortune together")
+		print("Cosign size", len(payload))
 		counter := binary.BigEndian.Uint16(payload[:2]) // get cosign counter first 2 bytes
 		n.coSignValidCoin(payload[2:], counter)
 	case REGCOSIGNREQUEST:

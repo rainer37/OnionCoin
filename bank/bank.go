@@ -40,7 +40,6 @@ func (bank *Bank) SignRawCoin(coinSeg []byte) []byte {
 	Add a transaction to the buffer
 */
 func (bank *Bank) AddTxn(txn blockChain.Txn) {
-	// TODO: validate the txn received, if not proofable, discards it.
 	ok := bank.validateTxn(txn)
 	if !ok {
 		print("Invalid Cheating Txn, discard it")
@@ -50,7 +49,7 @@ func (bank *Bank) AddTxn(txn blockChain.Txn) {
 	print("Txn added")
 
 	if len(bank.txnBuffer) == blockChain.MAXNUMTXN {
-		bank.publishBlock()
+		bank.generateNewBlock()
 	}
 }
 
@@ -102,10 +101,18 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 /*
 	generate a block from transaction buffer and push it to the system.
  */
-func (bank *Bank) publishBlock() {
+func (bank *Bank) generateNewBlock() {
 	print("Fresh Block!", len(bank.txnBuffer))
 	newBlock := blockChain.NewBlock(bank.txnBuffer)
-	bank.chain.AddBlock(newBlock)
+	ok := bank.chain.AddBlock(newBlock)
+	if ok {
+		bank.cleanBuffer()
+	}
+}
+
+func (bank *Bank) cleanBuffer() {
+	bank.txnBuffer = bank.txnBuffer[:0]
+	print("Txn buffer cleared")
 }
 
 func (bank *Bank) VerifyCoin(c *coin.Coin) bool { return false }

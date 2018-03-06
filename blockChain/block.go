@@ -4,8 +4,6 @@ import (
 	"strconv"
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
-	"os"
 	"time"
 )
 
@@ -53,19 +51,6 @@ type User struct {
 	name string
 }
 
-/*
-	Store blockData to Disk.
- */
-func (b *Block) Store() {
-	print("writing block to disk")
-	print(b)
-	j, err := json.Marshal(b)
-	checkErr(err)
-	f, err := os.Create("block.txt")
-	checkErr(err)
-	f.Write(j)
-	f.Close()
-}
 
 func (b *Block) String() string {
 	s := "\nCurHash: " + string(b.CurHash) + "\n"

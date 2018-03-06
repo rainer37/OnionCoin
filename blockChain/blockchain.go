@@ -10,10 +10,12 @@ import(
 	"os"
 	"log"
 	"time"
+	"encoding/json"
+	"strconv"
 )
 
 const BKCHPREFIX = "[BKCH] "
-const CHAINDIR = "chainData"
+const CHAINDIR = "chainData/"
 
 var GENESISBLOCK = NewBlock([]Txn{})
 
@@ -36,16 +38,18 @@ func InitBlockChain() *BlockChain {
 	return chain
 }
 
-func (chain *BlockChain) AddBlock(block *Block) {
+func (chain *BlockChain) AddBlock(block *Block) bool {
 	print("Adding a block")
+	// should try pull the block again from the network first before publish it.
 	prevBlock := chain.Blocks[len(chain.Blocks)-1]
-
 	block.PrevHash = prevBlock.CurHash
 	block.Depth = chain.getNextDepth()
 	block.Ts = time.Now().Unix()
 	block.CurHash = block.GetCurHash()
-	block.Store() // write to disk
+
+	chain.Store(block) // write to disk
 	chain.Blocks = append(chain.Blocks, block)
+	return true
 }
 
 func (chain *BlockChain) getNextDepth() int64 {
@@ -69,6 +73,29 @@ func (chain *BlockChain) GetBlock(index int64) *Block {
 
 func (chain *BlockChain) GetLastBlock() *Block {
 	return chain.GetBlock(int64(len(chain.Blocks)-1))
+}
+
+/*
+	Store blockData to Disk.
+ */
+func (chain *BlockChain) Store(b *Block) {
+	print("writing block to disk")
+	// print(b)
+	blockData, err := json.Marshal(b)
+	checkErr(err)
+
+	blockFileName := strconv.FormatInt(b.Depth, 10)
+
+	if ok, _ := exists(CHAINDIR+blockFileName); ok {
+		print("duplicate block depth detected!")
+		return
+	}
+
+	f, err := os.Create(CHAINDIR+blockFileName)
+	checkErr(err)
+
+	f.Write(blockData)
+	f.Close()
 }
 
 func exists(path string) (bool, error) {
