@@ -27,10 +27,7 @@ type Onion struct {
 func WrapOnion(pk rsa.PublicKey, nextID string, coin []byte, content []byte) []byte {
 
 	nextIDBytes := make([]byte, 16)
-
-	for i:=0;i<len(nextID);i++ {
-		nextIDBytes[i] = nextID[i]
-	}
+	copy(nextIDBytes, nextID)
 
 	b := append(nextIDBytes, coin...)
 	b = append(b, content...)

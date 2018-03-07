@@ -13,6 +13,8 @@ import(
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/bank"
 	bc "github.com/rainer37/OnionCoin/blockChain"
+	"math/rand"
+	"encoding/binary"
 )
 
 const NODEPREFIX = "[NODE]"
@@ -98,9 +100,16 @@ func produceSK() *rsa.PrivateKey {
 	Try sync block chain with peers.
  */
 func (n *Node) syncBlockChain() {
-	ticker := time.NewTicker(time.Millisecond * 10000)
+	ticker := time.NewTicker(time.Millisecond * 5000)
 	for t := range ticker.C {
 		fmt.Println("Tick at", t.Unix())
+		banks := bank.GetBankIDSet()
+		bid := banks[rand.Int() % len(banks)]
+		bpk := n.getPubRoutingInfo(bid)
+		buf := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf, uint64(n.chain.Size()))
+		p := n.prepareOMsg(CHAINSYNC, buf, bpk.Pk)
+		n.sendActive(p, bpk.Port)
 	}
 }
 

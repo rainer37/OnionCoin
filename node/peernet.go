@@ -19,6 +19,8 @@ func (n *Node) SelfInit() {
 	if n.iamBank() {
 		print("My Turn To be Bank!")
 		n.bankProxy = bank.InitBank(n.sk, n.chain)
+	} else {
+		go n.syncBlockChain()
 	}
 
 	records.InsertEntry(n.ID, n.sk.PublicKey, time.Now().Unix(), n.IP, n.Port)

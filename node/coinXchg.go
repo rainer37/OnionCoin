@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/binary"
-	"github.com/rainer37/OnionCoin/records"
 	"math/rand"
 )
 
@@ -24,6 +23,8 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 	if len(payload) != BCOINSIZE * 2 + 8 { return }
 
 	c := payload[BCOINSIZE+8:]
+
+	// check validity, if not, abort
 	if !n.ValidateCoin(c, senderID) {
 		return
 	}
@@ -37,7 +38,7 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 	bfid := payload[BCOINSIZE:BCOINSIZE+8]
 
 	newCoin := n.blindSign(rwcn)
-	spk := records.GetKeyByID(senderID)
+	spk := n.getPubRoutingInfo(senderID)
 
 	if spk == nil {
 		print("Cannot find the key with senderID")

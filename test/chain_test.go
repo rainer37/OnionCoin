@@ -18,7 +18,7 @@ func TestAddBlockToChain(t *testing.T) {
 
 	block := GenTestBlockWithTwoTxn()
 
-	chain.AddBlock(block)
+	chain.AddNewBlock(block)
 
 	if chain.Size() != int64(2) {
 		t.Error("Wrong size")
@@ -51,9 +51,9 @@ func TestGetBlock(t *testing.T) {
 	block_2 := GenTestBlockWithTwoTxn()
 	block_3 := GenTestBlockWithTwoTxn()
 
-	chain.AddBlock(block_1)
-	chain.AddBlock(block_2)
-	chain.AddBlock(block_3)
+	chain.AddNewBlock(block_1)
+	chain.AddNewBlock(block_2)
+	chain.AddNewBlock(block_3)
 
 	if chain.Size() != 4 {
 		t.Error("Wrong Size")

@@ -126,7 +126,7 @@ func (n *Node) coSignValidCoin(c []byte, counter uint16) {
 		print(cnum, verifiers, len(sigs))
 		txn := blockChain.NewCNEXTxn(cnum, cbytes, sigs, verifiers)
 		// start broadcasting the new Txn.
-		go n.broadcastTxn(txn)
+		// TODO: go n.broadcastTxn(txn)
 		ok := n.bankProxy.AddTxn(txn)
 		if !ok {
 			print("something wrong with this txn, discard it")
@@ -147,7 +147,7 @@ func (n *Node) coSignValidCoin(c []byte, counter uint16) {
 		bid = otherBanks[index]
 	}
 
-	tpk := records.GetKeyByID(bid)
+	tpk := n.getPubRoutingInfo(bid)
 
 	payload := n.prepareOMsg(COSIGN, signedHash, tpk.Pk)
 

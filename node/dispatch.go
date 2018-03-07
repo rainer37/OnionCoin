@@ -2,10 +2,8 @@ package node
 
 import (
 	"github.com/rainer37/OnionCoin/records"
-	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/rsa"
 	"encoding/binary"
-	"github.com/rainer37/OnionCoin/coin"
 	"crypto/sha256"
 	"github.com/rainer37/OnionCoin/blockChain"
 )
@@ -25,6 +23,8 @@ const (
 	REGCOSIGNREPLY = 'D'
 	TXNRECEIVE = 'G'
 	REJECT = 'F'
+	CHAINSYNC = 'S'
+	CHAINSYNCACK = 'T'
 	RETURN = 'R'
 	ADV = 'G'
 )
@@ -120,6 +120,20 @@ func (n *Node) dispatch(incoming []byte) {
 		print("A Txn Received from", senderID)
 		txn := blockChain.ProduceTxn(payload, blockChain.PK)
 		n.bankProxy.AddTxn(txn)
+	case CHAINSYNC:
+		print("BlockChain Sync Req Received", senderID)
+		blockIndex := int64(binary.BigEndian.Uint64(payload))
+		for i := blockIndex; i < n.chain.Size(); i++ {
+			spk := n.getPubRoutingInfo(senderID)
+			blocks := n.chain.GenBlockBytes(i)
+			print(len(blocks), "sent")
+			p := n.prepareOMsg(CHAINSYNCACK, blocks, spk.Pk)
+			n.sendActive(p, spk.Port)
+		}
+	case CHAINSYNCACK:
+		print("BlockChain Sync Ack Received", senderID)
+		b := blockChain.DeMuxBlock(payload)
+		n.chain.AddOldBlock(b)
 	case REJECT:
 		print(string(payload))
 	case EXPT:
@@ -166,24 +180,6 @@ func verifySig(omsg *records.OMsg, pk *rsa.PublicKey) bool {
 	return omsg.VerifySig(pk)
 }
 
-/*
-	decode received routing info, and update routing table
- */
-func unmarshalRoutingInfo(b []byte) {
-	cur := 0
-	for cur < len(b) {
-		idLen := binary.BigEndian.Uint32(b[cur:cur+4])
-		id := string(b[cur+4:cur+4+int(idLen)])
-		print(id, len(records.KeyRepo))
-		cur += int(idLen) + 4
-
-		eLen := binary.BigEndian.Uint32(b[cur:cur+4])
-		e := records.BytesToPKEntry(b[cur+4:cur+4+int(eLen)])
-		cur += int(eLen) + 4
-
-		records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
-	}
-}
 
 /*
 	a warm welcome to newbie.
@@ -198,15 +194,3 @@ func welcomeProtocol(payload []byte) {
 	records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
 }
 
-func (n *Node) foo() {
-	if n.Port != "1339" {
-		return
-	}
-	pk := records.GetKeyByID("FAKEID1338")
-	pk2 := records.GetKeyByID("FAKEID1340")
-
-	payload := ocrypto.WrapOnion(pk2.Pk, "myHome", new(coin.Coin).Bytes(), []byte("msg received"))
-	p2 := ocrypto.WrapOnion(pk.Pk, "FAKEID1340", new(coin.Coin).Bytes(), payload)
-	m := n.prepareOMsg(FWD,p2,pk.Pk)
-	n.sendActive(m,"1338")
-}

@@ -15,10 +15,13 @@ type Block struct {
 	Depth     int64
 	Ts        int64
 	NumTxn    int
-	Txns      []Txn
 	TxnHashes [][]byte
+	Txns      []Txn
 }
 
+/*
+	create a new block from txns, without depth, ts, and hashes set.
+ */
 func NewBlock(txns []Txn) *Block {
 	b := new(Block)
 	b.Txns = txns
@@ -32,6 +35,9 @@ func NewBlock(txns []Txn) *Block {
 	return b
 }
 
+/*
+	compute the hash of the block from {prevhash, content, and ts}.
+ */
 func (b *Block) GetCurHash() []byte {
 	timestamp := []byte(strconv.FormatInt(b.Ts, 10))
 	content := TxnsToBytes(b.Txns)
@@ -59,5 +65,3 @@ func (b *Block) String() string {
 	s += "Number of Txns: " + strconv.Itoa(b.NumTxn) + "\n"
 	return s
 }
-
-func BytesToBlock(blockBytes []byte) *Block { return nil }

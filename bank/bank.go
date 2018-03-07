@@ -107,7 +107,7 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 func (bank *Bank) generateNewBlock() bool {
 	print("Fresh Block!", len(bank.txnBuffer))
 	newBlock := blockChain.NewBlock(bank.txnBuffer)
-	ok := bank.chain.AddBlock(newBlock)
+	ok := bank.chain.AddNewBlock(newBlock)
 	if ok {
 		bank.cleanBuffer()
 		return true

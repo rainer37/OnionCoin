@@ -27,7 +27,7 @@ type Txn interface {
  */
 type PKRegTxn struct {
 	Id        	string
-	Pk        	rsa.PublicKey
+	Pk        	[]byte
 	Ts        	int64
 	Sigs      	[]byte // containing signatures of the hash of Pk and Id.
 	Verifiers 	[]string
@@ -37,26 +37,26 @@ type PKRegTxn struct {
 	Coin Exchange Transactions
  */
 type CNEXTxn struct {
-	CoinNum 	uint64
-	CoinBytes   []byte
-	Ts        	int64
-	Sigs   		[]byte
-	verifiers 	[]string
+	CoinNum   uint64
+	CoinBytes []byte
+	Ts        int64
+	Sigs      []byte
+	Verifiers []string
 }
 
 /*
 	Bank Coin Redeem Transactions
  */
 type BCNRDMTxn struct {
-	txnID 		[]byte
-	casherID 	string
+	TxnID 		[]byte
+	CasherID 	string
 	Ts        	int64
 	Sigs   		[]byte // containing signatures of the hash of Pk and Id.
-	verifiers 	[]string
+	Verifiers 	[]string
 }
 
 func NewPKRTxn(id string, pk rsa.PublicKey, sigs []byte, verifiers []string) PKRegTxn {
-	return PKRegTxn{id, pk, time.Now().Unix(), sigs, verifiers}
+	return PKRegTxn{id, ocrypto.EncodePK(pk), time.Now().Unix(), sigs, verifiers}
 }
 
 func NewCNEXTxn(coinNum uint64, coinBytes []byte, sigs []byte, verifiers []string) CNEXTxn {
@@ -76,7 +76,7 @@ func (pkr PKRegTxn) ToBytes() []byte {
 	}
 
 	pkrBytes = append(pkrBytes, nextIDBytes...)
-	pkrBytes = append(pkrBytes, ocrypto.EncodePK(pkr.Pk)...)
+	pkrBytes = append(pkrBytes, pkr.Pk...)
 
 	timeBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(timeBytes, uint64(pkr.Ts))
@@ -100,7 +100,7 @@ func (pkr PKRegTxn) ToBytes() []byte {
 func (pkr PKRegTxn) GetVerifiers() []string { return pkr.Verifiers }
 func (pkr PKRegTxn) GetSigs() []byte { return pkr.Sigs }
 func (pkr PKRegTxn) GetContent() []byte {
-	pkHash := sha256.Sum256(ocrypto.EncodePK(pkr.Pk))
+	pkHash := sha256.Sum256(pkr.Pk)
 	return append(pkHash[:], []byte(pkr.Id)...)
 }
 
@@ -113,7 +113,7 @@ func (pkr PKRegTxn) GetContent() []byte {
 func (cnex CNEXTxn) ToBytes() []byte { return []byte{} }
 func (cnex CNEXTxn) GetCoinNum() uint64 { return cnex.CoinNum }
 func (cnex CNEXTxn) GetSigs() []byte { return cnex.Sigs }
-func (cnex CNEXTxn) GetVerifiers() []string { return cnex.verifiers }
+func (cnex CNEXTxn) GetVerifiers() []string { return cnex.Verifiers }
 func (cnex CNEXTxn) GetContent() []byte {
 	cnHash := sha256.Sum256(cnex.CoinBytes)
 	return cnHash[:]
@@ -121,7 +121,7 @@ func (cnex CNEXTxn) GetContent() []byte {
 
 func (bcnrd BCNRDMTxn) ToBytes() []byte { return []byte{} }
 func (bcnrd BCNRDMTxn) GetSigs() []byte { return bcnrd.Sigs }
-func (bcnrd BCNRDMTxn) GetVerifiers() []string { return bcnrd.verifiers }
+func (bcnrd BCNRDMTxn) GetVerifiers() []string { return bcnrd.Verifiers }
 func (bcnrd BCNRDMTxn) GetContent() []byte { return []byte{} }
 
 /*
@@ -141,9 +141,9 @@ func TxnsToBytes(t []Txn) []byte {
 func ProduceTxn(data []byte, txnType rune) Txn {
 	switch txnType {
 	case PK:
-		txn := new(PKRegTxn)
+		txn := PKRegTxn{}
 		txn.Id = strings.Trim(string(data[:16]), "\x00")
-		txn.Pk = ocrypto.DecodePK(data[16:148])
+		txn.Pk = data[16:148]
 		txn.Ts = int64(binary.BigEndian.Uint64(data[148:156]))
 		txn.Sigs = data[156:156 + 256]
 		txn.Verifiers = append(txn.Verifiers, strings.Trim(string(data[156+256:156+256+16]), "\x00"))

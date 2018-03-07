@@ -73,8 +73,7 @@ func (n* Node) newbieJoin(incoming []byte) bool {
 		newBie_pk := ocrypto.DecodePK(incoming[PKRQCODELEN:PKRQCODELEN+PKRQLEN])
 		senderAddr := string(incoming[PKRQCODELEN+PKRQLEN:])
 
-
-		print(senderAddr+"@")
+		// TODO: remove this cond
 		if senderAddr[:4] != "1339" {
 			n.registerCoSign(newBie_pk, FAKEID+senderAddr)
 		}
@@ -109,6 +108,25 @@ func (n *Node) gatherRoutingInfo() []byte {
 		}
 	}
 	return result
+}
+
+/*
+	decode received routing info, and update routing table
+ */
+func unmarshalRoutingInfo(b []byte) {
+	cur := 0
+	for cur < len(b) {
+		idLen := binary.BigEndian.Uint32(b[cur:cur+4])
+		id := string(b[cur+4:cur+4+int(idLen)])
+		print(id, len(records.KeyRepo))
+		cur += int(idLen) + 4
+
+		eLen := binary.BigEndian.Uint32(b[cur:cur+4])
+		e := records.BytesToPKEntry(b[cur+4:cur+4+int(eLen)])
+		cur += int(eLen) + 4
+
+		records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
+	}
 }
 
 /*
