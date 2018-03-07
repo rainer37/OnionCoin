@@ -11,7 +11,6 @@ import (
 )
 
 const BCOINSIZE = 128
-const NUMSIGNINGBANK = 2
 var exMap = map[string]chan []byte{} // channels for coin exchanging
 
 /*

@@ -176,14 +176,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	print(len(txn.ToBytes()))
 	n.bankProxy.AddTxn(txn)
 
-	// start broadcasting the new Txn.
-	for _, b := range banks {
-		if b != n.ID{
-			bpe := n.getPubRoutingInfo(b)
-			p := n.prepareOMsg(TXNRECEIVE, txn.ToBytes(), bpe.Pk)
-			go n.sendActive(p, bpe.Port)
-		}
-	}
+	go n.broadcastTxn(txn)
 
 	n.sendActive([]byte("You are good to Go"), id[6:])
 	print("confirmation sent")

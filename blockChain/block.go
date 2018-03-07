@@ -16,16 +16,16 @@ type Block struct {
 	Ts        int64
 	NumTxn    int
 	Txns      []Txn
-	TxnHashes [][32]byte
+	TxnHashes [][]byte
 }
 
 func NewBlock(txns []Txn) *Block {
 	b := new(Block)
 	b.Txns = txns
-	b.TxnHashes = make([][32]byte, len(txns))
+	b.TxnHashes = make([][]byte, len(txns))
 	for i, t := range b.Txns {
 		h := sha256.Sum256(t.ToBytes())
-		b.TxnHashes[i] = h
+		b.TxnHashes[i] = h[:]
 	}
 	b.NumTxn = len(txns)
 	b.Depth = -1 // default to -1

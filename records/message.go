@@ -101,12 +101,9 @@ func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey,
 	buffer := make([]byte,1)
 	buffer[0] = byte(opCode)
 
-	buf := make([]byte, NODEIDLEN)
-	for i:=0;i<NODEIDLEN;i++ {
-		if i < len(nodeID) {
-			buf[i] = nodeID[i]
-		}
-	}
+	buf := make([]byte, 16)
+	copy(buf[:], nodeID)
+
 	buffer = append(buffer, buf...)
 
 	buf = make([]byte, TSLEN)
@@ -115,9 +112,8 @@ func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey,
 
 	buf = make([]byte, HASHLEN)
 	sig := ocrypto.RSASign(sk, payload)
-	for i:=0;i<HASHLEN;i++ {
-		buf[i] = sig[i]
-	}
+	copy(buf, sig)
+
 	buffer = append(buffer, buf...)
 
 	buf = make([]byte, PAYLOADLENLEN)

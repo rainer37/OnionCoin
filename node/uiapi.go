@@ -10,10 +10,11 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/blockChain"
+	"strings"
+	"math/rand"
 )
 
 const COSIGNTIMEOUT = 2
-const NUMCOSIGNER = 2
 
 /*
 	Exchanging an existing coin to a newCoin with dstID, and random coinNum.
@@ -37,14 +38,14 @@ func (n *Node) CoinExchange(dstID string) {
 	layers := 0
 	rc := rwcn.ToBytes()
 
-	for layers < NUMSIGNINGBANK && counter < len(banks) {
+	for layers < bank.NUMCOSIGNER && counter < len(banks) {
 		b := banks[counter]
 		bpe := records.GetKeyByID(b)
 
-		if bpe == nil {
-			print("ERR finding bank id provided", b)
-			continue
-		}
+		//if bpe == nil {
+		//	print("ERR finding bank id provided", b)
+		//	continue
+		//}
 
 		print("Requesting", b, "for signing rawCoin")
 
@@ -80,7 +81,7 @@ func (n *Node) CoinExchange(dstID string) {
 		expected := ocrypto.EncryptBig(&bpe.Pk, revealedCoin)
 
 		if string(expected) != string(rc) {
-			print("not equal, bad bank!", b)
+			print("not equal after blindSign, bad bank!", b)
 			continue
 		}
 
@@ -89,7 +90,7 @@ func (n *Node) CoinExchange(dstID string) {
 		layers++
 	}
 
-	if layers == NUMSIGNINGBANK {
+	if layers == bank.NUMCOSIGNER {
 		print("New Coin Forged, Thanks Fellas!")
 		n.Deposit(coin.NewCoin(dstID, rc))
 	} else {
@@ -104,36 +105,49 @@ func (n *Node) CoinExchange(dstID string) {
  */
 func (n *Node) coSignValidCoin(c []byte, counter uint16) {
 
-	hash := sha256.Sum256(c[:128]) // get the hash(32) of coin
-	signedHash := n.blindSign(hash[:]) // sign the coin(128)
+	hashAndIds := sha256.Sum256(c[:128]) // get the hash(32) of coin
 
+	signedHash := n.blindSign(hashAndIds[:]) // sign the coin(128)
 	signedHash = append(c, signedHash...)
 
 	newCounter := make([]byte, 2)
 	binary.BigEndian.PutUint16(newCounter, counter+1)
 
-	if counter+1 == NUMCOSIGNER {
+	var idBytes [16]byte
+	copy(idBytes[:], []byte(n.ID))
+
+	signedHash = append(signedHash, idBytes[:]...) // append verifier to it
+
+	// when there is enough sigs gathered, try publish the txn.
+	if counter+1 == bank.NUMCOSIGNER {
 		print("Enough verifiers got, publish it")
-		print(len(signedHash))
-		txn := new(blockChain.CNEXTxn)
-		n.publicTxn(txn)
+		print(len(signedHash), counter+1, "verifiers")
+		cnum, cbytes, sigs, verifiers := decodeCNCosign(signedHash, counter+1)
+		print(cnum, verifiers, len(sigs))
+		txn := blockChain.NewCNEXTxn(cnum, cbytes, sigs, verifiers)
+		// start broadcasting the new Txn.
+		go n.broadcastTxn(txn)
+		ok := n.bankProxy.AddTxn(txn)
+		if !ok {
+			print("something wrong with this txn, discard it")
+		}
 		return
 	}
 
+
 	signedHash = append(newCounter, signedHash...) // add updated counter to the head.cvx
 
-	i := 0
-	if time.Now().Unix() % 2 == 0{
-		i = 1
+
+	// randomly picks banks other than me
+	otherBanks := bank.GetBankIDSet()
+	bid := otherBanks[0]
+
+	for bid == n.ID {
+		index := rand.Int() % len(otherBanks)
+		bid = otherBanks[index]
 	}
-	bid := bank.GetBankIDSet()[i] // TODO: randomly pick another bank.
 
 	tpk := records.GetKeyByID(bid)
-
-	//if tpk == nil {
-	//	print("Cannot find the key by id")
-	//	return
-	//}
 
 	payload := n.prepareOMsg(COSIGN, signedHash, tpk.Pk)
 
@@ -141,6 +155,34 @@ func (n *Node) coSignValidCoin(c []byte, counter uint16) {
 	n.sendActive(payload, tpk.Port)
 }
 
-func (n *Node) publicTxn(txn blockChain.Txn) {
+/*
+	Decode the bytes from CoSign protocol into correspoding info.
+ */
+func decodeCNCosign(content []byte, counter uint16) (cnum uint64, cbytes []byte, sigs []byte, verifiers []string) {
+	cbytes = content[:128]
+	cnum = binary.BigEndian.Uint64(cbytes) // TODO: get real cnum
 
+	sigs_vrfrs := content[128:]
+
+	for i:=0; i<int(counter); i++ {
+		b := sigs_vrfrs[i*144:(i+1)*144-1]
+		ver,sig := b[128:], b[:128]
+		sigs = append(sigs, sig...)
+		verifiers = append(verifiers, strings.Trim(string(ver), "\x00"))
+	}
+
+	return
+}
+
+/*
+	broadcast the txn to other banks with best effort.
+ */
+func (n *Node) broadcastTxn(txn blockChain.Txn) {
+	for _, b := range bank.GetBankIDSet() {
+		if b != n.ID{
+			bpe := n.getPubRoutingInfo(b)
+			p := n.prepareOMsg(TXNRECEIVE, txn.ToBytes(), bpe.Pk)
+			go n.sendActive(p, bpe.Port)
+		}
+	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/rainer37/OnionCoin/records"
 )
 const BANK_PREFIX = "[BANK]"
+const NUMCOSIGNER = 2
 
 type Bank struct {
 	sk *rsa.PrivateKey
@@ -39,18 +40,20 @@ func (bank *Bank) SignRawCoin(coinSeg []byte) []byte {
 /*
 	Add a transaction to the buffer
 */
-func (bank *Bank) AddTxn(txn blockChain.Txn) {
+func (bank *Bank) AddTxn(txn blockChain.Txn) bool {
 	ok := bank.validateTxn(txn)
 	if !ok {
 		print("Invalid Cheating Txn, discard it")
-		return
+		return false
 	}
 	bank.txnBuffer = append(bank.txnBuffer, txn)
 	print("Txn added")
 
 	if len(bank.txnBuffer) == blockChain.MAXNUMTXN {
-		bank.generateNewBlock()
+		return bank.generateNewBlock()
 	}
+
+	return true
 }
 
 /*
@@ -60,7 +63,7 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 	verifiers := txn.GetVerifiers()
 	sigs := txn.GetSigs()
 
-	if len(verifiers) != len(sigs) / 128 {
+	if len(verifiers) != NUMCOSIGNER || len(verifiers) != len(sigs) / 128 {
 		print("number of sigs does not match number of banks")
 		return false
 	}
@@ -101,13 +104,15 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 /*
 	generate a block from transaction buffer and push it to the system.
  */
-func (bank *Bank) generateNewBlock() {
+func (bank *Bank) generateNewBlock() bool {
 	print("Fresh Block!", len(bank.txnBuffer))
 	newBlock := blockChain.NewBlock(bank.txnBuffer)
 	ok := bank.chain.AddBlock(newBlock)
 	if ok {
 		bank.cleanBuffer()
+		return true
 	}
+	return false
 }
 
 func (bank *Bank) cleanBuffer() {

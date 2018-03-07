@@ -26,18 +26,19 @@ type Txn interface {
 	PublicKey Register Transactions
  */
 type PKRegTxn struct {
-	Id        string
-	Pk        rsa.PublicKey
-	Ts        int64
-	Sigs      []byte // containing signatures of the hash of Pk and Id.
-	Verifiers []string
+	Id        	string
+	Pk        	rsa.PublicKey
+	Ts        	int64
+	Sigs      	[]byte // containing signatures of the hash of Pk and Id.
+	Verifiers 	[]string
 }
 
 /*
 	Coin Exchange Transactions
  */
 type CNEXTxn struct {
-	coinNum 	uint64
+	CoinNum 	uint64
+	CoinBytes   []byte
 	Ts        	int64
 	Sigs   		[]byte
 	verifiers 	[]string
@@ -47,19 +48,19 @@ type CNEXTxn struct {
 	Bank Coin Redeem Transactions
  */
 type BCNRDMTxn struct {
-	txnID []byte
-	casherID string
-	Ts        int64
-	Sigs   []byte // containing signatures of the hash of Pk and Id.
-	verifiers []string
+	txnID 		[]byte
+	casherID 	string
+	Ts        	int64
+	Sigs   		[]byte // containing signatures of the hash of Pk and Id.
+	verifiers 	[]string
 }
 
 func NewPKRTxn(id string, pk rsa.PublicKey, sigs []byte, verifiers []string) PKRegTxn {
 	return PKRegTxn{id, pk, time.Now().Unix(), sigs, verifiers}
 }
 
-func NewCNEXTxn(coinNum uint64, sigs []byte, verifiers []string) CNEXTxn {
-	return CNEXTxn{coinNum, time.Now().Unix(), sigs, verifiers}
+func NewCNEXTxn(coinNum uint64, coinBytes []byte, sigs []byte, verifiers []string) CNEXTxn {
+	return CNEXTxn{coinNum, coinBytes, time.Now().Unix(), sigs, verifiers}
 }
 
 /*
@@ -110,10 +111,13 @@ func (pkr PKRegTxn) GetContent() []byte {
 	VHashi(128) : cosigned hash of the signedCoin
  */
 func (cnex CNEXTxn) ToBytes() []byte { return []byte{} }
-func (cnex CNEXTxn) GetCoinNum() uint64 { return cnex.coinNum }
+func (cnex CNEXTxn) GetCoinNum() uint64 { return cnex.CoinNum }
 func (cnex CNEXTxn) GetSigs() []byte { return cnex.Sigs }
 func (cnex CNEXTxn) GetVerifiers() []string { return cnex.verifiers }
-func (cnex CNEXTxn) GetContent() []byte { return []byte{} }
+func (cnex CNEXTxn) GetContent() []byte {
+	cnHash := sha256.Sum256(cnex.CoinBytes)
+	return cnHash[:]
+}
 
 func (bcnrd BCNRDMTxn) ToBytes() []byte { return []byte{} }
 func (bcnrd BCNRDMTxn) GetSigs() []byte { return bcnrd.Sigs }
