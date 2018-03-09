@@ -47,7 +47,6 @@ func (n *Node) IniJoin(address string, status int) {
 	go n.SelfInit()
 
 	JID := FAKEID + address // FOR NOW ONLY USE FAKEID + PORT AS THE ID.
-	print(status)
 	if status == 0 {
 		payload := []byte(n.IP + ":" + n.Port + "@" + NEWBIEMARKER)
 		pe := n.getPubRoutingInfo(JID)
@@ -65,13 +64,9 @@ func (n *Node) IniJoin(address string, status int) {
 		}
 
 		n.sendActive([]byte(REGISTER+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port), address)
-
 		enPk := <-n.pkChan // waiting for registration cosign finish.
-
 		print("Good! I'm Now Registered")
-
 		talkingPK := ocrypto.DecodePK(enPk)
-
 		records.InsertEntry(JID, talkingPK, time.Now().Unix(), LOCALHOST, address)
 
 		payload := []byte(n.IP+":"+n.Port+"@"+NEWBIEMARKER)

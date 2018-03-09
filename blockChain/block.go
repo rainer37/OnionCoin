@@ -27,7 +27,7 @@ func NewBlock(txns []Txn) *Block {
 	b.Txns = txns
 	b.TxnHashes = make([][]byte, len(txns))
 	for i, t := range b.Txns {
-		h := sha256.Sum256(t.ToBytes())
+		h := sha256.Sum256(t.GetContent())
 		b.TxnHashes[i] = h[:]
 	}
 	b.NumTxn = len(txns)

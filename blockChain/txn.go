@@ -7,6 +7,7 @@ import (
 	"time"
 	"strings"
 	"crypto/sha256"
+	"bytes"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 type Txn interface {
 	ToBytes() []byte
 	GetVerifiers() []string
-	GetContent() []byte
+	GetContent() []byte // getting the signing content
 	GetSigs() []byte
 }
 
@@ -64,16 +65,13 @@ func NewCNEXTxn(coinNum uint64, coinBytes []byte, sigs []byte, verifiers []strin
 }
 
 /*
-	ID | PK | Ts | signedHashes | SignerIDs
+	ID(16) | PK(132) | Ts(8) | signedHashes | SignerIDs
  */
 func (pkr PKRegTxn) ToBytes() []byte {
 	pkrBytes := []byte{}
 
 	nextIDBytes := make([]byte, 16)
-
-	for i:=0;i<len(pkr.Id);i++ {
-		nextIDBytes[i] = pkr.Id[i]
-	}
+	copy(nextIDBytes, pkr.Id)
 
 	pkrBytes = append(pkrBytes, nextIDBytes...)
 	pkrBytes = append(pkrBytes, pkr.Pk...)
@@ -86,10 +84,7 @@ func (pkr PKRegTxn) ToBytes() []byte {
 
 	for _, signer := range pkr.Verifiers {
 		sidBytes := make([]byte, 16)
-
-		for i:=0;i<len(signer);i++ {
-			sidBytes[i] = signer[i]
-		}
+		copy(sidBytes, signer)
 		pkrBytes = append(pkrBytes, []byte(sidBytes)...)
 
 	}
@@ -110,7 +105,25 @@ func (pkr PKRegTxn) GetContent() []byte {
 	Vi(16): coin Verifiers(cosigners);
 	VHashi(128) : cosigned hash of the signedCoin
  */
-func (cnex CNEXTxn) ToBytes() []byte { return []byte{} }
+func (cnex CNEXTxn) ToBytes() []byte {
+	coinNumBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(coinNumBytes, cnex.CoinNum)
+
+	timeBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(timeBytes, uint64(cnex.Ts))
+
+	verBytes := []byte{}
+	for _, signer := range cnex.Verifiers {
+		sidBytes := make([]byte, 16)
+		copy(sidBytes, signer)
+		verBytes = append(verBytes, []byte(sidBytes)...)
+
+	}
+
+	cnexBytes := bytes.Join([][]byte{coinNumBytes, cnex.CoinBytes, timeBytes, cnex.Sigs, verBytes}, []byte{})
+
+	return cnexBytes
+}
 func (cnex CNEXTxn) GetCoinNum() uint64 { return cnex.CoinNum }
 func (cnex CNEXTxn) GetSigs() []byte { return cnex.Sigs }
 func (cnex CNEXTxn) GetVerifiers() []string { return cnex.Verifiers }
@@ -145,12 +158,26 @@ func ProduceTxn(data []byte, txnType rune) Txn {
 		txn.Id = strings.Trim(string(data[:16]), "\x00")
 		txn.Pk = data[16:148]
 		txn.Ts = int64(binary.BigEndian.Uint64(data[148:156]))
-		txn.Sigs = data[156:156 + 256]
-		txn.Verifiers = append(txn.Verifiers, strings.Trim(string(data[156+256:156+256+16]), "\x00"))
-		txn.Verifiers = append(txn.Verifiers, strings.Trim(string(data[156+256+16:156+256+32]), "\x00"))
+		counter := 156
+		txn.Sigs = data[counter: counter + 128 * NUMCOSIGNER]
+		counter = counter + 128 * NUMCOSIGNER
+		txn.Verifiers = make([]string, NUMCOSIGNER)
+		for i:=0;i<NUMCOSIGNER;i++ {
+			txn.Verifiers[i] = strings.Trim(string(data[counter + i * 16: counter + (i+1) * 16]), "\x00")
+		}
 		return txn
 	case MSG:
-		txn := new(CNEXTxn)
+		txn := CNEXTxn{}
+		txn.CoinNum = binary.BigEndian.Uint64(data[:8])
+		txn.CoinBytes = data[8:136]
+		txn.Ts = int64(binary.BigEndian.Uint64(data[136:144]))
+		counter := 144
+		txn.Sigs = data[counter: counter + 128 * NUMCOSIGNER]
+		counter = counter + 128 * NUMCOSIGNER
+		txn.Verifiers = make([]string, NUMCOSIGNER)
+		for i:=0;i<NUMCOSIGNER;i++ {
+			txn.Verifiers[i] = strings.Trim(string(data[counter + i * 16: counter + (i+1) * 16]), "\x00")
+		}
 		return txn
 	case UPDATE:
 		txn := new(BCNRDMTxn)

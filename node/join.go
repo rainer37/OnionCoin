@@ -194,8 +194,8 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	print(len(txn.ToBytes()))
 	n.bankProxy.AddTxn(txn)
 
-	go n.broadcastTxn(txn)
+	go n.broadcastTxn(txn, blockChain.PK)
 
-	n.sendActive([]byte("You are good to Go"), id[6:])
+	// n.sendActive([]byte("You are good to Go"), id[6:])
 	print("confirmation sent")
 }

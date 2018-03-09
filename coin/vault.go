@@ -2,6 +2,8 @@ package coin
 
 import(
 	"os"
+	"io/ioutil"
+	"strings"
 )
 
 type Vault struct {
@@ -16,6 +18,21 @@ func (vault *Vault) InitVault() {
 	vault.Coins = make(map[string][]*Coin)
 	if ok, _ := exists("coin"); !ok {
 		os.Mkdir(COINDIR, 0777)
+	}
+	files, err := ioutil.ReadDir(COINDIR)
+	checkErr(err)
+	for _, f := range files {
+		rid := strings.Split(f.Name(), "_")[0]
+		print("loading coin for", rid)
+		coinBytes, err := ioutil.ReadFile(COINDIR+f.Name())
+		checkErr(err)
+		coins, ok := vault.Coins[rid]
+		ncoin := NewCoin(rid,coinBytes)
+		if !ok {
+			vault.Coins[rid] = []*Coin{ncoin}
+		} else {
+			coins = append(coins, ncoin)
+		}
 	}
 	print("Vault Created.")
 }
@@ -45,6 +62,18 @@ func (vault *Vault) Deposit(coin *Coin) {
 func (vault *Vault) Withdraw(rid string) *Coin {
 	print("Withdrawing Coin :"+rid)
 	if vault.Coins[rid] == nil {
+		files, err := ioutil.ReadDir(COINDIR)
+		checkErr(err)
+		for _, f := range files {
+			if rid == f.Name()[:len(rid)] {
+				coinData, err := ioutil.ReadFile(f.Name())
+				checkErr(err)
+				ncoin := NewCoin(rid, coinData)
+				vault.Coins[rid] = []*Coin{ncoin}
+				return ncoin
+			}
+		}
+		print("No coin for this dude", rid)
 		return nil
 	}
 	c := vault.Coins[rid][0]

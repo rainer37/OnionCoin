@@ -2,14 +2,13 @@ package bank
 
 import (
 	"fmt"
-	"github.com/rainer37/OnionCoin/coin"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/rsa"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/records"
 )
+
 const BANK_PREFIX = "[BANK]"
-const NUMCOSIGNER = 2
 
 type Bank struct {
 	sk *rsa.PrivateKey
@@ -22,7 +21,7 @@ func print(str ...interface{}) {
 	fmt.Println(str...)
 }
 
-func InitBank(sk *rsa.PrivateKey, chain *blockChain.BlockChain) *Bank{
+func InitBank(sk *rsa.PrivateKey, chain *blockChain.BlockChain) *Bank {
 	print("i'm a bank!")
 	bank := new(Bank)
 	bank.sk = sk
@@ -63,13 +62,14 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 	verifiers := txn.GetVerifiers()
 	sigs := txn.GetSigs()
 
-	if len(verifiers) != NUMCOSIGNER || len(verifiers) != len(sigs) / 128 {
+	if len(verifiers) != blockChain.NUMCOSIGNER || len(verifiers) != len(sigs) / 128 {
 		print("number of sigs does not match number of banks")
 		return false
 	}
 
 	bankSetWhenSigning := getBankSetWhen(1234)
 
+	// counter number of valid signer
 	matchCounter := 0
 	for _, s := range verifiers {
 		for _, v := range bankSetWhenSigning {
@@ -79,7 +79,7 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 		}
 	}
 	if matchCounter != len(verifiers) {
-		print("Some signer was not a bank at that time")
+		print("Some signer was not a bank at that time", matchCounter)
 		return false
 	}
 
@@ -92,7 +92,7 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 		expectedContent := ocrypto.EncryptBig(&pk, sigs[i * 128 : (i+1) * 128])
 
 		if string(expectedContent) != string(content) {
-			print("Wrong sig by", verifiers[i])
+			print("Wrong sig obtained from", verifiers[i])
 			return false
 		}
 
@@ -119,9 +119,6 @@ func (bank *Bank) cleanBuffer() {
 	bank.txnBuffer = bank.txnBuffer[:0]
 	print("Txn buffer cleared")
 }
-
-func (bank *Bank) VerifyCoin(c *coin.Coin) bool { return false }
-func (bank *Bank) MakeCoin() {}
 
 func GetBankIDSet() []string {
 	// TODO: generate set of bank based on cur time.

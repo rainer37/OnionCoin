@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"crypto/sha256"
 	"github.com/rainer37/OnionCoin/blockChain"
+	"errors"
 )
 
 const (
@@ -25,9 +26,47 @@ const (
 	REJECT = 'F'
 	CHAINSYNC = 'S'
 	CHAINSYNCACK = 'T'
+	PUBLISHINGBLOCK = 'P'
+	PUBLISHINGCHECK = 'Q'
 	RETURN = 'R'
 	ADV = 'G'
 )
+
+/*
+	check the OMsg bytes received, verify the sig by senderID, and return [err, opCode, ID, pkEntry, payload]
+ */
+func (n *Node) syntaxCheck(incoming []byte) (error, rune, string, *records.PKEntry, []byte) {
+	omsg, ok := n.UnmarshalOMsg(incoming)
+
+	if !ok {
+		return errors.New("cannot Unmarshal Msg, discard it." + string(len(incoming))), ' ', "", nil, nil
+	}
+
+	print("valid OMsg, continue...")
+
+	senderID := omsg.GetSenderID()
+	senderPK := records.KeyRepo[senderID]
+
+	// check if the sender's id is known, otherwise cannot verify the signature.
+	if senderPK == nil {
+		return errors.New( "don't know who you are" + senderID), ' ', "", nil, nil
+	}
+
+	// verifying the identity of claimed sender by its pk and signature.
+	if !verifySig(omsg, &senderPK.Pk) {
+		rjmsg := "Cannot verify sig from msg, discard it."
+		print(rjmsg)
+		n.sendReject(rjmsg, senderPK)
+		return errors.New( "cannot verify sig from msg, discard it"), ' ', "", nil, nil
+	}
+
+	print("verified ID", senderID)
+
+	payload := omsg.GetPayload()
+
+	return nil, omsg.GetOPCode(), senderID, senderPK, payload
+}
+
 /*
 	Unmarshal the incoming packet to Omsg and verify the signature.
 	Then dispatch the OMsg to its OpCode.
@@ -39,38 +78,10 @@ func (n *Node) dispatch(incoming []byte) {
 	// if it's a newbie request, it cannot be a OMsg.
 	if ok { return }
 
-	omsg, ok := n.UnmarshalOMsg(incoming)
+	err, opCode, senderID, senderPK, payload := n.syntaxCheck(incoming)
+	checkErr(err)
 
-	if !ok {
-		print("Cannot Unmarshal Msg, discard it.", len(incoming))
-		return
-	}
-
-	print("valid OMsg, continue...")
-
-	senderID := omsg.GetSenderID()
-	senderPK := records.KeyRepo[senderID]
-
-	// check if the sender's id is known, otherwise cannot verify the signature.
-	if senderPK == nil {
-		rjmsg := "Don't know who you are"
-		print(rjmsg, senderID)
-		return
-	}
-
-	// verifying the identity of claimed sender by its pk and signature.
-	if !verifySig(omsg, &senderPK.Pk) {
-		rjmsg := "Cannot verify sig from msg, discard it."
-		print(rjmsg)
-		n.sendReject(rjmsg, senderPK)
-		return
-	}
-
-	print("verified ID", senderID)
-
-	payload := omsg.GetPayload()
-
-	switch omsg.GetOPCode() {
+	switch opCode{
 	case FWD:
 		print("Forwarding")
 		n.forwardProtocol(payload, senderID)
@@ -87,7 +98,6 @@ func (n *Node) dispatch(incoming []byte) {
 	case JOINACK:
 		print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
 		unmarshalRoutingInfo(payload)
-		//n.foo()
 	case WELCOME:
 		print("WELCOME received from", senderID)
 		welcomeProtocol(payload)
@@ -102,38 +112,29 @@ func (n *Node) dispatch(incoming []byte) {
 		print("My Signed RawCoin received.", senderID)
 		n.receiveNewCoin(payload, senderID)
 	case COSIGN:
-		print("Let's make fortune together")
-		print("Cosign size", len(payload))
-		counter := binary.BigEndian.Uint16(payload[:2]) // get cosign counter first 2 bytes
-		n.coSignValidCoin(payload[2:], counter)
+		print("Let's make fortune together", "Cosign size", len(payload))
+		n.coSignValidCoin(payload)
 	case REGCOSIGNREQUEST:
 		print("Helping Registering A New Node")
-		pkHash := sha256.Sum256(payload[:132])
-		mySig := n.blindSign(append(pkHash[:], payload[132:]...))
-		spk := n.getPubRoutingInfo(senderID)
-		p := n.prepareOMsg(REGCOSIGNREPLY, mySig, spk.Pk)
-		n.sendActive(p, spk.Port)
+		n.regCoSignRequest(payload, senderID)
 	case REGCOSIGNREPLY:
 		print("Receive Reg CoSign from", senderID)
 		n.regChan <- payload
 	case TXNRECEIVE:
 		print("A Txn Received from", senderID)
-		txn := blockChain.ProduceTxn(payload, blockChain.PK)
+		txn := blockChain.ProduceTxn(payload[1:], rune(payload[0]))
 		n.bankProxy.AddTxn(txn)
 	case CHAINSYNC:
 		print("BlockChain Sync Req Received", senderID)
-		blockIndex := int64(binary.BigEndian.Uint64(payload))
-		for i := blockIndex; i < n.chain.Size(); i++ {
-			spk := n.getPubRoutingInfo(senderID)
-			blocks := n.chain.GenBlockBytes(i)
-			print(len(blocks), "sent")
-			p := n.prepareOMsg(CHAINSYNCACK, blocks, spk.Pk)
-			n.sendActive(p, spk.Port)
-		}
+		n.chainSyncRequested(payload, senderID)
 	case CHAINSYNCACK:
 		print("BlockChain Sync Ack Received", senderID)
 		b := blockChain.DeMuxBlock(payload)
 		n.chain.AddOldBlock(b)
+	case PUBLISHINGBLOCK:
+		print(senderID, "is trying to publish a block")
+	case PUBLISHINGCHECK:
+		print(senderID, "responded with publishing status")
 	case REJECT:
 		print(string(payload))
 	case EXPT:
@@ -141,6 +142,31 @@ func (n *Node) dispatch(incoming []byte) {
 	default:
 		print("Unknown Msg, discard.")
 	}
+}
+
+/*
+	Upon received a request for blockChain Sync, reply with blocks.
+ */
+func (n *Node) chainSyncRequested(payload []byte, senderID string) {
+	blockIndex := int64(binary.BigEndian.Uint64(payload))
+	for i := blockIndex; i < n.chain.Size(); i++ {
+		spk := n.getPubRoutingInfo(senderID)
+		blocks := n.chain.GenBlockBytes(i)
+		p := n.prepareOMsg(CHAINSYNCACK, blocks, spk.Pk)
+		n.sendActive(p, spk.Port)
+		// print(len(blocks), "sent to", spk.Port)
+	}
+}
+
+/*
+	Upon received register request, sign the pk, and reply it.
+ */
+func (n *Node) regCoSignRequest(payload []byte, senderID string) {
+	pkHash := sha256.Sum256(payload[:PKRQLEN])
+	mySig := n.blindSign(append(pkHash[:], payload[PKRQLEN:]...))
+	spk := n.getPubRoutingInfo(senderID)
+	p := n.prepareOMsg(REGCOSIGNREPLY, mySig, spk.Pk)
+	n.sendActive(p, spk.Port)
 }
 
 /*
@@ -161,8 +187,8 @@ func (n *Node) sendReject(msg string, senderPK *records.PKEntry) {
 /*
 	Wrap payload into OMsg and encrypt it with target pk.
  */
-func (n *Node) prepareOMsg(opcode rune, payload []byte, pk rsa.PublicKey) []byte {
-	return records.MarshalOMsg(opcode,payload, n.ID, n.sk, pk)
+func (n *Node) prepareOMsg(opCode rune, payload []byte, pk rsa.PublicKey) []byte {
+	return records.MarshalOMsg(opCode,payload, n.ID, n.sk, pk)
 }
 
 /*
@@ -176,8 +202,8 @@ func (n* Node) UnmarshalOMsg(incoming []byte) (*records.OMsg, bool) {
 /*
 	verified the signature with claimed senderID.
  */
-func verifySig(omsg *records.OMsg, pk *rsa.PublicKey) bool {
-	return omsg.VerifySig(pk)
+func verifySig(oMsg *records.OMsg, pk *rsa.PublicKey) bool {
+	return oMsg.VerifySig(pk)
 }
 
 

@@ -31,8 +31,10 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 
 	print("valid coin, continue")
 
+	counterBytes := make([]byte, 2)
+	binary.BigEndian.PutUint16(counterBytes, 0)
 	// start CoSign protocol with counter 0.
-	n.coSignValidCoin(c, 0)
+	n.coSignValidCoin(append(counterBytes, c...))
 
 	rwcn := payload[:BCOINSIZE]
 	bfid := payload[BCOINSIZE:BCOINSIZE+8]

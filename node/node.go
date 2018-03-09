@@ -5,7 +5,6 @@ import(
 	"log"
 	"crypto/rsa"
 	"crypto/x509"
-	"os"
 	"io/ioutil"
 	"time"
 	"github.com/rainer37/OnionCoin/coin"
@@ -31,15 +30,7 @@ type Node struct {
 	bankProxy *bank.Bank
 	regChan chan []byte
 	chain *bc.BlockChain
-}
-
-func checkErr(err error){
-	if err != nil { log.Fatal(err) }
-}
-
-func print(str ...interface{}) {
-	fmt.Print(NODEPREFIX+" ")
-	fmt.Println(str...)
+	events chan func(rune, []byte)
 }
 
 func NewNode(port string) *Node {
@@ -49,6 +40,7 @@ func NewNode(port string) *Node {
 	n.Port = port
 	n.pkChan = make(chan []byte)
 	n.regChan = make(chan []byte)
+	n.events = make(chan func(rune, []byte))
 	n.sk = produceSK()
 	n.InitVault()
 	n.chain = bc.InitBlockChain()
@@ -77,13 +69,6 @@ func (n *Node) getPubRoutingInfo(id string) *records.PKEntry {
 	return pe
 }
 
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil { return true, nil }
-	if os.IsNotExist(err) { return false, nil }
-	return true, err
-}
-
 /*
 	Check if there are sk stored locally, if not create one.
 	AND change dir into personal dir.
@@ -100,16 +85,30 @@ func produceSK() *rsa.PrivateKey {
 	Try sync block chain with peers.
  */
 func (n *Node) syncBlockChain() {
+	go n.blockChainEventQueue()
 	ticker := time.NewTicker(time.Millisecond * 5000)
 	for t := range ticker.C {
-		fmt.Println("Tick at", t.Unix())
-		banks := bank.GetBankIDSet()
-		bid := banks[rand.Int() % len(banks)]
-		bpk := n.getPubRoutingInfo(bid)
-		buf := make([]byte, 8)
-		binary.BigEndian.PutUint64(buf, uint64(n.chain.Size()))
-		p := n.prepareOMsg(CHAINSYNC, buf, bpk.Pk)
-		n.sendActive(p, bpk.Port)
+		go func() {
+			fmt.Println("Tick at", t.Unix())
+			banks := bank.GetBankIDSet()
+			bid := banks[rand.Int() % len(banks)]
+			bpk := n.getPubRoutingInfo(bid)
+			buf := make([]byte, 8)
+			binary.BigEndian.PutUint64(buf, uint64(n.chain.Size()))
+			p := n.prepareOMsg(CHAINSYNC, buf, bpk.Pk)
+			n.sendActive(p, bpk.Port)
+		}()
+	}
+}
+
+func (n *Node) blockChainEventQueue() {
+	for {
+		select {
+		case f := <-n.events:
+			f('1', nil)
+			print("event got")
+		default:
+		}
 	}
 }
 
@@ -124,4 +123,17 @@ func (n *Node) wrapABigOnion(msg []byte, ids []string) []byte {
 		o = ocrypto.WrapOnion(pe.Pk, ids[i+1], c.Bytes(), o)
 	}
 	return o
+}
+
+func (n* Node) AddEvent(f func(rune, []byte)) {
+	n.events <- f
+}
+
+func checkErr(err error){
+	if err != nil { log.Fatal(err) }
+}
+
+func print(str ...interface{}) {
+	fmt.Print(NODEPREFIX+" ")
+	fmt.Println(str...)
 }

@@ -28,24 +28,19 @@ func (n *Node) CoinExchange(dstID string) {
 	dstID = "FAKEID" + dstID
 	rwcn := coin.NewRawCoin(dstID)
 
-	print(rwcn.GetCoinNum())
+	// print(rwcn.GetCoinNum())
 
 	banks := bank.GetBankIDSet()
 	print(banks)
-	banksPk := []rsa.PublicKey{}
+	banksPk := []rsa.PublicKey{} // records which banks are helping
 
 	counter := 0
 	layers := 0
 	rc := rwcn.ToBytes()
 
-	for layers < bank.NUMCOSIGNER && counter < len(banks) {
+	for layers < blockChain.NUMCOSIGNER && counter < len(banks) {
 		b := banks[counter]
 		bpe := records.GetKeyByID(b)
-
-		//if bpe == nil {
-		//	print("ERR finding bank id provided", b)
-		//	continue
-		//}
 
 		print("Requesting", b, "for signing rawCoin")
 
@@ -54,7 +49,7 @@ func (n *Node) CoinExchange(dstID string) {
 		payload := append(blindrwcn, []byte(bfid)...)
 		payload = append(payload, blindrwcn...) // TODO: append a real COIN
 
-		fo := n.prepareOMsg(RAWCOINEXCHANGE,payload,bpe.Pk)
+		fo := n.prepareOMsg(RAWCOINEXCHANGE, payload, bpe.Pk)
 
 		exMap[bfid] = make(chan []byte)
 
@@ -90,7 +85,7 @@ func (n *Node) CoinExchange(dstID string) {
 		layers++
 	}
 
-	if layers == bank.NUMCOSIGNER {
+	if layers == blockChain.NUMCOSIGNER {
 		print("New Coin Forged, Thanks Fellas!")
 		n.Deposit(coin.NewCoin(dstID, rc))
 	} else {
@@ -103,7 +98,11 @@ func (n *Node) CoinExchange(dstID string) {
 	Till enough signatures gained, then publish it as a transaction.
 	Does the last CoSigner solves the puzzle of blind signers?
  */
-func (n *Node) coSignValidCoin(c []byte, counter uint16) {
+func (n *Node) coSignValidCoin(c []byte) {
+
+	counter := binary.BigEndian.Uint16(c[:2]) // get cosign counter first 2 bytes
+
+	c = c[2:]
 
 	hashAndIds := sha256.Sum256(c[:128]) // get the hash(32) of coin
 
@@ -113,13 +112,13 @@ func (n *Node) coSignValidCoin(c []byte, counter uint16) {
 	newCounter := make([]byte, 2)
 	binary.BigEndian.PutUint16(newCounter, counter+1)
 
-	var idBytes [16]byte
-	copy(idBytes[:], []byte(n.ID))
+	idBytes := make([]byte, 16)
+	copy(idBytes, n.ID)
 
 	signedHash = append(signedHash, idBytes[:]...) // append verifier to it
 
 	// when there is enough sigs gathered, try publish the txn.
-	if counter+1 == bank.NUMCOSIGNER {
+	if counter+1 == blockChain.NUMCOSIGNER {
 		print("Enough verifiers got, publish it")
 		print(len(signedHash), counter+1, "verifiers")
 		cnum, cbytes, sigs, verifiers := decodeCNCosign(signedHash, counter+1)
@@ -177,11 +176,11 @@ func decodeCNCosign(content []byte, counter uint16) (cnum uint64, cbytes []byte,
 /*
 	broadcast the txn to other banks with best effort.
  */
-func (n *Node) broadcastTxn(txn blockChain.Txn) {
+func (n *Node) broadcastTxn(txn blockChain.Txn, txnType rune) {
 	for _, b := range bank.GetBankIDSet() {
 		if b != n.ID{
 			bpe := n.getPubRoutingInfo(b)
-			p := n.prepareOMsg(TXNRECEIVE, txn.ToBytes(), bpe.Pk)
+			p := n.prepareOMsg(TXNRECEIVE, append([]byte{byte(txnType)}, txn.ToBytes()...), bpe.Pk)
 			go n.sendActive(p, bpe.Port)
 		}
 	}

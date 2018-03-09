@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"strings"
 	"strconv"
+	"fmt"
 )
 
 
@@ -46,7 +47,7 @@ func TestAddBlockToChain(t *testing.T) {
 
 func TestGetBlock(t *testing.T) {
 	chain := blockChain.InitBlockChain()
-
+	size := chain.Size()
 	block_1 := GenTestBlockWithTwoTxn()
 	block_2 := GenTestBlockWithTwoTxn()
 	block_3 := GenTestBlockWithTwoTxn()
@@ -55,7 +56,8 @@ func TestGetBlock(t *testing.T) {
 	chain.AddNewBlock(block_2)
 	chain.AddNewBlock(block_3)
 
-	if chain.Size() != 4 {
+	fmt.Println(chain.Size())
+	if chain.Size() != size + 3 {
 		t.Error("Wrong Size")
 	}
 

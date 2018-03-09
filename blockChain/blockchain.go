@@ -14,11 +14,15 @@ import(
 	"strconv"
 	"io/ioutil"
 	"github.com/rainer37/OnionCoin/ocrypto"
+	"bytes"
+	"encoding/binary"
 )
 
 const BKCHPREFIX = "[BKCH] "
 const CHAINDIR = "chainData/"
 const TINDEXDIR = CHAINDIR + "TIndex"
+const NUMCOSIGNER = 2
+
 var GENESISBLOCK = NewBlock([]Txn{})
 
 func print(str ...interface{}) {
@@ -83,13 +87,26 @@ func InitBlockChain() *BlockChain {
 	return chain
 }
 
+/*
+	Add a new block to the blockChain.
+	Update the prehash, txnHashes and depth before add it.
+ */
 func (chain *BlockChain) AddNewBlock(block *Block) bool {
 	print("Adding a new block")
 	// should try pull the block again from the network first before publish it.
+
 	prevBlock := chain.Blocks[len(chain.Blocks)-1]
 	block.PrevHash = prevBlock.CurHash
 	block.Depth = chain.Size()
 	block.Ts = time.Now().Unix()
+
+	hashes := bytes.Join(block.TxnHashes, []byte{})
+	depth := make([]byte, 8)
+	binary.BigEndian.PutUint64(depth, uint64(block.Depth))
+
+	payload := bytes.Join([][]byte{depth, block.PrevHash, hashes}, []byte{})
+	print(len(payload))
+
 	block.CurHash = block.GetCurHash()
 	chain.AddOldBlock(block)
 	return true
@@ -98,10 +115,6 @@ func (chain *BlockChain) AddNewBlock(block *Block) bool {
 func (chain *BlockChain) AddOldBlock(block *Block) {
 	chain.Store(block) // write to disk
 	chain.Blocks = append(chain.Blocks, block)
-}
-
-func (chain *BlockChain) getNextDepth() int64 {
-	return chain.Size()
 }
 
 /*
@@ -151,6 +164,7 @@ func (chain *BlockChain) Store(b *Block) {
 
 	if ok, _ := exists(CHAINDIR+blockFileName); ok {
 		print("duplicate block depth detected!")
+
 		return
 	}
 
@@ -172,16 +186,17 @@ func (chain *BlockChain) updateIndex(b *Block) {
 		switch v := t.(type) {
 		case PKRegTxn:
 			chain.TIndex.PKIndex[v.Id] = b.Depth
-			chain.TIndex.ChainLen = chain.Size()
-			chain.TIndex.LastUpdate = time.Now().Unix()
 		case CNEXTxn:
 			chain.TIndex.CNIndex[strconv.FormatUint(v.CoinNum, 10)] = b.Depth
-			chain.TIndex.ChainLen = chain.Size()
-			chain.TIndex.LastUpdate = time.Now().Unix()
+		case BCNRDMTxn:
+			print("duo nothing now")
 		default:
 			print("what the fuck is this txn")
 		}
 	}
+
+	chain.TIndex.ChainLen = chain.Size()
+	chain.TIndex.LastUpdate = time.Now().Unix()
 
 	indexData, err := json.Marshal(chain.TIndex)
 	checkErr(err)
@@ -200,10 +215,12 @@ func readABlock(name string) *Block {
 	blockPath := CHAINDIR + name
 	dat, err := ioutil.ReadFile(blockPath)
 	checkErr(err)
-
 	return DeMuxBlock(dat)
 }
 
+/*
+	generate a block from the given bytes, dynamically determine the actual type of the block
+ */
 func DeMuxBlock (blockBytes []byte) *Block {
 	var block *Block
 	json.Unmarshal(blockBytes, &block)
@@ -216,7 +233,7 @@ func DeMuxBlock (blockBytes []byte) *Block {
 		if i == "Txns" {
 			for _ , vv := range v.([]interface{}) {
 				tflag := 0
-				for iii, _ := range vv.(map[string]interface{}) {
+				for iii := range vv.(map[string]interface{}) {
 					if iii == "Pk" {
 						tflag = 1
 						break
@@ -242,6 +259,9 @@ func DeMuxBlock (blockBytes []byte) *Block {
 	return block
 }
 
+/*
+	generate block bytes in json
+ */
 func (chain *BlockChain) GenBlockBytes(start int64) []byte {
 	blocks := chain.Blocks[start]
 	b, err := json.Marshal(blocks)
