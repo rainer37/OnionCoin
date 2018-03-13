@@ -68,19 +68,14 @@ func NewCNEXTxn(coinNum uint64, coinBytes []byte, sigs []byte, verifiers []strin
 	ID(16) | PK(132) | Ts(8) | signedHashes | SignerIDs
  */
 func (pkr PKRegTxn) ToBytes() []byte {
-	pkrBytes := []byte{}
 
 	nextIDBytes := make([]byte, 16)
 	copy(nextIDBytes, pkr.Id)
 
-	pkrBytes = append(pkrBytes, nextIDBytes...)
-	pkrBytes = append(pkrBytes, pkr.Pk...)
-
 	timeBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(timeBytes, uint64(pkr.Ts))
 
-	pkrBytes = append(pkrBytes, timeBytes...)
-	pkrBytes = append(pkrBytes, pkr.Sigs...)
+	pkrBytes := bytes.Join([][]byte{nextIDBytes, pkr.Pk, timeBytes, pkr.Sigs}, []byte{})
 
 	for _, signer := range pkr.Verifiers {
 		sidBytes := make([]byte, 16)

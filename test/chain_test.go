@@ -13,25 +13,26 @@ import (
 func TestAddBlockToChain(t *testing.T) {
 	chain := blockChain.InitBlockChain()
 
-	if chain.Size() != int64(1) {
-		t.Error("Wrong size at first")
-	}
+	size := chain.Size()
 
 	block := GenTestBlockWithTwoTxn()
 
+	gblock := chain.GetLastBlock()
+
 	chain.AddNewBlock(block)
 
-	if chain.Size() != int64(2) {
+	if chain.Size() != size + 1 {
 		t.Error("Wrong size")
 	}
 
+	depth := chain.Size()
 	lb := chain.GetLastBlock()
 
-	if lb.Depth != 1 {
+	if lb.Depth != depth - 1 {
 		t.Error("Wrong Depth")
 	}
 
-	if strings.Trim(string(lb.PrevHash), "\x00") != "GENESIS_HASH_ON_MAR_2018" {
+	if strings.Trim(string(lb.PrevHash), "\x00") != string(gblock.CurHash) {
 		t.Error("Wrong prevHash")
 	}
 

@@ -1,9 +1,9 @@
 package bank
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"github.com/rainer37/OnionCoin/ocrypto"
-	"crypto/rsa"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/records"
 )
@@ -22,7 +22,6 @@ func print(str ...interface{}) {
 }
 
 func InitBank(sk *rsa.PrivateKey, chain *blockChain.BlockChain) *Bank {
-	print("i'm a bank!")
 	bank := new(Bank)
 	bank.sk = sk
 	bank.chain = chain
@@ -39,20 +38,20 @@ func (bank *Bank) SignRawCoin(coinSeg []byte) []byte {
 /*
 	Add a transaction to the buffer
 */
-func (bank *Bank) AddTxn(txn blockChain.Txn) bool {
-	ok := bank.validateTxn(txn)
+func (b *Bank) AddTxn(txn blockChain.Txn) bool {
+	ok := b.validateTxn(txn)
 	if !ok {
 		print("Invalid Cheating Txn, discard it")
 		return false
 	}
-	bank.txnBuffer = append(bank.txnBuffer, txn)
-	print("Txn added")
+	b.txnBuffer = append(b.txnBuffer, txn)
+	print("Txn added, current buffer load:", float32(len(b.txnBuffer)) / blockChain.MAXNUMTXN)
 
-	if len(bank.txnBuffer) == blockChain.MAXNUMTXN {
-		return bank.generateNewBlock()
+	if len(b.txnBuffer) == blockChain.MAXNUMTXN {
+		return b.generateNewBlock()
 	}
 
-	return true
+	return false
 }
 
 /*
@@ -63,7 +62,7 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 	sigs := txn.GetSigs()
 
 	if len(verifiers) != blockChain.NUMCOSIGNER || len(verifiers) != len(sigs) / 128 {
-		print("number of sigs does not match number of banks")
+		print("number of sigs does not match number of banks", len(verifiers), len(sigs) / 128)
 		return false
 	}
 
@@ -79,7 +78,7 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 		}
 	}
 	if matchCounter != len(verifiers) {
-		print("Some signer was not a bank at that time", matchCounter)
+		print("Some signer was not a bank at that time", matchCounter, blockChain.NUMCOSIGNER)
 		return false
 	}
 

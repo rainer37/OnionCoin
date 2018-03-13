@@ -41,12 +41,10 @@ func (c *Coin) GetRID() string {
 	return c.RID
 }
 
+// TODO: change to real coin bytes
 func (c *Coin) Bytes() []byte {
 	b := make([]byte, COINLEN)
-	cmsg := []byte("ThisIsNotACoin")
-	for i:=0;i<len(cmsg);i++ {
-		b[i] = cmsg[i]
-	}
+	copy(b, []byte("ThisIsNotACoin"))
 	return b
 }
 

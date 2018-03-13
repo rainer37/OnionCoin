@@ -76,12 +76,15 @@ func InitBlockChain() *BlockChain {
 		os.Create(TINDEXDIR)
 		chain.TIndex.PKIndex = make(map[string]int64)
 		chain.TIndex.CNIndex = make(map[string]int64)
-		chain.TIndex.ChainLen = 0
 	} else {
 		dat, err := ioutil.ReadFile(TINDEXDIR)
-		checkErr(err)
-		json.Unmarshal(dat, &chain.TIndex)
-		// chain.Length = chain.TIndex.ChainLen
+		if len(dat) == 0 {
+			chain.TIndex.PKIndex = make(map[string]int64)
+			chain.TIndex.CNIndex = make(map[string]int64)
+		} else {
+			checkErr(err)
+			json.Unmarshal(dat, &chain.TIndex)
+		}
 	}
 
 	return chain
@@ -108,11 +111,11 @@ func (chain *BlockChain) AddNewBlock(block *Block) bool {
 	print(len(payload))
 
 	block.CurHash = block.GetCurHash()
-	chain.AddOldBlock(block)
+	chain.StoreBlock(block)
 	return true
 }
 
-func (chain *BlockChain) AddOldBlock(block *Block) {
+func (chain *BlockChain) StoreBlock(block *Block) {
 	chain.Store(block) // write to disk
 	chain.Blocks = append(chain.Blocks, block)
 }
@@ -155,7 +158,7 @@ func (chain *BlockChain) GetLastBlock() *Block {
 	Store blockData to Disk.
  */
 func (chain *BlockChain) Store(b *Block) {
-	print("writing block to disk", chain.Size(), b.Depth)
+	print("writing block to disk, chainLen:", chain.Size(), "depth:", b.Depth)
 	// print(b)
 	blockData, err := json.Marshal(b)
 	checkErr(err)
@@ -173,7 +176,7 @@ func (chain *BlockChain) Store(b *Block) {
 
 	f.Write(blockData)
 	f.Close()
-	print("new block written", b.Depth)
+	print("new block written, chainLen:", chain.Size(), "depth:", b.Depth)
 
 	chain.updateIndex(b)
 }
@@ -267,6 +270,15 @@ func (chain *BlockChain) GenBlockBytes(start int64) []byte {
 	b, err := json.Marshal(blocks)
 	checkErr(err)
 	return b
+}
+
+// TODO: check if current chain is almost syncd
+func (chain *BlockChain) IsAlmostSyncd() bool {
+	print("Current chainLength:", chain.Size())
+	if chain.Size() > 1 {
+		return true
+	}
+	return false
 }
 
 func exists(path string) (bool, error) {

@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"errors"
+	"github.com/rainer37/OnionCoin/bank"
 )
 
 const (
@@ -28,6 +29,8 @@ const (
 	CHAINSYNCACK = 'T'
 	PUBLISHINGBLOCK = 'P'
 	PUBLISHINGCHECK = 'Q'
+	IPLOOKUP = 'L'
+	IPLOOKUPRP = 'M'
 	RETURN = 'R'
 	ADV = 'G'
 )
@@ -42,7 +45,7 @@ func (n *Node) syntaxCheck(incoming []byte) (error, rune, string, *records.PKEnt
 		return errors.New("cannot Unmarshal Msg, discard it." + string(len(incoming))), ' ', "", nil, nil
 	}
 
-	print("valid OMsg, continue...")
+	// print("valid OMsg, continue...")
 
 	senderID := omsg.GetSenderID()
 	senderPK := records.KeyRepo[senderID]
@@ -60,7 +63,7 @@ func (n *Node) syntaxCheck(incoming []byte) (error, rune, string, *records.PKEnt
 		return errors.New( "cannot verify sig from msg, discard it"), ' ', "", nil, nil
 	}
 
-	print("verified ID", senderID)
+	// print("verified ID", senderID)
 
 	payload := omsg.GetPayload()
 
@@ -83,10 +86,10 @@ func (n *Node) dispatch(incoming []byte) {
 
 	switch opCode{
 	case FWD:
-		print("Forwarding")
+		print("Forwarding something from", senderID)
 		n.forwardProtocol(payload, senderID)
 	case JOIN:
-		print("Joining")
+		print("Joining", senderID)
 		ok := n.joinProtocol(payload)
 		if ok {
 			n.welcomeNewBie(senderID)
@@ -129,18 +132,51 @@ func (n *Node) dispatch(incoming []byte) {
 		n.chainSyncRequested(payload, senderID)
 	case CHAINSYNCACK:
 		print("BlockChain Sync Ack Received", senderID)
-		b := blockChain.DeMuxBlock(payload)
-		n.chain.AddOldBlock(b)
+		depth := binary.BigEndian.Uint64(payload[:8])
+		print("block depth:", depth, n.chain.Size())
+		if n.chain.Size() > int64(depth) + 1 {
+			print("old block")
+			return
+		}
+		b := blockChain.DeMuxBlock(payload[8:])
+		n.chain.StoreBlock(b)
 	case PUBLISHINGBLOCK:
 		print(senderID, "is trying to publish a block")
+		depth := binary.BigEndian.Uint64(payload[:8])
+		print("block depth:", depth, n.chain.Size())
 	case PUBLISHINGCHECK:
 		print(senderID, "responded with publishing status")
+	case IPLOOKUP:
+		print(senderID, "is looking for someone")
+		n.handleLookup(payload)
+	case IPLOOKUPRP:
+		print("IP found")
 	case REJECT:
 		print(string(payload))
 	case EXPT:
 		//any exception
 	default:
 		print("Unknown Msg, discard.")
+	}
+}
+
+/*
+	publish the new blocks to all other banks.
+ */
+func (n *Node) publishBlock() {
+
+	banks := bank.GetBankIDSet()
+
+	for _, b := range banks {
+		if b == n.ID {
+			continue
+		}
+		bpe := n.getPubRoutingInfo(b)
+		bbytes := n.chain.GenBlockBytes(n.chain.Size() - 1)
+		depthByte := make([]byte, 8)
+		binary.BigEndian.PutUint64(depthByte, uint64(n.chain.Size()-1))
+		p := n.prepareOMsg(PUBLISHINGBLOCK, append(depthByte, bbytes...), bpe.Pk)
+		n.sendActive(p, bpe.Port)
 	}
 }
 
@@ -152,7 +188,9 @@ func (n *Node) chainSyncRequested(payload []byte, senderID string) {
 	for i := blockIndex; i < n.chain.Size(); i++ {
 		spk := n.getPubRoutingInfo(senderID)
 		blocks := n.chain.GenBlockBytes(i)
-		p := n.prepareOMsg(CHAINSYNCACK, blocks, spk.Pk)
+		depthByte := make([]byte, 8)
+		binary.BigEndian.PutUint64(depthByte, uint64(i))
+		p := n.prepareOMsg(CHAINSYNCACK, append(depthByte, blocks...), spk.Pk)
 		n.sendActive(p, spk.Port)
 		// print(len(blocks), "sent to", spk.Port)
 	}

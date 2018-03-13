@@ -9,11 +9,11 @@ import(
 	"time"
 	"github.com/rainer37/OnionCoin/coin"
 	"github.com/rainer37/OnionCoin/records"
-	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/bank"
 	bc "github.com/rainer37/OnionCoin/blockChain"
 	"math/rand"
 	"encoding/binary"
+	"strings"
 )
 
 const NODEPREFIX = "[NODE]"
@@ -29,17 +29,18 @@ type Node struct {
 	pkChan chan []byte // for pk lookup await when joining
 	bankProxy *bank.Bank
 	regChan chan []byte
+	iplookup chan string
 	chain *bc.BlockChain
 	events chan func(rune, []byte)
 }
 
 func NewNode(port string) *Node {
-	print("Create a new node.")
 	n := new(Node)
 	n.Vault = new(coin.Vault)
 	n.Port = port
 	n.pkChan = make(chan []byte)
 	n.regChan = make(chan []byte)
+	n.iplookup = make(chan string)
 	n.events = make(chan func(rune, []byte))
 	n.sk = produceSK()
 	n.InitVault()
@@ -49,6 +50,10 @@ func NewNode(port string) *Node {
 
 func (n *Node) GetBalance() int {
 	return n.Vault.Len()
+}
+
+func (n *Node) addr() string {
+	return n.IP + ":" + n.Port
 }
 
 func (n *Node) Deposit(coin *coin.Coin)  {
@@ -66,7 +71,24 @@ func (n *Node) Withdraw(rid string) *coin.Coin {
  */
 func (n *Node) getPubRoutingInfo(id string) *records.PKEntry {
 	pe := records.GetKeyByID(id)
-	return pe
+
+	if pe == nil {
+		print("no such dude in system")
+		return nil
+	}
+
+	if pe.Port != "" {
+		return pe
+	}
+
+	n.LookUpIP(id)
+	targetAddr := <-n.iplookup
+
+	ip, port := strings.Split(targetAddr, "@")[0],  strings.Split(targetAddr, "@")[1]
+
+	records.InsertEntry(id, pe.Pk, time.Now().Unix(), ip, port)
+
+	return records.GetKeyByID(id)
 }
 
 /*
@@ -83,18 +105,28 @@ func produceSK() *rsa.PrivateKey {
 
 /*
 	Try sync block chain with peers.
+	randonly picks a bank to send CHAINSYNC req.
  */
 func (n *Node) syncBlockChain() {
-	go n.blockChainEventQueue()
+	// go n.blockChainEventQueue()
+	if n.ID == "FAKEID1338" {
+		return
+	}
 	ticker := time.NewTicker(time.Millisecond * 5000)
 	for t := range ticker.C {
 		go func() {
 			fmt.Println("Tick at", t.Unix())
 			banks := bank.GetBankIDSet()
 			bid := banks[rand.Int() % len(banks)]
-			bpk := n.getPubRoutingInfo(bid)
+			if bid == n.ID {
+				return
+			}
 			buf := make([]byte, 8)
 			binary.BigEndian.PutUint64(buf, uint64(n.chain.Size()))
+			bpk := n.getPubRoutingInfo(bid)
+			if bpk == nil {
+				return
+			}
 			p := n.prepareOMsg(CHAINSYNC, buf, bpk.Pk)
 			n.sendActive(p, bpk.Port)
 		}()
@@ -110,19 +142,6 @@ func (n *Node) blockChainEventQueue() {
 		default:
 		}
 	}
-}
-
-/*
-	Given a list of ids of nodes on the path, create a onion wrapping the message to send.
-*/
-func (n *Node) wrapABigOnion(msg []byte, ids []string) []byte {
-	o := msg
-	for i:=0; i<len(ids)-1; i++ {
-		pe := n.getPubRoutingInfo(ids[i])
-		c := n.Vault.Withdraw(ids[i])
-		o = ocrypto.WrapOnion(pe.Pk, ids[i+1], c.Bytes(), o)
-	}
-	return o
 }
 
 func (n* Node) AddEvent(f func(rune, []byte)) {

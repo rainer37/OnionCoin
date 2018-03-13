@@ -34,7 +34,6 @@ func (vault *Vault) InitVault() {
 			coins = append(coins, ncoin)
 		}
 	}
-	print("Vault Created.")
 }
 
 func (vault *Vault) Contains(coin *Coin) bool {

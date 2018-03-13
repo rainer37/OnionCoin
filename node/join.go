@@ -11,9 +11,10 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"github.com/rainer37/OnionCoin/blockChain"
+	"bytes"
 )
 
-const NUMNODEINFO = 10
+const NUMNODEINFO = 3
 const REGISTER = "PKRQ"
 const PKRQACK  = "PKAK"
 const PKRQCODELEN = 4
@@ -50,9 +51,7 @@ func (n *Node) joinProtocol(payload []byte) bool {
 		jack := n.prepareOMsg(JOINACK, jackPayload, tpk.Pk)
 		records.KeyRepo[senderID].Port = senderPort
 		n.sendActive(jack, senderPort)
-		print("JOINACK sent", len(jack))
-	} else if isNew == "O" {
-		return false
+		print("JOIN ACK sent", len(jack))
 	} else {
 		fmt.Println("Invalid JOIN status, reject")
 		return false
@@ -70,15 +69,24 @@ func (n *Node) joinProtocol(payload []byte) bool {
 func (n* Node) newbieJoin(incoming []byte) bool {
 	// if the newbie is joining, special protocol is invoked.
 	if string(incoming[:PKRQCODELEN]) == REGISTER {
-		newBie_pk := ocrypto.DecodePK(incoming[PKRQCODELEN:PKRQCODELEN+PKRQLEN])
+		newBiePk := ocrypto.DecodePK(incoming[PKRQCODELEN:PKRQCODELEN+PKRQLEN])
 		senderAddr := string(incoming[PKRQCODELEN+PKRQLEN:])
 
 		// TODO: remove this cond
 		if senderAddr[:4] != "1339" {
-			n.registerCoSign(newBie_pk, FAKEID+senderAddr)
+			n.registerCoSign(newBiePk, FAKEID+senderAddr)
+		} else {
+			newbieID := "FAKEID"+senderAddr[:4]
+			superPK := ocrypto.EncodePK(newBiePk)
+			pkHash := sha256.Sum256(superPK)
+			sig1 := n.blindSign(append(pkHash[:], []byte(newbieID)...))
+			sig2 := n.blindSign(append(pkHash[:], []byte(newbieID)...))
+			signers := []string{n.ID, n.ID}
+			txn := blockChain.NewPKRTxn(newbieID, newBiePk, append(sig1, sig2...), signers)
+			n.bankProxy.AddTxn(txn)
 		}
 
-		records.InsertEntry(FAKEID+senderAddr, newBie_pk, time.Now().Unix(), LOCALHOST, senderAddr)
+		records.InsertEntry(FAKEID+senderAddr, newBiePk, time.Now().Unix(), LOCALHOST, senderAddr)
 		// PKAK | EncodedPK | PortListening
 		n.sendActive([]byte(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port), senderAddr)
 		return true
@@ -100,8 +108,7 @@ func (n *Node) gatherRoutingInfo() []byte {
 	count := 1
 	for i,v := range records.KeyRepo {
 		if count <= NUMNODEINFO {
-			result = append(result, makeBytesLen([]byte(i))...)
-			result = append(result, makeBytesLen(v.Bytes())...)
+			result = bytes.Join([][]byte{result, makeBytesLen([]byte(i)), makeBytesLen(v.Bytes())}, []byte{})
 			count++
 		} else {
 			break
@@ -126,6 +133,7 @@ func unmarshalRoutingInfo(b []byte) {
 		cur += int(eLen) + 4
 
 		records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
+		print("inserting", id)
 	}
 }
 
@@ -187,12 +195,13 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 		}
 	}
 
-	print("Enough Signing Received, Register", id)
-	print("Signer:", len(regBytes) / 128, signers)
+	print("Enough Signing Received, Register Node", id, "by", len(signers), "Signer:", signers)
 
 	txn := blockChain.NewPKRTxn(id, pk, regBytes, signers)
-	print(len(txn.ToBytes()))
-	n.bankProxy.AddTxn(txn)
+	ok := n.bankProxy.AddTxn(txn)
+	if ok {
+		n.publishBlock()
+	}
 
 	go n.broadcastTxn(txn, blockChain.PK)
 

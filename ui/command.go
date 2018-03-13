@@ -29,8 +29,8 @@ func Listen(n *node.Node) {
 		}
 		matched, _ = regexp.MatchString("fwd *", text)
 		if matched {
-			tokens := strings.Split(text, " ")
-			n.CoinExchange(tokens[1][:len(tokens[1])-1])
+			tokens := strings.Split(text[:len(text)-1], " ")
+			n.MakeOnionMsg(tokens[2:], tokens[1])
 		}
 		matched, _ = regexp.MatchString("pub *", text)
 		if matched {

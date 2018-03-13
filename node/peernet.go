@@ -7,6 +7,9 @@ import (
 	"time"
 	"github.com/rainer37/OnionCoin/bank"
 	"github.com/rainer37/OnionCoin/ocrypto"
+	"github.com/rainer37/OnionCoin/blockChain"
+	"crypto/sha256"
+	"os"
 )
 
 const BUFSIZE = 4096
@@ -19,15 +22,23 @@ func (n *Node) SelfInit() {
 	if n.iamBank() {
 		print("My Turn To be Bank!")
 		n.bankProxy = bank.InitBank(n.sk, n.chain)
-	} else {
-		go n.syncBlockChain()
 	}
 
 	records.InsertEntry(n.ID, n.sk.PublicKey, time.Now().Unix(), n.IP, n.Port)
 
+	if n.ID == "FAKEID1338" && n.chain.Size() < 2{
+		superPK := ocrypto.EncodePK(n.sk.PublicKey)
+		pkHash := sha256.Sum256(superPK)
+		sig1 := n.blindSign(append(pkHash[:], []byte(n.ID)...))
+		sig2 := n.blindSign(append(pkHash[:], []byte(n.ID)...))
+		signers := []string{n.ID, n.ID}
+		txn := blockChain.NewPKRTxn(n.ID, n.sk.PublicKey, append(sig1, sig2...), signers)
+		n.bankProxy.AddTxn(txn)
+	}
+
 	p,err := strconv.Atoi(n.Port)
 	checkErr(err)
-	// go n.syncBlockChain()
+	go n.syncBlockChain()
 	n.Serve(LOCALHOST, p)
 }
 
@@ -52,6 +63,7 @@ func (n *Node) IniJoin(address string, status int) {
 		pe := n.getPubRoutingInfo(JID)
 		if pe == nil {
 			print("Cannot Join On this Unregistered Peer")
+			os.Exit(1)
 			return
 		}
 		p := n.prepareOMsg(JOIN, payload, pe.Pk)

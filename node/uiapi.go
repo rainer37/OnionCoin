@@ -1,7 +1,6 @@
 package node
 
 import (
-	"github.com/rainer37/OnionCoin/records"
 	"github.com/rainer37/OnionCoin/coin"
 	"github.com/rainer37/OnionCoin/bank"
 	"crypto/rsa"
@@ -29,6 +28,12 @@ func (n *Node) CoinExchange(dstID string) {
 	rwcn := coin.NewRawCoin(dstID)
 
 	// print(rwcn.GetCoinNum())
+	//c := n.Vault.Withdraw(n.ID) // get a coin from the vault.
+	//
+	//if c == nil {
+	//	print("no coin for exchange a new one")
+	//	return
+	//}
 
 	banks := bank.GetBankIDSet()
 	print(banks)
@@ -39,14 +44,15 @@ func (n *Node) CoinExchange(dstID string) {
 	rc := rwcn.ToBytes()
 
 	for layers < blockChain.NUMCOSIGNER && counter < len(banks) {
-		b := banks[counter]
-		bpe := records.GetKeyByID(b)
+		bid := banks[counter]
+		bpe := n.getPubRoutingInfo(bid)
 
-		print("Requesting", b, "for signing rawCoin")
+		print("Requesting", bid, "for signing rawCoin")
 
 		blindrwcn, bfid := BlindBytes(rc, &bpe.Pk)
 
 		payload := append(blindrwcn, []byte(bfid)...)
+
 		payload = append(payload, blindrwcn...) // TODO: append a real COIN
 
 		fo := n.prepareOMsg(RAWCOINEXCHANGE, payload, bpe.Pk)
@@ -62,12 +68,12 @@ func (n *Node) CoinExchange(dstID string) {
 			realCoin = reply
 			close(exMap[bfid])
 		case <-time.After(COSIGNTIMEOUT * time.Second):
-			print(b, "no response, try next bank")
+			print(bid, "no response, try next bank")
 			counter++
 			continue
 		}
 
-		print("waiting for response from", b)
+		print("waiting for response from", bid)
 
 		revealedCoin := UnBlindBytes(realCoin, bfid, &bpe.Pk)
 
@@ -76,7 +82,7 @@ func (n *Node) CoinExchange(dstID string) {
 		expected := ocrypto.EncryptBig(&bpe.Pk, revealedCoin)
 
 		if string(expected) != string(rc) {
-			print("not equal after blindSign, bad bank!", b)
+			print("not equal after blindSign, bad bank!", bid)
 			continue
 		}
 
@@ -88,6 +94,7 @@ func (n *Node) CoinExchange(dstID string) {
 	if layers == blockChain.NUMCOSIGNER {
 		print("New Coin Forged, Thanks Fellas!")
 		n.Deposit(coin.NewCoin(dstID, rc))
+		print(n.Vault.Coins)
 	} else {
 		print("Not Enough Banks To Forge a Coin, Try Next Epoch")
 	}
@@ -127,8 +134,9 @@ func (n *Node) coSignValidCoin(c []byte) {
 		// start broadcasting the new Txn.
 		// TODO: go n.broadcastTxn(txn)
 		ok := n.bankProxy.AddTxn(txn)
-		if !ok {
-			print("something wrong with this txn, discard it")
+		if ok {
+			print("time to publish this block")
+			n.publishBlock()
 		}
 		return
 	}
