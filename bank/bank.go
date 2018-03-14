@@ -6,6 +6,7 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/records"
+	"crypto/sha256"
 )
 
 const BANK_PREFIX = "[BANK]"
@@ -39,6 +40,17 @@ func (bank *Bank) SignRawCoin(coinSeg []byte) []byte {
 	Add a transaction to the buffer
 */
 func (b *Bank) AddTxn(txn blockChain.Txn) bool {
+
+	// first check if there are duplicate txn in buffer.
+	for _, t := range b.txnBuffer {
+		h := sha256.Sum256(t.GetContent())
+		h2 := sha256.Sum256(txn.GetContent())
+		if string(h[:]) == string(h2[:]) {
+			print("duplicate txn, ignore")
+			return false
+		}
+	}
+
 	ok := b.validateTxn(txn)
 	if !ok {
 		print("Invalid Cheating Txn, discard it")

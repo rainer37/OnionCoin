@@ -200,7 +200,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	txn := blockChain.NewPKRTxn(id, pk, regBytes, signers)
 	ok := n.bankProxy.AddTxn(txn)
 	if ok {
-		n.publishBlock()
+		// n.publishBlock()
 	}
 
 	go n.broadcastTxn(txn, blockChain.PK)
@@ -208,3 +208,29 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	// n.sendActive([]byte("You are good to Go"), id[6:])
 	print("confirmation sent")
 }
+
+/*
+	Upon received register request, sign the pk, and reply it.
+ */
+func (n *Node) regCoSignRequest(payload []byte, senderID string) {
+	pkHash := sha256.Sum256(payload[:PKRQLEN])
+	mySig := n.blindSign(append(pkHash[:], payload[PKRQLEN:]...))
+	spk := n.getPubRoutingInfo(senderID)
+	p := n.prepareOMsg(REGCOSIGNREPLY, mySig, spk.Pk)
+	n.sendActive(p, spk.Port)
+}
+
+
+/*
+	a warm welcome to newbie.
+ */
+func welcomeProtocol(payload []byte) {
+	idLen := binary.BigEndian.Uint32(payload[:4])
+	id := string(payload[4:4+idLen])
+	print(id, len(records.KeyRepo))
+
+	eLen := binary.BigEndian.Uint32(payload[4+idLen:8+idLen])
+	e := records.BytesToPKEntry(payload[8+idLen:8+idLen+eLen])
+	records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
+}
+

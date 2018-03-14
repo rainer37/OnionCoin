@@ -14,8 +14,6 @@ import(
 	"strconv"
 	"io/ioutil"
 	"github.com/rainer37/OnionCoin/ocrypto"
-	"bytes"
-	"encoding/binary"
 )
 
 const BKCHPREFIX = "[BKCH] "
@@ -23,7 +21,7 @@ const CHAINDIR = "chainData/"
 const TINDEXDIR = CHAINDIR + "TIndex"
 const NUMCOSIGNER = 2
 
-var GENESISBLOCK = NewBlock([]Txn{})
+var GENESISBLOCK = Block{[]byte("ONCE UPON A TIME IN OLD ERA"), []byte("GENESIS_HASH_ON_MAR_2018"), 0, 0, 0, nil, nil}
 
 func print(str ...interface{}) {
 	fmt.Print(BKCHPREFIX+" ")
@@ -49,45 +47,51 @@ type BlockChain struct {
 }
 
 func InitBlockChain() *BlockChain {
+
 	chain := new(BlockChain)
-	GENESISBLOCK.CurHash = []byte("GENESIS_HASH_ON_MAR_2018")
-	chain.Blocks = append(chain.Blocks, GENESISBLOCK)
+	chain.Blocks = []*Block{&GENESISBLOCK}
+
+	if ok, _ := exists(TINDEXDIR); !ok {
+		os.Create(TINDEXDIR)
+	}
 
 	if ok, _ := exists(CHAINDIR); !ok {
 		os.Mkdir(CHAINDIR, 0777)
-	} else {
-		files, err := ioutil.ReadDir(CHAINDIR)
-		checkErr(err)
-		for _, f := range files {
-			if f.Name() != "TIndex" {
-				b := readABlock(f.Name())
-				if string(chain.GetLastBlock().CurHash) == string(b.PrevHash) {
-					chain.Blocks = append(chain.Blocks, b)
-				} else {
-					print("broken chain detected")
-				}
-			}
-		}
-		print("Current Stored Chain Len", chain.Size())
-	}
-
-	// read TIndex from disk if there is one.
-	if ok, _ := exists(TINDEXDIR); !ok {
-		os.Create(TINDEXDIR)
 		chain.TIndex.PKIndex = make(map[string]int64)
 		chain.TIndex.CNIndex = make(map[string]int64)
 	} else {
-		dat, err := ioutil.ReadFile(TINDEXDIR)
-		if len(dat) == 0 {
-			chain.TIndex.PKIndex = make(map[string]int64)
-			chain.TIndex.CNIndex = make(map[string]int64)
-		} else {
-			checkErr(err)
-			json.Unmarshal(dat, &chain.TIndex)
-		}
+		chain.loadChainAndIndex()
+		print("Current Stored Chain Len", chain.Size())
 	}
 
 	return chain
+}
+
+/*
+	Load all the blocks from disk, and add it to blockchain struct
+	update TIndex with all info loaded
+ */
+func (chain *BlockChain) loadChainAndIndex() {
+	// read TIndex from disk if there is one.
+	chain.Blocks = []*Block{&GENESISBLOCK}
+
+	chain.TIndex.PKIndex = make(map[string]int64)
+	chain.TIndex.CNIndex = make(map[string]int64)
+
+	files, err := ioutil.ReadDir(CHAINDIR)
+	checkErr(err)
+	for _, f := range files {
+		if f.Name() != "TIndex" && f.Name() != ".DS_Store"{
+			print(f.Name())
+			b := readABlock(f.Name())
+			if string(chain.GetLastBlock().CurHash) == string(b.PrevHash) {
+				chain.Blocks = append(chain.Blocks, b)
+				chain.updateIndex(b)
+			} else {
+				print("broken chain detected")
+			}
+		}
+	}
 }
 
 /*
@@ -96,28 +100,53 @@ func InitBlockChain() *BlockChain {
  */
 func (chain *BlockChain) AddNewBlock(block *Block) bool {
 	print("Adding a new block")
-	// should try pull the block again from the network first before publish it.
 
+	// should try pull the block again from the network first before publish it.
 	prevBlock := chain.Blocks[len(chain.Blocks)-1]
 	block.PrevHash = prevBlock.CurHash
-	block.Depth = chain.Size()
+	block.Depth = prevBlock.Depth + 1
 	block.Ts = time.Now().Unix()
 
-	hashes := bytes.Join(block.TxnHashes, []byte{})
-	depth := make([]byte, 8)
-	binary.BigEndian.PutUint64(depth, uint64(block.Depth))
+	// hashes := bytes.Join(block.TxnHashes, []byte{})
+	// depth := make([]byte, 8)
+	// binary.BigEndian.PutUint64(depth, uint64(block.Depth))
 
-	payload := bytes.Join([][]byte{depth, block.PrevHash, hashes}, []byte{})
-	print(len(payload))
+	// payload := bytes.Join([][]byte{depth, block.PrevHash, hashes}, []byte{})
+	// print(len(payload))
 
 	block.CurHash = block.GetCurHash()
 	chain.StoreBlock(block)
+
 	return true
 }
 
-func (chain *BlockChain) StoreBlock(block *Block) {
-	chain.Store(block) // write to disk
-	chain.Blocks = append(chain.Blocks, block)
+/*
+	store the block bytes on disk in json, and update TIndex
+ */
+func (chain *BlockChain) StoreBlock(b *Block) {
+	print("writing block to disk, depth:", b.Depth)
+
+	blockData, err := json.Marshal(b)
+	checkErr(err)
+
+	blockFileName := strconv.FormatInt(b.Depth, 10)
+
+	if ok, _ := exists(CHAINDIR + blockFileName); ok {
+		print("duplicate block depth detected!")
+		return
+	}
+
+	f, err := os.Create(CHAINDIR + blockFileName)
+	checkErr(err)
+	f.Write(blockData)
+	f.Close()
+
+	chain.updateIndex(b)
+
+	chain.Blocks = append(chain.Blocks, b)
+
+	print("new block written, depth:", b.Depth)
+
 }
 
 /*
@@ -142,6 +171,20 @@ func (chain *BlockChain) GetPKFromChain(id string) *rsa.PublicKey {
 	return nil
 }
 
+/*
+	Trim the blockchain starting at some point, and delete them from disk
+	then update chain struct and TIndex.
+	TODO: save the valid txns that are not in the new chain for future use.
+
+ */
+func (chain *BlockChain) TrimChain(start int64) {
+	n := chain.Size()
+	for i := start; i < n; i++ {
+		os.Remove(CHAINDIR + strconv.FormatUint(uint64(i), 10))
+	}
+	chain.loadChainAndIndex()
+}
+
 func (chain *BlockChain) Size() int64 {
 	return int64(len(chain.Blocks))
 }
@@ -152,33 +195,6 @@ func (chain *BlockChain) GetBlock(index int64) *Block {
 
 func (chain *BlockChain) GetLastBlock() *Block {
 	return chain.GetBlock(chain.Size()-1)
-}
-
-/*
-	Store blockData to Disk.
- */
-func (chain *BlockChain) Store(b *Block) {
-	print("writing block to disk, chainLen:", chain.Size(), "depth:", b.Depth)
-	// print(b)
-	blockData, err := json.Marshal(b)
-	checkErr(err)
-
-	blockFileName := strconv.FormatInt(b.Depth, 10)
-
-	if ok, _ := exists(CHAINDIR+blockFileName); ok {
-		print("duplicate block depth detected!")
-
-		return
-	}
-
-	f, err := os.Create(CHAINDIR+blockFileName)
-	checkErr(err)
-
-	f.Write(blockData)
-	f.Close()
-	print("new block written, chainLen:", chain.Size(), "depth:", b.Depth)
-
-	chain.updateIndex(b)
 }
 
 /*
@@ -263,7 +279,7 @@ func DeMuxBlock (blockBytes []byte) *Block {
 }
 
 /*
-	generate block bytes in json
+	generate one block bytes in json
  */
 func (chain *BlockChain) GenBlockBytes(start int64) []byte {
 	blocks := chain.Blocks[start]

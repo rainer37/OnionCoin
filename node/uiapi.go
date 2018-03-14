@@ -94,7 +94,7 @@ func (n *Node) CoinExchange(dstID string) {
 	if layers == blockChain.NUMCOSIGNER {
 		print("New Coin Forged, Thanks Fellas!")
 		n.Deposit(coin.NewCoin(dstID, rc))
-		print(n.Vault.Coins)
+		// print(n.Vault.Coins)
 	} else {
 		print("Not Enough Banks To Forge a Coin, Try Next Epoch")
 	}
@@ -136,7 +136,7 @@ func (n *Node) coSignValidCoin(c []byte) {
 		ok := n.bankProxy.AddTxn(txn)
 		if ok {
 			print("time to publish this block")
-			n.publishBlock()
+			// n.publishBlock()
 		}
 		return
 	}

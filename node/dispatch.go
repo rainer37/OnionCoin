@@ -4,10 +4,8 @@ import (
 	"github.com/rainer37/OnionCoin/records"
 	"crypto/rsa"
 	"encoding/binary"
-	"crypto/sha256"
-	"github.com/rainer37/OnionCoin/blockChain"
 	"errors"
-	"github.com/rainer37/OnionCoin/bank"
+	"sync"
 )
 
 const (
@@ -27,6 +25,8 @@ const (
 	REJECT = 'F'
 	CHAINSYNC = 'S'
 	CHAINSYNCACK = 'T'
+	CHAINREPAIR = 'U'
+	CHAINREPAIRREPLY = 'V'
 	PUBLISHINGBLOCK = 'P'
 	PUBLISHINGCHECK = 'Q'
 	IPLOOKUP = 'L'
@@ -34,6 +34,8 @@ const (
 	RETURN = 'R'
 	ADV = 'G'
 )
+
+var mutex = sync.Mutex{}
 
 /*
 	check the OMsg bytes received, verify the sig by senderID, and return [err, opCode, ID, pkEntry, payload]
@@ -125,21 +127,22 @@ func (n *Node) dispatch(incoming []byte) {
 		n.regChan <- payload
 	case TXNRECEIVE:
 		print("A Txn Received from", senderID)
-		txn := blockChain.ProduceTxn(payload[1:], rune(payload[0]))
-		n.bankProxy.AddTxn(txn)
+		// txn := blockChain.ProduceTxn(payload[1:], rune(payload[0]))
+		// n.bankProxy.AddTxn(txn)
 	case CHAINSYNC:
 		print("BlockChain Sync Req Received", senderID)
 		n.chainSyncRequested(payload, senderID)
 	case CHAINSYNCACK:
+		mutex.Lock()
 		print("BlockChain Sync Ack Received", senderID)
-		depth := binary.BigEndian.Uint64(payload[:8])
-		print("block depth:", depth, n.chain.Size())
-		if n.chain.Size() > int64(depth) + 1 {
-			print("old block")
-			return
-		}
-		b := blockChain.DeMuxBlock(payload[8:])
-		n.chain.StoreBlock(b)
+		n.chainSyncAckReceived(payload, senderID)
+		mutex.Unlock()
+	case CHAINREPAIR:
+		print(senderID, "tries to repair its chain")
+		n.chainRepairReceived(payload, senderID)
+	case CHAINREPAIRREPLY:
+		print("repair the chain accordingto", senderID)
+		n.repairChain(payload)
 	case PUBLISHINGBLOCK:
 		print(senderID, "is trying to publish a block")
 		depth := binary.BigEndian.Uint64(payload[:8])
@@ -158,53 +161,6 @@ func (n *Node) dispatch(incoming []byte) {
 	default:
 		print("Unknown Msg, discard.")
 	}
-}
-
-/*
-	publish the new blocks to all other banks.
- */
-func (n *Node) publishBlock() {
-
-	banks := bank.GetBankIDSet()
-
-	for _, b := range banks {
-		if b == n.ID {
-			continue
-		}
-		bpe := n.getPubRoutingInfo(b)
-		bbytes := n.chain.GenBlockBytes(n.chain.Size() - 1)
-		depthByte := make([]byte, 8)
-		binary.BigEndian.PutUint64(depthByte, uint64(n.chain.Size()-1))
-		p := n.prepareOMsg(PUBLISHINGBLOCK, append(depthByte, bbytes...), bpe.Pk)
-		n.sendActive(p, bpe.Port)
-	}
-}
-
-/*
-	Upon received a request for blockChain Sync, reply with blocks.
- */
-func (n *Node) chainSyncRequested(payload []byte, senderID string) {
-	blockIndex := int64(binary.BigEndian.Uint64(payload))
-	for i := blockIndex; i < n.chain.Size(); i++ {
-		spk := n.getPubRoutingInfo(senderID)
-		blocks := n.chain.GenBlockBytes(i)
-		depthByte := make([]byte, 8)
-		binary.BigEndian.PutUint64(depthByte, uint64(i))
-		p := n.prepareOMsg(CHAINSYNCACK, append(depthByte, blocks...), spk.Pk)
-		n.sendActive(p, spk.Port)
-		// print(len(blocks), "sent to", spk.Port)
-	}
-}
-
-/*
-	Upon received register request, sign the pk, and reply it.
- */
-func (n *Node) regCoSignRequest(payload []byte, senderID string) {
-	pkHash := sha256.Sum256(payload[:PKRQLEN])
-	mySig := n.blindSign(append(pkHash[:], payload[PKRQLEN:]...))
-	spk := n.getPubRoutingInfo(senderID)
-	p := n.prepareOMsg(REGCOSIGNREPLY, mySig, spk.Pk)
-	n.sendActive(p, spk.Port)
 }
 
 /*
@@ -242,19 +198,5 @@ func (n* Node) UnmarshalOMsg(incoming []byte) (*records.OMsg, bool) {
  */
 func verifySig(oMsg *records.OMsg, pk *rsa.PublicKey) bool {
 	return oMsg.VerifySig(pk)
-}
-
-
-/*
-	a warm welcome to newbie.
- */
-func welcomeProtocol(payload []byte) {
-	idLen := binary.BigEndian.Uint32(payload[:4])
-	id := string(payload[4:4+idLen])
-	print(id, len(records.KeyRepo))
-
-	eLen := binary.BigEndian.Uint32(payload[4+idLen:8+idLen])
-	e := records.BytesToPKEntry(payload[8+idLen:8+idLen+eLen])
-	records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
 }
 

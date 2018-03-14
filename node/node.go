@@ -11,8 +11,6 @@ import(
 	"github.com/rainer37/OnionCoin/records"
 	"github.com/rainer37/OnionCoin/bank"
 	bc "github.com/rainer37/OnionCoin/blockChain"
-	"math/rand"
-	"encoding/binary"
 	"strings"
 )
 
@@ -30,8 +28,8 @@ type Node struct {
 	bankProxy *bank.Bank
 	regChan chan []byte
 	iplookup chan string
+	blockBuffer chan int
 	chain *bc.BlockChain
-	events chan func(rune, []byte)
 }
 
 func NewNode(port string) *Node {
@@ -41,7 +39,7 @@ func NewNode(port string) *Node {
 	n.pkChan = make(chan []byte)
 	n.regChan = make(chan []byte)
 	n.iplookup = make(chan string)
-	n.events = make(chan func(rune, []byte))
+	n.blockBuffer = make(chan int)
 	n.sk = produceSK()
 	n.InitVault()
 	n.chain = bc.InitBlockChain()
@@ -101,51 +99,6 @@ func produceSK() *rsa.PrivateKey {
 	sk, err := x509.ParsePKCS1PrivateKey(dat)
 	checkErr(err)
 	return sk
-}
-
-/*
-	Try sync block chain with peers.
-	randonly picks a bank to send CHAINSYNC req.
- */
-func (n *Node) syncBlockChain() {
-	// go n.blockChainEventQueue()
-	if n.ID == "FAKEID1338" {
-		return
-	}
-	ticker := time.NewTicker(time.Millisecond * 5000)
-	for t := range ticker.C {
-		go func() {
-			fmt.Println("Tick at", t.Unix())
-			banks := bank.GetBankIDSet()
-			bid := banks[rand.Int() % len(banks)]
-			if bid == n.ID {
-				return
-			}
-			buf := make([]byte, 8)
-			binary.BigEndian.PutUint64(buf, uint64(n.chain.Size()))
-			bpk := n.getPubRoutingInfo(bid)
-			if bpk == nil {
-				return
-			}
-			p := n.prepareOMsg(CHAINSYNC, buf, bpk.Pk)
-			n.sendActive(p, bpk.Port)
-		}()
-	}
-}
-
-func (n *Node) blockChainEventQueue() {
-	for {
-		select {
-		case f := <-n.events:
-			f('1', nil)
-			print("event got")
-		default:
-		}
-	}
-}
-
-func (n* Node) AddEvent(f func(rune, []byte)) {
-	n.events <- f
 }
 
 func checkErr(err error){
