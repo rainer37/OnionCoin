@@ -17,6 +17,9 @@ import(
 const NODEPREFIX = "[NODE]"
 const FAKEID = "FAKEID"
 const SELFSKEYPATH = "self.sk"
+var slient = false
+var opCount = 0
+var pathLength = 0
 
 type Node struct {
 	ID string
@@ -101,11 +104,62 @@ func produceSK() *rsa.PrivateKey {
 	return sk
 }
 
+func (n *Node) random_exchg() {
+	ticker := time.NewTicker(time.Second * 2)
+	for range ticker.C {
+		//fmt.Println("Tick at", t.Unix(), "SEND:", msgSendCount, "RECEIVED:", msgReceived, "OPS:", opCount)
+		if !n.iamBank() {
+
+			go func() {
+				if coin.GetBalance() > 0 {
+
+					n.CoinExchange(n.ID)
+					opCount++
+
+				} else {
+					fmt.Println("Not enough balance")
+				}
+			}()
+		}
+
+	}
+}
+
+func (n *Node) random_msg() {
+	ticker := time.NewTicker(time.Second * 3)
+	for t := range ticker.C {
+		fmt.Println(t.Unix(), "SEND:", msgSendCount, "OPS:", opCount, "MSGCOUNT:", omsgCount, "PATHLEN:", pathLength)
+		if !n.iamBank() {
+			go func() {
+				if coin.GetBalance() > 0 {
+
+					path := records.RandomPath()
+					pathLength += len(path)
+					msg := "hello, i am " + n.ID
+
+					// fmt.Println("Path:", path)
+
+					n.SendOninoMsg(path, msg)
+
+					opCount++
+
+				} else {
+					fmt.Println("Not enough balance")
+				}
+			}()
+		}
+
+	}
+}
+
 func checkErr(err error){
 	if err != nil { log.Fatal(err) }
 }
 
 func print(str ...interface{}) {
+	if slient {
+		return
+	}
 	fmt.Print(NODEPREFIX+" ")
 	fmt.Println(str...)
 }

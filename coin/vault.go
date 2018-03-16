@@ -6,6 +6,8 @@ import(
 	"strings"
 )
 
+var balance = 1
+
 type Vault struct {
 	Coins map[string][]*Coin
 }
@@ -23,7 +25,7 @@ func (vault *Vault) InitVault() {
 	checkErr(err)
 	for _, f := range files {
 		rid := strings.Split(f.Name(), "_")[0]
-		print("loading coin for", rid)
+		// print("loading coin for", rid)
 		coinBytes, err := ioutil.ReadFile(COINDIR+f.Name())
 		checkErr(err)
 		coins, ok := vault.Coins[rid]
@@ -46,20 +48,20 @@ func (vault *Vault) Contains(coin *Coin) bool {
 }
 
 func (vault *Vault) Deposit(coin *Coin) {
-	print("Depositing Coin :"+coin.RID)
 	if !vault.Contains(coin) {
 		vault.Coins[coin.RID] = []*Coin{coin}
 	} else {
 		vault.Coins[coin.RID] = append(vault.Coins[coin.RID], coin)
 	}
 	coin.Store() // store the coin on disk
+	balance++
 }
 
 /*
 	withdraw a coin from vault
  */
 func (vault *Vault) Withdraw(rid string) *Coin {
-	print("Withdrawing Coin :"+rid)
+	// print("Withdrawing Coin :"+rid)
 	if vault.Coins[rid] == nil {
 		files, err := ioutil.ReadDir(COINDIR)
 		checkErr(err)
@@ -72,12 +74,21 @@ func (vault *Vault) Withdraw(rid string) *Coin {
 				return ncoin
 			}
 		}
-		print("No coin for this dude", rid)
+		// print("No coin for this dude", rid)
 		return nil
 	}
 	c := vault.Coins[rid][0]
-	// vault.Coins[id] = vault.Coins[id][1:]
+	if len(vault.Coins[rid]) > 1 {
+		vault.Coins[rid] = vault.Coins[rid][1:]
+	} else {
+		vault.Coins[rid] = vault.Coins[rid][:0]
+	}
+	balance--
 	return c
+}
+
+func GetBalance() int {
+	return balance
 }
 
 func (vault *Vault) String() string {

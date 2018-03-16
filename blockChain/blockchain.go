@@ -14,6 +14,7 @@ import(
 	"strconv"
 	"io/ioutil"
 	"github.com/rainer37/OnionCoin/ocrypto"
+	"sync"
 )
 
 const BKCHPREFIX = "[BKCH] "
@@ -21,9 +22,13 @@ const CHAINDIR = "chainData/"
 const TINDEXDIR = CHAINDIR + "TIndex"
 const NUMCOSIGNER = 2
 
+var slient = false
 var GENESISBLOCK = Block{[]byte("ONCE UPON A TIME IN OLD ERA"), []byte("GENESIS_HASH_ON_MAR_2018"), 0, 0, 0, nil, nil}
 
 func print(str ...interface{}) {
+	if slient {
+		return
+	}
 	fmt.Print(BKCHPREFIX+" ")
 	fmt.Println(str...)
 }
@@ -38,6 +43,7 @@ type ChainIndex struct {
 	ChainLen int64
 	PKIndex map[string]int64
 	CNIndex map[string]int64
+	mutex *sync.Mutex
 }
 
 
@@ -54,6 +60,8 @@ func InitBlockChain() *BlockChain {
 	if ok, _ := exists(TINDEXDIR); !ok {
 		os.Create(TINDEXDIR)
 	}
+
+	chain.TIndex.mutex = &sync.Mutex{}
 
 	if ok, _ := exists(CHAINDIR); !ok {
 		os.Mkdir(CHAINDIR, 0777)
@@ -82,7 +90,6 @@ func (chain *BlockChain) loadChainAndIndex() {
 	checkErr(err)
 	for _, f := range files {
 		if f.Name() != "TIndex" && f.Name() != ".DS_Store"{
-			print(f.Name())
 			b := readABlock(f.Name())
 			if string(chain.GetLastBlock().CurHash) == string(b.PrevHash) {
 				chain.Blocks = append(chain.Blocks, b)
@@ -202,6 +209,7 @@ func (chain *BlockChain) GetLastBlock() *Block {
  */
 func (chain *BlockChain) updateIndex(b *Block) {
 	for _, t := range b.Txns {
+		//chain.TIndex.mutex.Lock()
 		switch v := t.(type) {
 		case PKRegTxn:
 			chain.TIndex.PKIndex[v.Id] = b.Depth
@@ -212,6 +220,7 @@ func (chain *BlockChain) updateIndex(b *Block) {
 		default:
 			print("what the fuck is this txn")
 		}
+		//chain.TIndex.mutex.Lock()
 	}
 
 	chain.TIndex.ChainLen = chain.Size()
@@ -224,7 +233,7 @@ func (chain *BlockChain) updateIndex(b *Block) {
 	checkErr(err)
 	f.Write(indexData)
 	f.Close()
-	print("Index updated")
+	// print("Index updated")
 }
 
 /*
@@ -286,6 +295,34 @@ func (chain *BlockChain) GenBlockBytes(start int64) []byte {
 	b, err := json.Marshal(blocks)
 	checkErr(err)
 	return b
+}
+
+func (chain *BlockChain) GetAllPeerIDs() []string {
+	peers := []string{}
+	for i,v := range chain.TIndex.PKIndex {
+		if i == "FAKEID1338" || i == "FAKEID1339" {
+			continue
+		}
+
+		remainder := (time.Now().Unix() + int64(v)) % 3
+		//print("TS:", time.Now().Unix(), "ID:", int64(v), "REM:", remainder)
+		if  remainder == 1 {
+			peers = append(peers, i)
+			//print(i, "is one of the bank")
+		}
+
+	}
+	return peers
+}
+
+func (chain *BlockChain) GetBankIDSet() []string {
+	return chain.GetBankSetWhen(time.Now().Unix())
+}
+
+func (chain *BlockChain) GetBankSetWhen(t int64) []string {
+	superBank := []string{"FAKEID1339", "FAKEID1338"}
+	// superBank = append(superBank, chain.GetAllPeerIDs()...)
+	return superBank
 }
 
 // TODO: check if current chain is almost syncd

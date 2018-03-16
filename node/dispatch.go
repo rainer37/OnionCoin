@@ -6,33 +6,33 @@ import (
 	"encoding/binary"
 	"errors"
 	"sync"
+	"github.com/rainer37/OnionCoin/blockChain"
 )
 
 const (
-	FWD = '0'
-	JOIN = '1'
-	FIND = '2'
-	COIN = '3'
-	COSIGN = '4'
-	EXPT = '5'
-	JOINACK = '6'
-	WELCOME = '7'
-	RAWCOINEXCHANGE = 'A'
-	RAWCOINSIGNED = 'B'
+	FWD              = '0'
+	JOIN             = '1'
+	FIND             = '2'
+	COINREWARD       = '3'
+	COINCOSIGN       = '4'
+	EXPT             = '5'
+	JOINACK          = '6'
+	WELCOME          = '7'
+	RAWCOINEXCHANGE  = 'A'
+	RAWCOINSIGNED    = 'B'
 	REGCOSIGNREQUEST = 'C'
-	REGCOSIGNREPLY = 'D'
-	TXNRECEIVE = 'G'
-	REJECT = 'F'
-	CHAINSYNC = 'S'
-	CHAINSYNCACK = 'T'
-	CHAINREPAIR = 'U'
+	REGCOSIGNREPLY   = 'D'
+	TXNRECEIVE       = 'G'
+	REJECT           = 'F'
+	CHAINSYNC        = 'S'
+	CHAINSYNCACK     = 'T'
+	CHAINREPAIR      = 'U'
 	CHAINREPAIRREPLY = 'V'
-	PUBLISHINGBLOCK = 'P'
-	PUBLISHINGCHECK = 'Q'
-	IPLOOKUP = 'L'
-	IPLOOKUPRP = 'M'
-	RETURN = 'R'
-	ADV = 'G'
+	PUBLISHINGBLOCK  = 'P'
+	PUBLISHINGCHECK  = 'Q'
+	IPLOOKUP         = 'L'
+	IPLOOKUPRP       = 'M'
+	ADV              = 'G'
 )
 
 var mutex = sync.Mutex{}
@@ -88,7 +88,7 @@ func (n *Node) dispatch(incoming []byte) {
 
 	switch opCode{
 	case FWD:
-		print("Forwarding something from", senderID)
+		//print("Forwarding something from", senderID)
 		n.forwardProtocol(payload, senderID)
 	case JOIN:
 		print("Joining", senderID)
@@ -98,8 +98,8 @@ func (n *Node) dispatch(incoming []byte) {
 		}
 	case FIND:
 		print("Finding")
-	case COIN:
-		print("Receiving a Coin")
+	case COINREWARD:
+		//print("Receiving a Coin")
 	case JOINACK:
 		print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
 		unmarshalRoutingInfo(payload)
@@ -107,41 +107,42 @@ func (n *Node) dispatch(incoming []byte) {
 		print("WELCOME received from", senderID)
 		welcomeProtocol(payload)
 	case RAWCOINEXCHANGE:
-		print("COIN Exchange Requesting by", senderID)
+		//print("COINREWARD Exchange Requesting by", senderID)
 		if !n.iamBank() {
 			n.sendReject("SRY IM NOT BANK", senderPK)
 			return
 		}
 		n.receiveRawCoin(payload, senderID)
 	case RAWCOINSIGNED:
-		print("My Signed RawCoin received.", senderID)
+		//print("My Signed RawCoin received.", senderID)
 		n.receiveNewCoin(payload, senderID)
-	case COSIGN:
-		print("Let's make fortune together", "Cosign size", len(payload))
+	case COINCOSIGN:
+		//print("Let's make fortune together", "Cosign size", len(payload))
 		n.coSignValidCoin(payload)
 	case REGCOSIGNREQUEST:
-		print("Helping Registering A New Node")
+		//print("Helping Registering A New Node")
 		n.regCoSignRequest(payload, senderID)
 	case REGCOSIGNREPLY:
-		print("Receive Reg CoSign from", senderID)
+		//print("Receive Reg CoSign from", senderID)
 		n.regChan <- payload
 	case TXNRECEIVE:
 		print("A Txn Received from", senderID)
-		// txn := blockChain.ProduceTxn(payload[1:], rune(payload[0]))
-		// n.bankProxy.AddTxn(txn)
+		 txn := blockChain.ProduceTxn(payload[1:], rune(payload[0]))
+		 n.bankProxy.AddTxn(txn)
 	case CHAINSYNC:
-		print("BlockChain Sync Req Received", senderID)
+		//print("BlockChain Sync Req Received from", senderID)
 		n.chainSyncRequested(payload, senderID)
 	case CHAINSYNCACK:
 		mutex.Lock()
-		print("BlockChain Sync Ack Received", senderID)
+		//print("BlockChain Sync Ack Received from", senderID)
 		n.chainSyncAckReceived(payload, senderID)
 		mutex.Unlock()
 	case CHAINREPAIR:
 		print(senderID, "tries to repair its chain")
 		n.chainRepairReceived(payload, senderID)
+		msgReceived--
 	case CHAINREPAIRREPLY:
-		print("repair the chain accordingto", senderID)
+		print("repair the chain according to", senderID)
 		n.repairChain(payload)
 	case PUBLISHINGBLOCK:
 		print(senderID, "is trying to publish a block")
@@ -164,17 +165,10 @@ func (n *Node) dispatch(incoming []byte) {
 }
 
 /*
-	format a reject OMsg with msg included.
- */
-func (n *Node) formalRejectPacket(msg string, pk rsa.PublicKey) []byte {
-	return n.prepareOMsg(REJECT,[]byte(msg),pk)
-}
-
-/*
 	reject some one when exceptional cases came up.
  */
 func (n *Node) sendReject(msg string, senderPK *records.PKEntry) {
-	rej := n.formalRejectPacket(msg, senderPK.Pk)
+	rej := n.prepareOMsg(REJECT,[]byte(msg), senderPK.Pk)
 	n.sendActive(rej, senderPK.Port)
 }
 

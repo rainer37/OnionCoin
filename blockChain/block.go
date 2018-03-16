@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const MAXNUMTXN = 2
+const MAXNUMTXN = 20
 
 type Block struct {
 	PrevHash  []byte
@@ -51,12 +51,6 @@ func (b *Block) GetPrevHash() []byte { return b.PrevHash }
 func (b *Block) GetNumTxn() int { return b.NumTxn }
 func (b *Block) GetTxn(index int) Txn { return b.Txns[index]}
 func (b *Block) GetContent() []byte { return TxnsToBytes(b.Txns) }
-func (b *Block) AddTxn(txn *Txn) {}
-
-type User struct {
-	name string
-}
-
 
 func (b *Block) String() string {
 	s := "\nCurHash: " + string(b.CurHash) + "\n"

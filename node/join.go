@@ -7,14 +7,13 @@ import (
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"time"
-	"github.com/rainer37/OnionCoin/bank"
 	"crypto/rsa"
 	"crypto/sha256"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"bytes"
 )
 
-const NUMNODEINFO = 3
+const NUMNODEINFO = 10
 const REGISTER = "PKRQ"
 const PKRQACK  = "PKAK"
 const PKRQCODELEN = 4
@@ -32,7 +31,7 @@ func (n *Node) joinProtocol(payload []byte) bool {
 
 	address, isNew := addrANDisNew[0], addrANDisNew[1]
 
-	print("starting handle JOIN from", address, isNew)
+	//print("starting handle JOIN from", address, isNew)
 
 	//TODO: alternatives on node discovery
 	senderID := FAKEID +strings.Split(address,":")[1]
@@ -53,7 +52,7 @@ func (n *Node) joinProtocol(payload []byte) bool {
 		n.sendActive(jack, senderPort)
 		print("JOIN ACK sent", len(jack))
 	} else {
-		fmt.Println("Invalid JOIN status, reject")
+		print("Invalid JOIN status, reject")
 		return false
 	}
 
@@ -92,8 +91,8 @@ func (n* Node) newbieJoin(incoming []byte) bool {
 		return true
 	} else if string(incoming[:PKRQCODELEN]) == PKRQACK {
 		// return the pk to the requesting node to finish the join protocol.
-		print("thank you for the pub-key, you are now registered")
-		confirmBytes := incoming[PKRQCODELEN:PKRQCODELEN+PKRQLEN]
+		//print("thank you for the pub-key, you are now registered")
+		confirmBytes := incoming[PKRQCODELEN:PKRQCODELEN + PKRQLEN]
 		n.pkChan <- confirmBytes
 		return true
 	}
@@ -125,7 +124,7 @@ func unmarshalRoutingInfo(b []byte) {
 	for cur < len(b) {
 		idLen := binary.BigEndian.Uint32(b[cur:cur+4])
 		id := string(b[cur+4:cur+4+int(idLen)])
-		print(id, len(records.KeyRepo))
+		// print(id, len(records.KeyRepo))
 		cur += int(idLen) + 4
 
 		eLen := binary.BigEndian.Uint32(b[cur:cur+4])
@@ -133,7 +132,7 @@ func unmarshalRoutingInfo(b []byte) {
 		cur += int(eLen) + 4
 
 		records.InsertEntry(id, e.Pk, e.Time, e.IP, e.Port)
-		print("inserting", id)
+		// print("inserting", id)
 	}
 }
 
@@ -169,8 +168,8 @@ func makeBytesLen(b []byte) []byte {
 	pk, id = newBie'pub key and its id.
  */
 func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
-	print("Starting Registration CoSign Protocol")
-	banks := bank.GetBankIDSet()
+	//print("Starting Registration CoSign Protocol")
+	banks := n.chain.GetBankIDSet()
 	counter := 0
 	newBieInfo := append(ocrypto.EncodePK(pk), []byte(id)...)
 
@@ -184,7 +183,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 			break
 		}
 		if b != n.ID {
-			print("sending REGCOSIGNRQ to", b)
+			//print("sending REGCOSIGNRQ to", b)
 			bpe := n.getPubRoutingInfo(b)
 			p := n.prepareOMsg(REGCOSIGNREQUEST,newBieInfo,bpe.Pk)
 			n.sendActive(p, bpe.Port)
@@ -195,7 +194,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 		}
 	}
 
-	print("Enough Signing Received, Register Node", id, "by", len(signers), "Signer:", signers)
+	//print("Enough Signing Received, Register Node", id, "by", len(signers), "Signer:", signers)
 
 	txn := blockChain.NewPKRTxn(id, pk, regBytes, signers)
 	ok := n.bankProxy.AddTxn(txn)
@@ -206,7 +205,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	go n.broadcastTxn(txn, blockChain.PK)
 
 	// n.sendActive([]byte("You are good to Go"), id[6:])
-	print("confirmation sent")
+	//print("confirmation sent")
 }
 
 /*

@@ -2,7 +2,6 @@ package node
 
 import (
 	"github.com/rainer37/OnionCoin/coin"
-	"github.com/rainer37/OnionCoin/bank"
 	"crypto/rsa"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"time"
@@ -10,10 +9,18 @@ import (
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"strings"
-	"math/rand"
 )
 
 const COSIGNTIMEOUT = 2
+
+/*
+	Generate the genesis coin with my signed pk.
+ */
+func (n *Node) GetGensisCoin() *coin.Coin {
+	pkHash := sha256.Sum256(ocrypto.EncodePK(n.sk.PublicKey))
+	gcoin := n.blindSign(pkHash[:])
+	return coin.NewCoin(n.ID, gcoin)
+}
 
 /*
 	Exchanging an existing coin to a newCoin with dstID, and random coinNum.
@@ -35,8 +42,8 @@ func (n *Node) CoinExchange(dstID string) {
 	//	return
 	//}
 
-	banks := bank.GetBankIDSet()
-	print(banks)
+	banks := n.chain.GetBankIDSet()
+	// print(banks)
 	banksPk := []rsa.PublicKey{} // records which banks are helping
 
 	counter := 0
@@ -47,13 +54,17 @@ func (n *Node) CoinExchange(dstID string) {
 		bid := banks[counter]
 		bpe := n.getPubRoutingInfo(bid)
 
-		print("Requesting", bid, "for signing rawCoin")
+		if bpe == nil {
+			return
+		}
+
+		//print("Requesting", bid, "for signing rawCoin")
 
 		blindrwcn, bfid := BlindBytes(rc, &bpe.Pk)
 
 		payload := append(blindrwcn, []byte(bfid)...)
 
-		payload = append(payload, blindrwcn...) // TODO: append a real COIN
+		payload = append(payload, blindrwcn...) // TODO: append a real COINREWARD
 
 		fo := n.prepareOMsg(RAWCOINEXCHANGE, payload, bpe.Pk)
 
@@ -73,7 +84,7 @@ func (n *Node) CoinExchange(dstID string) {
 			continue
 		}
 
-		print("waiting for response from", bid)
+		//print("waiting for response from", bid)
 
 		revealedCoin := UnBlindBytes(realCoin, bfid, &bpe.Pk)
 
@@ -92,11 +103,11 @@ func (n *Node) CoinExchange(dstID string) {
 	}
 
 	if layers == blockChain.NUMCOSIGNER {
-		print("New Coin Forged, Thanks Fellas!")
+		//print("New Coin Forged, Thanks Fellas!")
 		n.Deposit(coin.NewCoin(dstID, rc))
 		// print(n.Vault.Coins)
 	} else {
-		print("Not Enough Banks To Forge a Coin, Try Next Epoch")
+		//print("Not Enough Banks To Forge a Coin, Try Next Epoch")
 	}
 }
 
@@ -126,16 +137,13 @@ func (n *Node) coSignValidCoin(c []byte) {
 
 	// when there is enough sigs gathered, try publish the txn.
 	if counter+1 == blockChain.NUMCOSIGNER {
-		print("Enough verifiers got, publish it")
-		print(len(signedHash), counter+1, "verifiers")
+		//print("Enough verifiers got, publish it")
 		cnum, cbytes, sigs, verifiers := decodeCNCosign(signedHash, counter+1)
-		print(cnum, verifiers, len(sigs))
 		txn := blockChain.NewCNEXTxn(cnum, cbytes, sigs, verifiers)
-		// start broadcasting the new Txn.
 		// TODO: go n.broadcastTxn(txn)
 		ok := n.bankProxy.AddTxn(txn)
 		if ok {
-			print("time to publish this block")
+			//print("time to publish this block")
 			// n.publishBlock()
 		}
 		return
@@ -144,21 +152,14 @@ func (n *Node) coSignValidCoin(c []byte) {
 
 	signedHash = append(newCounter, signedHash...) // add updated counter to the head.cvx
 
-
 	// randomly picks banks other than me
-	otherBanks := bank.GetBankIDSet()
-	bid := otherBanks[0]
-
-	for bid == n.ID {
-		index := rand.Int() % len(otherBanks)
-		bid = otherBanks[index]
-	}
+	bid := n.pickOneRandomBank()
 
 	tpk := n.getPubRoutingInfo(bid)
 
-	payload := n.prepareOMsg(COSIGN, signedHash, tpk.Pk)
+	payload := n.prepareOMsg(COINCOSIGN, signedHash, tpk.Pk)
 
-	print("sending aggregated signed coin and cosign counter:", newCounter)
+	//print("sending aggregated signed coin and cosign counter:", newCounter)
 	n.sendActive(payload, tpk.Port)
 }
 
@@ -169,10 +170,10 @@ func decodeCNCosign(content []byte, counter uint16) (cnum uint64, cbytes []byte,
 	cbytes = content[:128]
 	cnum = binary.BigEndian.Uint64(cbytes) // TODO: get real cnum
 
-	sigs_vrfrs := content[128:]
+	sigs_vrfers := content[128:]
 
 	for i:=0; i<int(counter); i++ {
-		b := sigs_vrfrs[i*144:(i+1)*144-1]
+		b := sigs_vrfers[i*144:(i+1)*144-1]
 		ver,sig := b[128:], b[:128]
 		sigs = append(sigs, sig...)
 		verifiers = append(verifiers, strings.Trim(string(ver), "\x00"))
@@ -185,11 +186,11 @@ func decodeCNCosign(content []byte, counter uint16) (cnum uint64, cbytes []byte,
 	broadcast the txn to other banks with best effort.
  */
 func (n *Node) broadcastTxn(txn blockChain.Txn, txnType rune) {
-	for _, b := range bank.GetBankIDSet() {
+	for _, b := range n.chain.GetBankIDSet() {
 		if b != n.ID{
 			bpe := n.getPubRoutingInfo(b)
 			p := n.prepareOMsg(TXNRECEIVE, append([]byte{byte(txnType)}, txn.ToBytes()...), bpe.Pk)
-			go n.sendActive(p, bpe.Port)
+			n.sendActive(p, bpe.Port)
 		}
 	}
 }

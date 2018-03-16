@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"log"
+	"math/rand"
 )
 
 type PKEntry struct {
@@ -121,6 +122,36 @@ func populatePKEntry() {
 	checkErr(err)
 }
 
+func allIDs() (ids []string) {
+	for i := range KeyRepo {
+		ids = append(ids, i)
+	}
+	return
+}
+
+func RandomPath() (path []string) {
+	count := 0
+	num := len(KeyRepo) / 2
+	ids := allIDs()
+	for count < num {
+		index := rand.Int() % len(KeyRepo)
+		id := ids[index]
+		if !contains(path, id) {
+			path = append(path, id)
+			count++
+		}
+	}
+	return
+}
+
+func contains(ids []string, id string) bool {
+	for _, v := range ids {
+		if v == id {
+			return true
+		}
+	}
+	return false
+}
 
 func exists(path string) (bool, error) {
 	_, err := os.Stat(path)

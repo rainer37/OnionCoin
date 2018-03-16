@@ -4,6 +4,8 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 )
 
+var omsgCount = 0
+
 /*
 	1. Decrypt the Onion to get nextID, previous coin, and the innerOnion.
 	2. forward the innerOnion to nextID.
@@ -12,13 +14,12 @@ import (
 func (n *Node) forwardProtocol(payload []byte, senderID string) {
 	nextID, prevCoin, iOnion := ocrypto.PeelOnion(n.sk, payload)
 
-	print("onion peeled")
-
-	print(nextID, len(prevCoin), string(prevCoin), len(iOnion), len(iOnion))
+	// print(nextID, len(prevCoin), string(prevCoin), len(iOnion), len(iOnion))
 
 	// the most innerOnion should have the same ID as receiver ID.
 	if nextID == n.ID {
-		print("destination reached")
+		//print("destination reached")
+		omsgCount++
 		print("   MSG RECEIVED: ", string(iOnion))
 		return
 	}
@@ -43,7 +44,7 @@ func (n *Node) forwardProtocol(payload []byte, senderID string) {
 	}
 
 	// reply the coin to previous peer.
-	pm := n.prepareOMsg(COIN, prevCoin, spe.Pk)
+	pm := n.prepareOMsg(COINREWARD, prevCoin, spe.Pk)
 	n.sendActive(pm, spe.Port)
 }
 
@@ -56,6 +57,7 @@ func (n *Node) WrapABigOnion(msg []byte, ids []string) []byte {
 	ids = append([]string{ids[0]}, ids...)
 
 	o := msg
+
 	for i:=len(ids)-2; i > 0; i-- {
 		pe := n.getPubRoutingInfo(ids[i])
 		c := n.Vault.Withdraw(ids[i-1])
@@ -64,4 +66,14 @@ func (n *Node) WrapABigOnion(msg []byte, ids []string) []byte {
 	}
 
 	return o
+}
+
+/*
+	send a onion message toward the path defined by ids.
+ */
+func (n *Node) SendOninoMsg(ids []string, msg string) {
+	m := n.WrapABigOnion([]byte(msg), ids)
+	npe := n.getPubRoutingInfo(ids[0])
+	m = n.prepareOMsg(FWD, m, npe.Pk)
+	n.sendActive(m, npe.Port)
 }

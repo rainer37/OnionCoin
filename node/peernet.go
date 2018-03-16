@@ -12,16 +12,20 @@ import (
 	"os"
 )
 
-const BUFSIZE = 4096
+const BUFSIZE = 4096 * 2
 const LOCALHOST = "127.0.0.1"
 const NEWBIEMARKER = "100000"
+
+var msgSendCount = 0
+var msgReceived = 0
 
 func (n *Node) SelfInit() {
 	print("PeerNet Initiated.")
 
+	n.bankProxy = bank.InitBank(n.sk, n.chain)
+
 	if n.iamBank() {
 		print("My Turn To be Bank!")
-		n.bankProxy = bank.InitBank(n.sk, n.chain)
 	}
 
 	records.InsertEntry(n.ID, n.sk.PublicKey, time.Now().Unix(), n.IP, n.Port)
@@ -38,7 +42,11 @@ func (n *Node) SelfInit() {
 
 	p,err := strconv.Atoi(n.Port)
 	checkErr(err)
-	go n.syncBlockChain()
+	// go n.syncBlockChain()
+	//if !n.iamBank() {
+		go n.random_exchg()
+		go n.random_msg()
+	//}
 	n.Serve(LOCALHOST, p)
 }
 
@@ -70,7 +78,7 @@ func (n *Node) IniJoin(address string, status int) {
 		n.sendActive(p, address)
 	} else if status == 1 {
 		print("Im Newbie")
-		if !isBank(JID) {
+		if !n.isBank(JID) {
 			print("NewBie Please Join On The Bank Node For Registration.")
 			return
 		}
@@ -98,11 +106,12 @@ func (n *Node) Serve(ip string, port int) {
 	con, err := net.ListenUDP("udp", &addr)
 	checkErr(err)
 
-	buffer := make([]byte, BUFSIZE)
 
 	defer con.Close()
 	print("Serving ["+addr.String()+"]")
 	for {
+		buffer := make([]byte, BUFSIZE)
+		msgReceived++
 		l, add, e := con.ReadFromUDP(buffer)
 		checkErr(e)
 		incoming := buffer[0:l]
@@ -117,6 +126,8 @@ func (n *Node) Serve(ip string, port int) {
 	build a udp connection and send msg to add.
 */
 func (n *Node) sendActive(msg []byte, add string) {
+	msgSendCount++
+	// fmt.Println(len(msg))
 	con, err := net.Dial("udp", ":"+add)
 	if err != nil {
 		print(err)
@@ -134,18 +145,18 @@ func (n *Node) sendActive(msg []byte, add string) {
 	check if n.ID is one of current bank ids.
  */
 func (n *Node) iamBank() bool {
-	return checkBankStatus(n.ID)
+	return n.checkBankStatus(n.ID)
 }
 
-func isBank(id string) bool {
-	return checkBankStatus(id)
+func (n *Node) isBank(id string) bool {
+	return n.checkBankStatus(id)
 }
 
 /*
 	Check if the id given is a current bank.
  */
-func checkBankStatus(id string) bool {
-	banks := bank.GetBankIDSet()
+func (n* Node) checkBankStatus(id string) bool {
+	banks := n.chain.GetBankIDSet()
 	for _,bid := range banks {
 		if bid == id {
 			return true

@@ -10,6 +10,7 @@ import (
 )
 
 const BANK_PREFIX = "[BANK]"
+var slient = true
 
 type Bank struct {
 	sk *rsa.PrivateKey
@@ -18,6 +19,9 @@ type Bank struct {
 }
 
 func print(str ...interface{}) {
+	if slient {
+		return
+	}
 	fmt.Print(BANK_PREFIX+" ")
 	fmt.Println(str...)
 }
@@ -59,8 +63,8 @@ func (b *Bank) AddTxn(txn blockChain.Txn) bool {
 	b.txnBuffer = append(b.txnBuffer, txn)
 	print("Txn added, current buffer load:", float32(len(b.txnBuffer)) / blockChain.MAXNUMTXN)
 
-	if len(b.txnBuffer) == blockChain.MAXNUMTXN {
-		return b.generateNewBlock()
+	for len(b.txnBuffer) >= blockChain.MAXNUMTXN {
+		b.generateNewBlock()
 	}
 
 	return false
@@ -78,7 +82,7 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 		return false
 	}
 
-	bankSetWhenSigning := getBankSetWhen(1234)
+	bankSetWhenSigning := bank.chain.GetBankSetWhen(1234)
 
 	// counter number of valid signer
 	matchCounter := 0
@@ -117,7 +121,7 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
  */
 func (bank *Bank) generateNewBlock() bool {
 	print("Fresh Block!", len(bank.txnBuffer))
-	newBlock := blockChain.NewBlock(bank.txnBuffer)
+	newBlock := blockChain.NewBlock(bank.txnBuffer[:blockChain.MAXNUMTXN])
 	ok := bank.chain.AddNewBlock(newBlock)
 	if ok {
 		bank.cleanBuffer()
@@ -127,16 +131,10 @@ func (bank *Bank) generateNewBlock() bool {
 }
 
 func (bank *Bank) cleanBuffer() {
-	bank.txnBuffer = bank.txnBuffer[:0]
+	if len(bank.txnBuffer) > blockChain.MAXNUMTXN {
+		bank.txnBuffer = bank.txnBuffer[blockChain.MAXNUMTXN:]
+	} else {
+		bank.txnBuffer = bank.txnBuffer[:0]
+	}
 	print("Txn buffer cleared")
-}
-
-func GetBankIDSet() []string {
-	// TODO: generate set of bank based on cur time.
-	return []string{"FAKEID1339", "FAKEID1338"}
-}
-
-func getBankSetWhen(t int64) []string {
-	// TODO: generate set of bank based on cur time.
-	return []string{"FAKEID1339", "FAKEID1338"}
 }

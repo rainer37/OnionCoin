@@ -14,22 +14,23 @@ var exMap = map[string]chan []byte{} // channels for coin exchanging
 
 /*
 	bank processing coin exchange request.
-	RAWCOIN(128) | BFID(8) | COIN(128) |
+	RAWCOIN(128) | BFID(8) | COINREWARD(128) |
 	If valid coin received, sign the rawCoin and send it back.
 	meanwhile starting coSign protocol to get coin published.
  */
 func (n *Node) receiveRawCoin(payload []byte, senderID string) {
-	print("Make a wish")
+	//print("Make a wish")
 	if len(payload) != BCOINSIZE * 2 + 8 { return }
 
 	c := payload[BCOINSIZE+8:]
 
 	// check validity, if not, abort
 	if !n.ValidateCoin(c, senderID) {
+		print("invalid coin refuse signing it")
 		return
 	}
 
-	print("valid coin, continue")
+	//print("valid coin, continue")
 
 	counterBytes := make([]byte, 2)
 	binary.BigEndian.PutUint16(counterBytes, 0)
@@ -47,7 +48,7 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 		return
 	}
 
-	print("reply with partial newCoin")
+	//print("reply with partial newCoin")
 
 	p := n.prepareOMsg(RAWCOINSIGNED,append(newCoin, bfid...),spk.Pk)
 	n.sendActive(p, spk.Port)
@@ -101,6 +102,17 @@ func (n *Node) blindSign(rawCoin []byte) []byte {
  */
 func (n *Node) ValidateCoin(coin []byte, senderID string) bool {
 	// TODO: validate coin that is signed by other banks
+
+	// first check if it is a genesis coin.
+	spe := n.getPubRoutingInfo(senderID)
+	encSPK := sha256.Sum256(ocrypto.EncodePK(spe.Pk))
+	targetHash := ocrypto.EncryptBig(&spe.Pk, coin)
+
+	if string(encSPK[:]) == string(targetHash) {
+		print(senderID, "GCoin received")
+		return true
+	}
+
 	return true
 	// return ValidateCoinByKey(coin, senderID, &n.sk.PublicKey)
 }
