@@ -183,7 +183,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 			break
 		}
 		if b != n.ID {
-			//print("sending REGCOSIGNRQ to", b)
+			print("sending REGCOSIGNRQ to", b)
 			bpe := n.getPubRoutingInfo(b)
 			p := n.prepareOMsg(REGCOSIGNREQUEST,newBieInfo,bpe.Pk)
 			n.sendActive(p, bpe.Port)
@@ -194,7 +194,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 		}
 	}
 
-	//print("Enough Signing Received, Register Node", id, "by", len(signers), "Signer:", signers)
+	print("Enough Signing Received, Register Node", id, "by", len(signers), "Signer:", signers)
 
 	txn := blockChain.NewPKRTxn(id, pk, regBytes, signers)
 	ok := n.bankProxy.AddTxn(txn)
@@ -202,6 +202,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 		// n.publishBlock()
 	}
 
+	// TODO: sync this?
 	go n.broadcastTxn(txn, blockChain.PK)
 
 	// n.sendActive([]byte("You are good to Go"), id[6:])

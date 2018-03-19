@@ -1,10 +1,11 @@
-package ocrypto
+package node
 
 import (
 	"fmt"
 	"crypto/rsa"
 	"github.com/rainer37/OnionCoin/coin"
 	"bytes"
+	"github.com/rainer37/OnionCoin/ocrypto"
 )
 
 /*
@@ -12,7 +13,6 @@ import (
 
 	| cipherKey(32)	| next_ID(16) | coin(COINLEN) | innerOnion | chaos |
  */
-const IDLEN = 16
 
 type Onion struct {
 	NextID string
@@ -26,13 +26,13 @@ type Onion struct {
  */
 func WrapOnion(pk rsa.PublicKey, nextID string, coin []byte, content []byte) []byte {
 
-	nextIDBytes := make([]byte, 16)
+	nextIDBytes := make([]byte, IDLEN)
 	copy(nextIDBytes, nextID)
 
 	b := append(nextIDBytes, coin...)
 	b = append(b, content...)
 
-	cipher, cKey, err := BlockEncrypt(b, pk)
+	cipher, cKey, err := ocrypto.BlockEncrypt(b, pk)
 	checkErr(err)
 
 	cipher = append(cKey, cipher...)
@@ -43,10 +43,12 @@ func WrapOnion(pk rsa.PublicKey, nextID string, coin []byte, content []byte) []b
  */
 func PeelOnion(sk *rsa.PrivateKey, fullOnion []byte) (string, []byte, []byte) {
 	// First SYMKEYLEN == 32 is the symmetric key.
-	cKey, onion := fullOnion[:SYMKEYLEN], fullOnion[SYMKEYLEN:]
-	decryptedOnion, err := BlockDecrypt(onion, cKey, sk)
+	cKey, onion := fullOnion[:ocrypto.SYMKEYLEN], fullOnion[ocrypto.SYMKEYLEN:]
+	decryptedOnion, err := ocrypto.BlockDecrypt(onion, cKey, sk)
 	checkErr(err)
-	return string(bytes.Trim(decryptedOnion[:IDLEN], "\x00")), decryptedOnion[IDLEN:IDLEN+coin.COINLEN], decryptedOnion[IDLEN+coin.COINLEN:]
+	return string(bytes.Trim(decryptedOnion[:IDLEN], "\x00")),
+	decryptedOnion[IDLEN:IDLEN+coin.COINLEN],
+	decryptedOnion[IDLEN+coin.COINLEN:]
 }
 
 func (o *Onion) String() string {

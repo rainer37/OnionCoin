@@ -8,6 +8,7 @@ import (
 	"github.com/rainer37/OnionCoin/blockChain"
 	"strings"
 	"encoding/binary"
+	"fmt"
 )
 
 func TestPKRTxnToBytes(t *testing.T) {
@@ -37,6 +38,8 @@ func TestPKRTxnToBytes(t *testing.T) {
 	if string(ocrypto.EncodePK(newBiePK)) != string(txnBytes[16:148]) {
 		t.Error("PK not equal")
 	}
+
+	fmt.Println(binary.BigEndian.Uint64(txnBytes[148:156]), uint64(ts))
 
 	if binary.BigEndian.Uint64(txnBytes[148:156]) != uint64(ts) {
 		t.Error("Ts not equal")

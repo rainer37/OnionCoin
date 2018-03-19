@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"math/rand"
+	"github.com/rainer37/OnionCoin/blockChain"
 )
 
 const BCOINSIZE = 128
@@ -20,7 +21,9 @@ var exMap = map[string]chan []byte{} // channels for coin exchanging
  */
 func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 	//print("Make a wish")
-	if len(payload) != BCOINSIZE * 2 + 8 { return }
+	if len(payload) != BCOINSIZE * 2 + 8 {
+		print("Wrong coin exchange len", len(payload))
+		return }
 
 	c := payload[BCOINSIZE+8:]
 
@@ -134,7 +137,7 @@ func ValidateCoinByKey(coinBytes []byte, senderID string, pk *rsa.PublicKey) boo
 		return false
 	}
 
-	if !coin.IsFreeCoinNum(binary.BigEndian.Uint64(coinNum)) {
+	if !blockChain.IsFreeCoinNum(binary.BigEndian.Uint64(coinNum)) {
 		return false
 	}
 

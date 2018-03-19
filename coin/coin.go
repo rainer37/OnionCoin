@@ -11,7 +11,7 @@ import(
 )
 
 const COINPREFIX = "[COIN]"
-const COINLEN = 32
+const COINLEN = 128
 const COINDIR = "coin/"
 
 type Coin struct {
@@ -34,7 +34,9 @@ func NewCoin(rid string, content []byte) *Coin {
 }
 
 func (c *Coin) GetContent() []byte {
-	return c.Content
+	b := make([]byte, COINLEN)
+	copy(b, c.Content)
+	return b
 }
 
 func (c *Coin) GetRID() string {
@@ -43,9 +45,7 @@ func (c *Coin) GetRID() string {
 
 // TODO: change to real coin bytes
 func (c *Coin) Bytes() []byte {
-	b := make([]byte, COINLEN)
-	copy(b, []byte("ThisIsNotACoin"))
-	return b
+	return c.GetContent()
 }
 
 func (c *Coin) String() string {

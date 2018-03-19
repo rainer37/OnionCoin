@@ -134,7 +134,7 @@ func (bank *Bank) cleanBuffer() {
 	if len(bank.txnBuffer) > blockChain.MAXNUMTXN {
 		bank.txnBuffer = bank.txnBuffer[blockChain.MAXNUMTXN:]
 	} else {
-		bank.txnBuffer = bank.txnBuffer[:0]
+		bank.txnBuffer = []blockChain.Txn{}
 	}
 	print("Txn buffer cleared")
 }

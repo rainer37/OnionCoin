@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"crypto/sha256"
 	"encoding/binary"
+	"github.com/rainer37/OnionCoin/blockChain"
 )
 
 type RawCoin struct {
@@ -61,16 +62,8 @@ func (c *RawCoin) ToBytes() []byte {
 func genFreeCN() uint64 {
 	for {
 		cn := rand.Uint64()
-		if IsFreeCoinNum(cn) {
+		if blockChain.IsFreeCoinNum(cn) {
 			return cn
 		}
 	}
-}
-
-/*
-	check against the free coin list on blockchain to see if this num is free to use.
-	TODO: check against blockchain
- */
-func IsFreeCoinNum(coinNum uint64) bool {
-	return true
 }

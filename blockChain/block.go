@@ -5,9 +5,8 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"time"
+	"encoding/binary"
 )
-
-const MAXNUMTXN = 20
 
 type Block struct {
 	PrevHash  []byte
@@ -39,9 +38,10 @@ func NewBlock(txns []Txn) *Block {
 	compute the hash of the block from {prevhash, content, and ts}.
  */
 func (b *Block) GetCurHash() []byte {
-	timestamp := []byte(strconv.FormatInt(b.Ts, 10))
-	content := TxnsToBytes(b.Txns)
-	data := bytes.Join([][]byte{b.PrevHash, content, timestamp}, []byte{})
+	timestamp := make([]byte, 8)
+	binary.BigEndian.PutUint64(timestamp, uint64(b.Ts))
+	txnsBytes := TxnsToBytes(b.Txns)
+	data := bytes.Join([][]byte{b.PrevHash, txnsBytes, timestamp}, []byte{})
 	hash := sha256.Sum256(data)
 	return hash[:]
 }
@@ -56,6 +56,11 @@ func (b *Block) String() string {
 	s := "\nCurHash: " + string(b.CurHash) + "\n"
 	s += "PreHash: " + string(b.PrevHash) + "\n"
 	s += "TimeStamp: " + time.Unix(b.Ts, b.Ts).String() + "\n"
+	s += "Depth: " + strconv.FormatInt(b.Depth, 10)
 	s += "Number of Txns: " + strconv.Itoa(b.NumTxn) + "\n"
+	s += "Txn Hashes: "
+	for _, v := range b.TxnHashes {
+		s += "["+string(v)+"]\n"
+	}
 	return s
 }

@@ -16,7 +16,7 @@ const COSIGNTIMEOUT = 2
 /*
 	Generate the genesis coin with my signed pk.
  */
-func (n *Node) GetGensisCoin() *coin.Coin {
+func (n *Node) GetGenesisCoin() *coin.Coin {
 	pkHash := sha256.Sum256(ocrypto.EncodePK(n.sk.PublicKey))
 	gcoin := n.blindSign(pkHash[:])
 	return coin.NewCoin(n.ID, gcoin)
@@ -42,6 +42,8 @@ func (n *Node) CoinExchange(dstID string) {
 	//	return
 	//}
 
+	gcoin := n.Vault.Withdraw(n.ID).Bytes()
+	print(len(gcoin))
 	banks := n.chain.GetBankIDSet()
 	// print(banks)
 	banksPk := []rsa.PublicKey{} // records which banks are helping
@@ -64,7 +66,7 @@ func (n *Node) CoinExchange(dstID string) {
 
 		payload := append(blindrwcn, []byte(bfid)...)
 
-		payload = append(payload, blindrwcn...) // TODO: append a real COINREWARD
+		payload = append(payload, gcoin...) // TODO: append a real COINREWARD
 
 		fo := n.prepareOMsg(RAWCOINEXCHANGE, payload, bpe.Pk)
 
@@ -103,7 +105,7 @@ func (n *Node) CoinExchange(dstID string) {
 	}
 
 	if layers == blockChain.NUMCOSIGNER {
-		//print("New Coin Forged, Thanks Fellas!")
+		print("New Coin Forged, Thanks Fellas!", len(rc))
 		n.Deposit(coin.NewCoin(dstID, rc))
 		// print(n.Vault.Coins)
 	} else {
@@ -130,7 +132,7 @@ func (n *Node) coSignValidCoin(c []byte) {
 	newCounter := make([]byte, 2)
 	binary.BigEndian.PutUint16(newCounter, counter+1)
 
-	idBytes := make([]byte, 16)
+	idBytes := make([]byte, IDLEN)
 	copy(idBytes, n.ID)
 
 	signedHash = append(signedHash, idBytes[:]...) // append verifier to it

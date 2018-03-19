@@ -4,6 +4,7 @@ import (
 	"testing"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/coin"
+	"github.com/rainer37/OnionCoin/node"
 )
 
 /*
@@ -20,8 +21,8 @@ func TestOnionSingleWrap(t *testing.T) {
 
 	nextHopID := "Ella"
 
-	encryptedOnion := ocrypto.WrapOnion(pk, nextHopID, coinByte, msg)
-	eID, eCoin, eMsg := ocrypto.PeelOnion(sk, encryptedOnion)
+	encryptedOnion := node.WrapOnion(pk, nextHopID, coinByte, msg)
+	eID, eCoin, eMsg := node.PeelOnion(sk, encryptedOnion)
 
 	if eID != nextHopID {
 		t.Error("Wrong ID")
@@ -46,7 +47,7 @@ func TestOnionTwoWrap(t *testing.T) {
 	coinByte := c.Bytes()
 	nextHopID := "Ella"
 
-	layerOne := ocrypto.WrapOnion(pk, nextHopID, coinByte, msg)
+	layerOne := node.WrapOnion(pk, nextHopID, coinByte, msg)
 
 	sk2 := ocrypto.RSAKeyGen()
 	pk2 := sk2.PublicKey
@@ -54,9 +55,9 @@ func TestOnionTwoWrap(t *testing.T) {
 	coinByte2 := coin2.Bytes()
 	nextHopID2 := "Alle"
 
-	layerTwo := ocrypto.WrapOnion(pk2, nextHopID2, coinByte2, layerOne)
+	layerTwo := node.WrapOnion(pk2, nextHopID2, coinByte2, layerOne)
 
-	eID, eCoin, eMsg := ocrypto.PeelOnion(sk2, layerTwo)
+	eID, eCoin, eMsg := node.PeelOnion(sk2, layerTwo)
 
 	if eID != nextHopID2 {
 		t.Error("Wrong ID")
@@ -70,7 +71,7 @@ func TestOnionTwoWrap(t *testing.T) {
 		t.Error("Wrong InnerOnion")
 	}
 
-	eID2, eCoin2, eMsg2 := ocrypto.PeelOnion(sk, layerOne)
+	eID2, eCoin2, eMsg2 := node.PeelOnion(sk, layerOne)
 
 	if eID2 != nextHopID {
 		t.Error("Wrong ID2")

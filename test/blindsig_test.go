@@ -4,6 +4,7 @@ import (
 	"testing"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/coin"
+	"github.com/rainer37/OnionCoin/blockChain"
 )
 func TestBlindAndUnBlind(t *testing.T) {
 
@@ -20,7 +21,7 @@ func TestBlindAndUnBlind(t *testing.T) {
 }
 
 func TestBlindRawCoin(t *testing.T) {
-
+	blockChain.InitBlockChain()
 	msg := coin.NewRawCoin("rainer").ToBytes()
 	sk := ocrypto.RSAKeyGen()
 	pk := &sk.PublicKey

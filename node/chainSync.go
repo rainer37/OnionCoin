@@ -67,18 +67,19 @@ func (n *Node) chainSyncRequested(payload []byte, senderID string) {
 
 	// if the peer has longer chain, ignore it.
 	if peerDepth >= n.chain.Size() {
-		print(senderID, "has longer chain", peerDepth)
+		print(senderID, "has longer chain up to depth", peerDepth - 1)
 		return
 	}
 
 	if string(n.chain.Blocks[peerDepth-1].CurHash) == string(bHash) {
 		// if the chain is simply shorten
 
-		print(senderID, "has short chain up to depth", peerDepth)
+		print(senderID, "has short chain up to depth", peerDepth - 1)
 
 		for i := peerDepth; i < n.chain.Size(); i++ {
 			spk := n.getPubRoutingInfo(senderID)
 			blocks := n.chain.GenBlockBytes(i)
+			print("sending block", i)
 			p := n.prepareOMsg(CHAINSYNCACK, append(myDepth, blocks...), spk.Pk)
 			n.sendActive(p, spk.Port)
 		}
@@ -100,7 +101,7 @@ func (n *Node) chainSyncRequested(payload []byte, senderID string) {
  */
 func (n *Node) chainSyncAckReceived(payload []byte, senderID string) {
 	peerMaxDepth := binary.BigEndian.Uint64(payload[:8])
-	print("This peer has chain up to depth", peerMaxDepth)
+	print("This peer has chain up to depth", peerMaxDepth - 1)
 	oneBlock := blockChain.DeMuxBlock(payload[8:])
 	n.chain.StoreBlock(oneBlock)
 }
@@ -108,14 +109,14 @@ func (n *Node) chainSyncAckReceived(payload []byte, senderID string) {
 // TODO: append more partial hashes of blocks.
 func (n *Node) handleBranching(senderID string) {
 	a := []DepthHashPair{}
-	i := n.chain.Size() - 3
+	i := n.chain.Size() - 100
 	if i < 1 {
 		i = 1
 	}
 	for ; i < n.chain.Size() ; i++ {
 		b := n.chain.Blocks[i]
 		bHash := b.CurHash
-		dhp := DepthHashPair{i, bHash}
+		dhp := DepthHashPair{i, bHash[:8]}
 		a = append(a, dhp)
 	}
 	arr, err := json.Marshal(a)
@@ -125,7 +126,10 @@ func (n *Node) handleBranching(senderID string) {
 	n.sendActive(p, spe.Port)
 }
 
-
+/*
+	receive a list of partial hashes from the peer with longer blockChain.
+	Compare the hashes until finding the broken park, and then trim it.
+ */
 func (n *Node) chainRepairReceived(payload []byte, senderID string) {
 	var arr []DepthHashPair
 	json.Unmarshal(payload, &arr)
@@ -134,14 +138,14 @@ func (n *Node) chainRepairReceived(payload []byte, senderID string) {
 
 	var start int64 = 1
 	for _, v := range arr {
-		if v.Depth < n.chain.Size() && string(n.chain.Blocks[v.Depth].CurHash) == string(v.Hash) {
+		if v.Depth < n.chain.Size() && string(n.chain.Blocks[v.Depth].CurHash[:8]) == string(v.Hash[:8]) {
 			start = v.Depth
 			break
 		}
 	}
 
 	print("!!! i am broken at", start)
-	n.chain.TrimChain(int64(start + 1))
+	n.chain.TrimChain(int64(start))
 }
 
 /*

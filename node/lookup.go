@@ -19,7 +19,7 @@ func (n *Node) LookUpPK(address string) rsa.PublicKey {
  */
 func (n *Node) LookUpIP(id string) {
 	for _ ,v := range records.KeyRepo {
-		targetID := make([]byte, 16)
+		targetID := make([]byte, IDLEN)
 		copy(targetID, id)
 		p := n.prepareOMsg(IPLOOKUP, append(targetID , []byte(n.addr())...), v.Pk)
 		go n.sendActive(p, v.Port)

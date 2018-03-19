@@ -8,10 +8,11 @@ import (
 	"github.com/rainer37/OnionCoin/node"
 	"fmt"
 	"encoding/binary"
+	"github.com/rainer37/OnionCoin/blockChain"
 )
 
 func TestRawCoinToBytes(t *testing.T) {
-
+	blockChain.InitBlockChain()
 	rwcn := coin.NewRawCoin("rainer")
 	hashid := sha256.Sum256([]byte("rainer"))
 

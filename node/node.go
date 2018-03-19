@@ -17,6 +17,8 @@ import(
 const NODEPREFIX = "[NODE]"
 const FAKEID = "FAKEID"
 const SELFSKEYPATH = "self.sk"
+const IDLEN = 16
+
 var slient = false
 var opCount = 0
 var pathLength = 0
@@ -102,6 +104,13 @@ func produceSK() *rsa.PrivateKey {
 	sk, err := x509.ParsePKCS1PrivateKey(dat)
 	checkErr(err)
 	return sk
+}
+
+func (n *Node) bankStatusDetection() {
+	ticker := time.NewTicker(time.Second * 2)
+	for range ticker.C {
+		n.chain.GetBankIDSet()
+	}
 }
 
 func (n *Node) random_exchg() {

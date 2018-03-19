@@ -28,10 +28,10 @@ import (
 
 const (
 	CIPHERKEYLEN = 128
-	NODEIDLEN = 16
 	TSLEN = 8
 	HASHLEN = 128
 	PAYLOADLENLEN = 4
+	IDLEN = 16
 )
 
 type OnionMsg interface {
@@ -54,23 +54,23 @@ func (omsg *OMsg) GetOPCode() rune {
 
 func (omsg *OMsg) GetSenderID() string {
 
-	return string(bytes.Trim(omsg.B[1:1 + NODEIDLEN], "\x00")) // trim trailing NULL
+	return string(bytes.Trim(omsg.B[1:1 + IDLEN], "\x00")) // trim trailing NULL
 }
 
 func (omsg *OMsg) GetTS() uint32 {
-	return uint32(binary.BigEndian.Uint32(omsg.B[1 + NODEIDLEN : 1 + NODEIDLEN + TSLEN]))
+	return uint32(binary.BigEndian.Uint32(omsg.B[1 + IDLEN : 1 + IDLEN + TSLEN]))
 }
 
 func (omsg *OMsg) GetLenPayload() int {
-	return int(binary.BigEndian.Uint32(omsg.B[1 + NODEIDLEN + TSLEN + HASHLEN : 1 + NODEIDLEN + TSLEN + HASHLEN + PAYLOADLENLEN]))
+	return int(binary.BigEndian.Uint32(omsg.B[1 + IDLEN + TSLEN + HASHLEN : 1 + IDLEN + TSLEN + HASHLEN + PAYLOADLENLEN]))
 }
 
 func (omsg *OMsg) GetPayload() []byte {
-	return omsg.B[1 + NODEIDLEN + TSLEN + HASHLEN + PAYLOADLENLEN :1 + NODEIDLEN + TSLEN + HASHLEN + PAYLOADLENLEN + omsg.GetLenPayload()]
+	return omsg.B[1 + IDLEN + TSLEN + HASHLEN + PAYLOADLENLEN :1 + IDLEN + TSLEN + HASHLEN + PAYLOADLENLEN + omsg.GetLenPayload()]
 }
 
 func (omsg *OMsg) GetPayloadTsHash() []byte {
-	return omsg.B[1 + NODEIDLEN + TSLEN : 1 + NODEIDLEN + TSLEN + HASHLEN]
+	return omsg.B[1 + IDLEN + TSLEN : 1 + IDLEN + TSLEN + HASHLEN]
 }
 
 func (omsg *OMsg) VerifySig(pk *rsa.PublicKey) bool {
@@ -101,7 +101,7 @@ func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey,
 	buffer := make([]byte,1)
 	buffer[0] = byte(opCode)
 
-	buf := make([]byte, 16)
+	buf := make([]byte, IDLEN)
 	copy(buf[:], nodeID)
 
 	buffer = append(buffer, buf...)

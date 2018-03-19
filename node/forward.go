@@ -1,9 +1,5 @@
 package node
 
-import (
-	"github.com/rainer37/OnionCoin/ocrypto"
-)
-
 var omsgCount = 0
 
 /*
@@ -12,7 +8,7 @@ var omsgCount = 0
 	3. reply prevCoin to sender.
  */
 func (n *Node) forwardProtocol(payload []byte, senderID string) {
-	nextID, prevCoin, iOnion := ocrypto.PeelOnion(n.sk, payload)
+	nextID, prevCoin, iOnion := PeelOnion(n.sk, payload)
 
 	// print(nextID, len(prevCoin), string(prevCoin), len(iOnion), len(iOnion))
 
@@ -62,7 +58,7 @@ func (n *Node) WrapABigOnion(msg []byte, ids []string) []byte {
 		pe := n.getPubRoutingInfo(ids[i])
 		c := n.Vault.Withdraw(ids[i-1])
 		nextID := ids[i+1]
-		o = ocrypto.WrapOnion(pe.Pk, nextID, c.Bytes(), o)
+		o = WrapOnion(pe.Pk, nextID, c.Bytes(), o)
 	}
 
 	return o

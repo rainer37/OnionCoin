@@ -75,6 +75,9 @@ func main() {
 	n.IP = LOCALHOST
 	n.ID = node.FAKEID+n.Port
 
+	gcoin := n.GetGenesisCoin()
+	n.Vault.Deposit(gcoin)
+
 	records.GenerateKeyRepo()
 
 	if cmd == "j" {
