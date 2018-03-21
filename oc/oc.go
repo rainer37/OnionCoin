@@ -14,7 +14,7 @@ import(
 
 const LOCALHOST = "127.0.0.1"
 const SELFSKEYPATH = "self.sk"
-
+const USAGE = "[MAIN] Usage:" + "\n\toc i [myport]" + "\n\toc j [myport] [joinport]"
 /*
 	Load saved local states.
 	0. check if there is local SK, if not generate one and write it to file.
@@ -45,18 +45,14 @@ func loadSavedStates(addr string) (status int){
 func main() {
 
 	if len(os.Args) < 2 || len(os.Args) > 5{
-		fmt.Println("[MAIN] Usage:" +
-			"\n\toc i [myport]" +
-			"\n\toc j [myport] [joinport]")
+		fmt.Println(USAGE)
 		os.Exit(1)
 	}
 
 	cmd := os.Args[1]
 
 	if cmd != "i" && cmd != "j" {
-		fmt.Println("[MAIN] Usage:" +
-			"\n\toc i [myport]" +
-			"\n\toc j [myport] [joinport]")
+		fmt.Println(USAGE)
 		os.Exit(1)
 	}
 

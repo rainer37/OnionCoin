@@ -106,10 +106,19 @@ func produceSK() *rsa.PrivateKey {
 	return sk
 }
 
+/*
+	periodically check if the node is the bank, and update the status.
+ */
 func (n *Node) bankStatusDetection() {
 	ticker := time.NewTicker(time.Second * 2)
 	for range ticker.C {
-		n.chain.GetBankIDSet()
+		if n.iamBank() {
+			print("My Turn To be Bank!")
+			n.bankProxy.SetStatus(true)
+		} else {
+			n.bankProxy.SetStatus(false)
+		}
+		// n.chain.GetBankIDSet()
 	}
 }
 
@@ -159,6 +168,30 @@ func (n *Node) random_msg() {
 		}
 
 	}
+}
+
+/*
+	check if n.ID is one of current bank ids.
+ */
+func (n *Node) iamBank() bool {
+	return n.checkBankStatus(n.ID)
+}
+
+func (n *Node) isBank(id string) bool {
+	return n.checkBankStatus(id)
+}
+
+/*
+	Check if the id given is a current bank.
+ */
+func (n* Node) checkBankStatus(id string) bool {
+	banks := n.chain.GetBankIDSet()
+	for _,bid := range banks {
+		if bid == id {
+			return true
+		}
+	}
+	return false
 }
 
 func checkErr(err error){

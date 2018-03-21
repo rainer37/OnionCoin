@@ -43,7 +43,6 @@ func (c *Coin) GetRID() string {
 	return c.RID
 }
 
-// TODO: change to real coin bytes
 func (c *Coin) Bytes() []byte {
 	return c.GetContent()
 }

@@ -15,14 +15,15 @@ import(
 	"io/ioutil"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"sync"
+	"sort"
 )
 
 const BKCHPREFIX = "[BKCH] "
 const CHAINDIR = "chainData/"
 const TINDEXDIR = CHAINDIR + "TIndex"
 const NUMCOSIGNER = 2
-const EPOCHLEN = 10
-const MAXNUMTXN = 1
+const EPOCHLEN = 5
+const MAXNUMTXN = 2
 
 var slient = false
 var GENESISBLOCK = Block{[]byte("ONCE UPON A TIME IN OLD ERA"), []byte("_OC_GENESIS_HASH_ON_18_MAR_2018_"), 0, 0, 0, nil, nil}
@@ -85,7 +86,6 @@ func InitBlockChain() *BlockChain {
 	update TIndex with all info loaded
  */
 func (chain *BlockChain) loadChainAndIndex() {
-	// read TIndex from disk if there is one.
 	chain.Blocks = []*Block{&GENESISBLOCK}
 
 	chain.TIndex.PKIndex = make(map[string]int64)
@@ -101,7 +101,7 @@ func (chain *BlockChain) loadChainAndIndex() {
 				chain.Blocks = append(chain.Blocks, b)
 				chain.updateIndex(b)
 			} else {
-				print("broken chain detected")
+				print("broken chain detected", f.Name())
 			}
 		}
 	}
@@ -130,7 +130,6 @@ func (chain *BlockChain) AddNewBlock(block *Block) bool {
  */
 func (chain *BlockChain) StoreBlock(b *Block) {
 	// print("writing block to disk, depth:", b.Depth)
-	// print(b)
 
 	blockData, err := json.Marshal(b)
 	checkErr(err)
@@ -148,11 +147,9 @@ func (chain *BlockChain) StoreBlock(b *Block) {
 	f.Close()
 
 	chain.updateIndex(b)
-
 	chain.Blocks = append(chain.Blocks, b)
 
 	print("new block written, depth:", b.Depth, "Epoch:", b.Ts / EPOCHLEN)
-	print(chain)
 }
 
 /*
@@ -201,6 +198,16 @@ func (chain *BlockChain) GetBlock(index int64) *Block {
 
 func (chain *BlockChain) GetLastBlock() *Block {
 	return chain.GetBlock(chain.Size()-1)
+}
+
+/*
+	generate one block bytes in json
+ */
+func (chain *BlockChain) GenBlockBytes(index int64) []byte {
+	blo := chain.GetBlock(index)
+	b, err := json.Marshal(blo)
+	checkErr(err)
+	return b
 }
 
 /*
@@ -286,17 +293,6 @@ func DeMuxBlock (blockBytes []byte) *Block {
 	return block
 }
 
-/*
-	generate one block bytes in json
- */
-func (chain *BlockChain) GenBlockBytes(start int64) []byte {
-	blo := chain.Blocks[start]
-	b, err := json.Marshal(blo)
-	print("******",string(b))
-	checkErr(err)
-	return b
-}
-
 func (chain *BlockChain) GetAllPeerIDs(max int64) []string {
 	peers := []string{}
 	for i,v := range chain.TIndex.PKIndex {
@@ -308,6 +304,7 @@ func (chain *BlockChain) GetAllPeerIDs(max int64) []string {
 			peers = append(peers, i)
 		}
 	}
+	sort.Strings(peers)
 	return peers
 }
 
@@ -322,17 +319,24 @@ func (chain *BlockChain) GetBankSetWhen(t int64) []string {
 
 	matureLen := chain.GetMatureBlockLen()
 	allPeers := chain.GetAllPeerIDs(matureLen)
-	numBanks := len(allPeers) / 3
+	numBanks := len(allPeers) / 2
 
-	print(allPeers, matureLen, numBanks)
+	print("Everyone:",allPeers, "Mature", matureLen, "NumBanks", numBanks)
 
 
 	theChosen := []string{}
-	for i:=0 ;i<numBanks; i++ {
-		theChosen = append(theChosen, allPeers[(curEpoch * int64(i+1)) % int64(len(allPeers))])
+	counter := 0
+	i := 0
+	for counter < numBanks {
+		newChosen := allPeers[(curEpoch * int64(i+1)) % int64(len(allPeers))]
+		if !contains(theChosen, newChosen) {
+			theChosen = append(theChosen, newChosen)
+			counter++
+		}
+		i++
 	}
 
-	print("Epoch:", curEpoch, "the Chosen:", theChosen)
+	print("Epoch:", curEpoch, "Chosen:", theChosen)
 	return append(superBank, theChosen...)
 }
 
@@ -340,7 +344,7 @@ func (chain* BlockChain) GetMatureBlockLen() int64 {
 	curEpoch := time.Now().Unix() / EPOCHLEN
 	mLen := 0
 	for i, b := range chain.Blocks {
-		print("$$", b.Ts / EPOCHLEN, curEpoch - 2)
+		// print("$$", b.Ts / EPOCHLEN, curEpoch - 2)
 		if b.Ts / EPOCHLEN < curEpoch - 2 {
 			mLen = i
 		} else {
@@ -350,10 +354,20 @@ func (chain* BlockChain) GetMatureBlockLen() int64 {
 	return int64(mLen)
 }
 
-// TODO: check if current chain is almost syncd
+func contains(arr []string, t string) bool {
+	for _,v := range arr {
+		if v == t {
+			return true
+		}
+	}
+	return false
+}
+
+/*
+	check if the current chain length is matrue.
+ */
 func (chain *BlockChain) IsAlmostSyncd() bool {
-	print("Current chainLength:", chain.Size())
-	if chain.Size() > 1 {
+	if chain.Size() > chain.GetMatureBlockLen() {
 		return true
 	}
 	return false

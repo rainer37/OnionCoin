@@ -81,7 +81,6 @@ func (pkr PKRegTxn) ToBytes() []byte {
 		sidBytes := make([]byte, 16)
 		copy(sidBytes, signer)
 		pkrBytes = append(pkrBytes, []byte(sidBytes)...)
-
 	}
 	
 	return pkrBytes
@@ -89,6 +88,9 @@ func (pkr PKRegTxn) ToBytes() []byte {
 
 func (pkr PKRegTxn) GetVerifiers() []string { return pkr.Verifiers }
 func (pkr PKRegTxn) GetSigs() []byte { return pkr.Sigs }
+/*
+	PK register txn content: pk + id
+ */
 func (pkr PKRegTxn) GetContent() []byte {
 	pkHash := sha256.Sum256(pkr.Pk)
 	return append(pkHash[:], []byte(pkr.Id)...)
@@ -122,6 +124,10 @@ func (cnex CNEXTxn) ToBytes() []byte {
 func (cnex CNEXTxn) GetCoinNum() uint64 { return cnex.CoinNum }
 func (cnex CNEXTxn) GetSigs() []byte { return cnex.Sigs }
 func (cnex CNEXTxn) GetVerifiers() []string { return cnex.Verifiers }
+
+/*
+	coin exchange content: coin bytes
+ */
 func (cnex CNEXTxn) GetContent() []byte {
 	cnHash := sha256.Sum256(cnex.CoinBytes)
 	return cnHash[:]
@@ -150,7 +156,7 @@ func ProduceTxn(data []byte, txnType rune) Txn {
 	switch txnType {
 	case PK:
 		txn := PKRegTxn{}
-		txn.Id = strings.Trim(string(data[:16]), "\x00")
+		txn.Id = strings.Trim(string(data[:]), "\x00")
 		txn.Pk = data[16:148]
 		txn.Ts = int64(binary.BigEndian.Uint64(data[148:156]))
 		counter := 156
@@ -179,11 +185,4 @@ func ProduceTxn(data []byte, txnType rune) Txn {
 		return txn
 	}
 	return new(PKRegTxn)
-}
-
-/*
-	Translate bytes into multiple Txns.
- */
-func produceTxns(data []byte) []Txn {
-	return []Txn{}
 }

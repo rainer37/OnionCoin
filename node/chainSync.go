@@ -106,7 +106,11 @@ func (n *Node) chainSyncAckReceived(payload []byte, senderID string) {
 	n.chain.StoreBlock(oneBlock)
 }
 
-// TODO: append more partial hashes of blocks.
+/*
+	upon detecting the peer has broken chain
+	send some of partial local block hashes for the peer to trim the chain.
+	current use first 8 bytes out of 32 bytes sha256.
+ */
 func (n *Node) handleBranching(senderID string) {
 	a := []DepthHashPair{}
 	i := n.chain.Size() - 100
@@ -156,6 +160,19 @@ func (n *Node) repairChain(payload []byte) {
 	trimmingStart := binary.BigEndian.Uint64(payload[:8])
 	print("trimming everything starting at", trimmingStart + 1)
 	n.chain.TrimChain(int64(trimmingStart + 1))
+}
+
+/*
+	broadcast the txn to other banks with best effort.
+ */
+func (n *Node) broadcastTxn(txn blockChain.Txn, txnType rune) {
+	for _, b := range n.chain.GetBankIDSet() {
+		if b != n.ID{
+			bpe := n.getPubRoutingInfo(b)
+			p := n.prepareOMsg(TXNRECEIVE, append([]byte{byte(txnType)}, txn.ToBytes()...), bpe.Pk)
+			n.sendActive(p, bpe.Port)
+		}
+	}
 }
 
 /*

@@ -10,18 +10,17 @@ import (
 )
 
 const BANK_PREFIX = "[BANK]"
-var slient = true
+var slient = false
 
 type Bank struct {
 	sk *rsa.PrivateKey
 	txnBuffer []blockChain.Txn
 	chain *blockChain.BlockChain
+	status bool
 }
 
 func print(str ...interface{}) {
-	if slient {
-		return
-	}
+	if slient {return}
 	fmt.Print(BANK_PREFIX+" ")
 	fmt.Println(str...)
 }
@@ -33,11 +32,8 @@ func InitBank(sk *rsa.PrivateKey, chain *blockChain.BlockChain) *Bank {
 	return bank
 }
 
-/*
-	Blindly sign the RawCoin received.
- */
-func (bank *Bank) SignRawCoin(coinSeg []byte) []byte {
-	return ocrypto.BlindSign(bank.sk, coinSeg)
+func (b *Bank) SetStatus(status bool) {
+	b.status = status
 }
 
 /*
@@ -63,8 +59,10 @@ func (b *Bank) AddTxn(txn blockChain.Txn) bool {
 	b.txnBuffer = append(b.txnBuffer, txn)
 	print("Txn added, current buffer load:", float32(len(b.txnBuffer)) / blockChain.MAXNUMTXN)
 
-	for len(b.txnBuffer) >= blockChain.MAXNUMTXN {
-		b.generateNewBlock()
+	if b.status {
+		for len(b.txnBuffer) >= blockChain.MAXNUMTXN {
+			b.generateNewBlock()
+		}
 	}
 
 	return false
