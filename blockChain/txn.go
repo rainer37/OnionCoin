@@ -5,9 +5,9 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"encoding/binary"
 	"time"
-	"strings"
 	"crypto/sha256"
 	"bytes"
+	"encoding/json"
 )
 
 const (
@@ -21,6 +21,7 @@ type Txn interface {
 	GetVerifiers() []string
 	GetContent() []byte // getting the signing content
 	GetSigs() []byte
+	GetTS() int64
 }
 
 /*
@@ -67,23 +68,29 @@ func NewCNEXTxn(coinNum uint64, coinBytes []byte, sigs []byte, verifiers []strin
 /*
 	ID(16) | PK(132) | Ts(8) | signedHashes | SignerIDs
  */
+//func (pkr PKRegTxn) ToBytes() []byte {
+//
+//	IDBytes := make([]byte, 16)
+//	copy(IDBytes, pkr.Id)
+//
+//	timeBytes := make([]byte, 8)
+//	binary.BigEndian.PutUint64(timeBytes, uint64(pkr.Ts))
+//
+//	pkrBytes := bytes.Join([][]byte{IDBytes, pkr.Pk, timeBytes, pkr.Sigs}, []byte{})
+//
+//	for _, signer := range pkr.Verifiers {
+//		sidBytes := make([]byte, 16)
+//		copy(sidBytes, signer)
+//		pkrBytes = append(pkrBytes, []byte(sidBytes)...)
+//	}
+//
+//	return pkrBytes
+//}
+
 func (pkr PKRegTxn) ToBytes() []byte {
-
-	nextIDBytes := make([]byte, 16)
-	copy(nextIDBytes, pkr.Id)
-
-	timeBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(timeBytes, uint64(pkr.Ts))
-
-	pkrBytes := bytes.Join([][]byte{nextIDBytes, pkr.Pk, timeBytes, pkr.Sigs}, []byte{})
-
-	for _, signer := range pkr.Verifiers {
-		sidBytes := make([]byte, 16)
-		copy(sidBytes, signer)
-		pkrBytes = append(pkrBytes, []byte(sidBytes)...)
-	}
-	
-	return pkrBytes
+	txnBytes, err := json.Marshal(pkr)
+	checkErr(err)
+	return txnBytes
 }
 
 func (pkr PKRegTxn) GetVerifiers() []string { return pkr.Verifiers }
@@ -95,6 +102,8 @@ func (pkr PKRegTxn) GetContent() []byte {
 	pkHash := sha256.Sum256(pkr.Pk)
 	return append(pkHash[:], []byte(pkr.Id)...)
 }
+
+func (pkr PKRegTxn) GetTS() int64 { return pkr.Ts }
 
 /*
 	CNEX format: coinNum(8) : signedCoin(128) : [S0, S1, S2...] : [V0, V1, V2...] : [VHash0, VHash1, VHash2...]
@@ -124,6 +133,7 @@ func (cnex CNEXTxn) ToBytes() []byte {
 func (cnex CNEXTxn) GetCoinNum() uint64 { return cnex.CoinNum }
 func (cnex CNEXTxn) GetSigs() []byte { return cnex.Sigs }
 func (cnex CNEXTxn) GetVerifiers() []string { return cnex.Verifiers }
+func (cnex CNEXTxn) GetTS() int64 { return cnex.Ts }
 
 /*
 	coin exchange content: coin bytes
@@ -137,6 +147,7 @@ func (bcnrd BCNRDMTxn) ToBytes() []byte { return []byte{} }
 func (bcnrd BCNRDMTxn) GetSigs() []byte { return bcnrd.Sigs }
 func (bcnrd BCNRDMTxn) GetVerifiers() []string { return bcnrd.Verifiers }
 func (bcnrd BCNRDMTxn) GetContent() []byte { return []byte{} }
+func (bcnrd BCNRDMTxn) GetTS() int64 { return bcnrd.Ts }
 
 /*
 	translate []Txn into bytes
@@ -156,32 +167,15 @@ func ProduceTxn(data []byte, txnType rune) Txn {
 	switch txnType {
 	case PK:
 		txn := PKRegTxn{}
-		txn.Id = strings.Trim(string(data[:]), "\x00")
-		txn.Pk = data[16:148]
-		txn.Ts = int64(binary.BigEndian.Uint64(data[148:156]))
-		counter := 156
-		txn.Sigs = data[counter: counter + 128 * NUMCOSIGNER]
-		counter = counter + 128 * NUMCOSIGNER
-		txn.Verifiers = make([]string, NUMCOSIGNER)
-		for i:=0;i<NUMCOSIGNER;i++ {
-			txn.Verifiers[i] = strings.Trim(string(data[counter + i * 16: counter + (i+1) * 16]), "\x00")
-		}
+		json.Unmarshal(data, &txn)
 		return txn
 	case MSG:
 		txn := CNEXTxn{}
-		txn.CoinNum = binary.BigEndian.Uint64(data[:8])
-		txn.CoinBytes = data[8:136]
-		txn.Ts = int64(binary.BigEndian.Uint64(data[136:144]))
-		counter := 144
-		txn.Sigs = data[counter: counter + 128 * NUMCOSIGNER]
-		counter = counter + 128 * NUMCOSIGNER
-		txn.Verifiers = make([]string, NUMCOSIGNER)
-		for i:=0;i<NUMCOSIGNER;i++ {
-			txn.Verifiers[i] = strings.Trim(string(data[counter + i * 16: counter + (i+1) * 16]), "\x00")
-		}
+		json.Unmarshal(data, &txn)
 		return txn
 	case UPDATE:
 		txn := new(BCNRDMTxn)
+		json.Unmarshal(data, &txn)
 		return txn
 	}
 	return new(PKRegTxn)

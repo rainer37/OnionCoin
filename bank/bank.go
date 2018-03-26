@@ -6,7 +6,6 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/records"
-	"crypto/sha256"
 )
 
 const BANK_PREFIX = "[BANK]"
@@ -32,40 +31,40 @@ func InitBank(sk *rsa.PrivateKey, chain *blockChain.BlockChain) *Bank {
 	return bank
 }
 
-func (b *Bank) SetStatus(status bool) {
-	b.status = status
+func (bank *Bank) GetTxnBuffer() []blockChain.Txn {
+	return bank.txnBuffer
+}
+
+func (bank *Bank) SetStatus(status bool) {
+	bank.status = status
 }
 
 /*
-	Add a transaction to the buffer
+	Add a transaction to the buffer, return true if succeed.
 */
-func (b *Bank) AddTxn(txn blockChain.Txn) bool {
+func (bank *Bank) AddTxn(txn blockChain.Txn) bool {
 
 	// first check if there are duplicate txn in buffer.
-	for _, t := range b.txnBuffer {
-		h := sha256.Sum256(t.GetContent())
-		h2 := sha256.Sum256(txn.GetContent())
-		if string(h[:]) == string(h2[:]) {
-			print("duplicate txn, ignore")
-			return false
-		}
+	if bank.containsTxn(txn) {
+		print("duplicate txn, not added")
+		return false
 	}
 
-	ok := b.validateTxn(txn)
+	ok := bank.validateTxn(txn)
 	if !ok {
 		print("Invalid Cheating Txn, discard it")
 		return false
 	}
-	b.txnBuffer = append(b.txnBuffer, txn)
-	print("Txn added, current buffer load:", float32(len(b.txnBuffer)) / blockChain.MAXNUMTXN)
+	bank.txnBuffer = append(bank.txnBuffer, txn)
+	print("Txn added, current buffer load:", float32(len(bank.txnBuffer)) / blockChain.MAXNUMTXN, len(bank.txnBuffer))
 
-	if b.status {
-		for len(b.txnBuffer) >= blockChain.MAXNUMTXN {
-			b.generateNewBlock()
+	if bank.status {
+		for len(bank.txnBuffer) >= blockChain.MAXNUMTXN {
+			bank.generateNewBlock()
 		}
 	}
 
-	return false
+	return true
 }
 
 /*
@@ -80,7 +79,7 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 		return false
 	}
 
-	bankSetWhenSigning := bank.chain.GetBankSetWhen(1234)
+	bankSetWhenSigning := bank.chain.GetBankSetWhen(txn.GetTS())
 
 	// counter number of valid signer
 	matchCounter := 0
@@ -103,15 +102,36 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 	for i:=0;i<len(verifiers);i++ {
 		pk := records.GetKeyByID(verifiers[i]).Pk
 		expectedContent := ocrypto.EncryptBig(&pk, sigs[i * 128 : (i+1) * 128])
-
 		if string(expectedContent) != string(content) {
 			print("Wrong sig obtained from", verifiers[i])
 			return false
 		}
-
 	}
 
 	return true
+}
+
+/*
+	upon receieved proposed list of txns, validate them and add to buffer
+ */
+func (bank *Bank) AggreTxns(txns []blockChain.Txn) {
+	counter := 0
+	for _, v := range txns {
+		if bank.AddTxn(v) {
+			counter++
+		}
+	}
+	print(counter, "new txns added")
+}
+
+
+func (bank *Bank) containsTxn(txn blockChain.Txn) bool {
+	for _, v := range bank.txnBuffer {
+		if string(v.GetContent()) == string(txn.GetContent()) {
+			return true
+		}
+	}
+	return false
 }
 
 /*

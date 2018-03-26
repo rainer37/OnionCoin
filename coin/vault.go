@@ -54,7 +54,7 @@ func (vault *Vault) Deposit(coin *Coin) {
 		vault.Coins[coin.RID] = append(vault.Coins[coin.RID], coin)
 	}
 	coin.Store() // store the coin on disk
-	balance++
+	// balance++
 }
 
 /*
@@ -78,12 +78,12 @@ func (vault *Vault) Withdraw(rid string) *Coin {
 		return nil
 	}
 	c := vault.Coins[rid][0]
-	if len(vault.Coins[rid]) > 1 {
-		vault.Coins[rid] = vault.Coins[rid][1:]
-	} else {
-		vault.Coins[rid] = vault.Coins[rid][:0]
-	}
-	balance--
+	//if len(vault.Coins[rid]) > 1 {
+	//	vault.Coins[rid] = vault.Coins[rid][1:]
+	//} else {
+	//	vault.Coins[rid] = vault.Coins[rid][:0]
+	//}
+	// balance--
 	return c
 }
 

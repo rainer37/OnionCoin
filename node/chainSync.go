@@ -3,7 +3,6 @@ package node
 import (
 	"encoding/binary"
 	"time"
-	"fmt"
 	"math/rand"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"encoding/json"
@@ -24,7 +23,9 @@ func (n *Node) syncBlockChain() {
 
 	ticker := time.NewTicker(time.Second * SYNCPEROID)
 	for t := range ticker.C {
-		fmt.Println("$$$", t.Unix(), "CHAINLEN:", n.chain.Size())
+		print("TS:", t.Unix(), "CHAINLEN:", n.chain.Size(), "LASTHASH:", string(n.chain.GetLastBlock().GetCurHash()[:8]))
+
+		// if !n.iamBank() { continue }
 
 		go func() {
 			bid := n.pickOneRandomBank()
@@ -45,7 +46,7 @@ func (n *Node) syncBlockChain() {
 	Select a random bank from bank set, but not me as bank.
  */
 func (n *Node) pickOneRandomBank() string {
-	banks := n.chain.GetBankIDSet()
+	banks := currentBanks
 	bid := banks[rand.Int() % len(banks)] // picks random bank but not me
 	for bid == n.ID {
 		bid = banks[rand.Int() % len(banks)]
@@ -61,13 +62,10 @@ func (n *Node) pickOneRandomBank() string {
 func (n *Node) chainSyncRequested(payload []byte, senderID string) {
 	peerDepth := int64(binary.BigEndian.Uint64(payload[:8]))
 	bHash := payload[8:]
-
-	myDepth := make([]byte, 8)
-	binary.BigEndian.PutUint64(myDepth, uint64(n.chain.Size()))
-
+	
 	// if the peer has longer chain, ignore it.
 	if peerDepth >= n.chain.Size() {
-		print(senderID, "has longer chain up to depth", peerDepth - 1)
+		// print(senderID, "has longer chain up to depth", peerDepth - 1)
 		return
 	}
 
@@ -79,29 +77,29 @@ func (n *Node) chainSyncRequested(payload []byte, senderID string) {
 		for i := peerDepth; i < n.chain.Size(); i++ {
 			spk := n.getPubRoutingInfo(senderID)
 			blocks := n.chain.GenBlockBytes(i)
-			print("sending block", i)
+			// print("sending block", i)
+
+			myDepth := make([]byte, 8)
+			binary.BigEndian.PutUint64(myDepth, uint64(i))
+
 			p := n.prepareOMsg(CHAINSYNCACK, append(myDepth, blocks...), spk.Pk)
 			n.sendActive(p, spk.Port)
 		}
 	} else {
-
-		print("!!! found", senderID, "has minor branch")
-
 		n.handleBranching(senderID)
-		// or the chain is a minor branch, send REPAIR
+		print("!!! found", senderID, "has minor branch")
 	}
-
-
 }
 
 /*
 	Upon received a sync ack from a bank.
 	compare a the hash of the block to see if it could connect.
 	if not, ignore it, otherwise store it.
+	// TODO: the blocks may not came in orders.
  */
 func (n *Node) chainSyncAckReceived(payload []byte, senderID string) {
-	peerMaxDepth := binary.BigEndian.Uint64(payload[:8])
-	print("This peer has chain up to depth", peerMaxDepth - 1)
+	bDepth := binary.BigEndian.Uint64(payload[:8])
+	print("received block with depth:", bDepth, "from", senderID)
 	oneBlock := blockChain.DeMuxBlock(payload[8:])
 	n.chain.StoreBlock(oneBlock)
 }
@@ -140,7 +138,7 @@ func (n *Node) chainRepairReceived(payload []byte, senderID string) {
 
 	if len(arr) == 0 { return }
 
-	var start int64 = 1
+	var start int64 = -1
 	for _, v := range arr {
 		if v.Depth < n.chain.Size() && string(n.chain.Blocks[v.Depth].CurHash[:8]) == string(v.Hash[:8]) {
 			start = v.Depth
@@ -166,7 +164,8 @@ func (n *Node) repairChain(payload []byte) {
 	broadcast the txn to other banks with best effort.
  */
 func (n *Node) broadcastTxn(txn blockChain.Txn, txnType rune) {
-	for _, b := range n.chain.GetBankIDSet() {
+	banks := currentBanks
+	for _, b := range banks {
 		if b != n.ID{
 			bpe := n.getPubRoutingInfo(b)
 			p := n.prepareOMsg(TXNRECEIVE, append([]byte{byte(txnType)}, txn.ToBytes()...), bpe.Pk)
@@ -180,19 +179,15 @@ func (n *Node) broadcastTxn(txn blockChain.Txn, txnType rune) {
  */
 func (n *Node) publishBlock() {
 
-	banks := n.chain.GetBankIDSet()
-
+	// banks := n.chain.GetBankIDSet()
+	banks := currentBanks
 	for _, b := range banks {
-		if b == n.ID {
-			continue
-		}
-
+		if b == n.ID { continue }
 		bpe := n.getPubRoutingInfo(b)
 		bbytes := n.chain.GenBlockBytes(n.chain.Size() - 1)
 		depthByte := make([]byte, 8)
 		binary.BigEndian.PutUint64(depthByte, uint64(n.chain.Size()-1))
 		p := n.prepareOMsg(PUBLISHINGBLOCK, append(depthByte, bbytes...), bpe.Pk)
 		n.sendActive(p, bpe.Port)
-
 	}
 }

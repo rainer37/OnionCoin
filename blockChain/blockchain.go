@@ -22,8 +22,12 @@ const BKCHPREFIX = "[BKCH] "
 const CHAINDIR = "chainData/"
 const TINDEXDIR = CHAINDIR + "TIndex"
 const NUMCOSIGNER = 2
-const EPOCHLEN = 5
-const MAXNUMTXN = 2
+const EPOCHLEN = 6
+const PROPOSINGDELAY = 3
+const PUSHINGDELAY = 1
+const PROPOSINGTIME = EPOCHLEN - PROPOSINGDELAY
+const PUSHTIME = EPOCHLEN - PUSHINGDELAY
+const MAXNUMTXN = 500
 
 var slient = false
 var GENESISBLOCK = Block{[]byte("ONCE UPON A TIME IN OLD ERA"), []byte("_OC_GENESIS_HASH_ON_18_MAR_2018_"), 0, 0, 0, nil, nil}
@@ -253,7 +257,7 @@ func readABlock(name string) *Block {
 }
 
 /*
-	generate a block from the given bytes, dynamically determine the actual type of the block
+	generate a block from the given bytes, dynamically determine the actual type of the txns.
  */
 func DeMuxBlock (blockBytes []byte) *Block {
 	var block *Block
@@ -263,34 +267,74 @@ func DeMuxBlock (blockBytes []byte) *Block {
 	json.Unmarshal(blockBytes, &b)
 	itemsMap := b.(map[string]interface{})
 
+	//for i , v := range itemsMap {
+	//	if i == "Txns" {
+	//		for _ , vv := range v.([]interface{}) {
+	//			tflag := 0
+	//			for iii := range vv.(map[string]interface{}) {
+	//				if iii == "Pk" {
+	//					tflag = 1
+	//					break
+	//				} else if iii == "CoinNum" {
+	//					tflag = 2
+	//					break
+	//				}
+	//			}
+	//			if tflag == 1 {
+	//				vvBytes, _ := json.Marshal(vv)
+	//				var ptxn PKRegTxn
+	//				json.Unmarshal(vvBytes, &ptxn)
+	//				block.Txns = append(block.Txns, ptxn)
+	//			} else if tflag == 2 {
+	//				vvBytes, _ := json.Marshal(vv)
+	//				var ctxn CNEXTxn
+	//				json.Unmarshal(vvBytes, &ctxn)
+	//				block.Txns = append(block.Txns, ctxn)
+	//			}
+	//		}
+	//	}
+	//}
+
 	for i , v := range itemsMap {
 		if i == "Txns" {
-			for _ , vv := range v.([]interface{}) {
-				tflag := 0
-				for iii := range vv.(map[string]interface{}) {
-					if iii == "Pk" {
-						tflag = 1
-						break
-					} else if iii == "CoinNum" {
-						tflag = 2
-						break
-					}
-				}
-				if tflag == 1 {
-					vvBytes, _ := json.Marshal(vv)
-					var ptxn PKRegTxn
-					json.Unmarshal(vvBytes, &ptxn)
-					block.Txns = append(block.Txns, ptxn)
-				} else if tflag == 2 {
-					vvBytes, _ := json.Marshal(vv)
-					var ctxn CNEXTxn
-					json.Unmarshal(vvBytes, &ctxn)
-					block.Txns = append(block.Txns, ctxn)
-				}
-			}
+			block.Txns = DemuxTxns(v.([]byte))
 		}
 	}
+
 	return block
+}
+
+/*
+	Dynamically Demux the txns in json to correct Txn.
+ */
+func DemuxTxns(txnsBytes []byte) (buffer []Txn) {
+	var b interface{}
+	json.Unmarshal(txnsBytes, &b)
+	itemsMap := b.([]interface{})
+	for _, v := range itemsMap {
+		tflag := 0
+		for iii := range v.(map[string]interface{}) {
+			if iii == "Pk" {
+				tflag = 1
+				break
+			} else if iii == "CoinNum" {
+				tflag = 2
+				break
+			}
+		}
+		if tflag == 1 {
+			vvBytes, _ := json.Marshal(v)
+			var ptxn PKRegTxn
+			json.Unmarshal(vvBytes, &ptxn)
+			buffer = append(buffer, ptxn)
+		} else if tflag == 2 {
+			vvBytes, _ := json.Marshal(v)
+			var ctxn CNEXTxn
+			json.Unmarshal(vvBytes, &ctxn)
+			buffer = append(buffer, ctxn)
+		}
+	}
+	return
 }
 
 func (chain *BlockChain) GetAllPeerIDs(max int64) []string {
@@ -313,16 +357,15 @@ func (chain *BlockChain) GetBankIDSet() []string {
 }
 
 func (chain *BlockChain) GetBankSetWhen(t int64) []string {
-	superBank := []string{"FAKEID1339", "FAKEID1338"}
+	superBank := []string{"FAKEID1339", "FAKEID1338"} // TODO: super banks for now, remove them.
 
-	curEpoch := time.Now().Unix() / EPOCHLEN
+	curEpoch := t / EPOCHLEN
 
-	matureLen := chain.GetMatureBlockLen()
+	matureLen := chain.GetMatureBlockLen(t)
 	allPeers := chain.GetAllPeerIDs(matureLen)
 	numBanks := len(allPeers) / 2
 
-	print("Everyone:",allPeers, "Mature", matureLen, "NumBanks", numBanks)
-
+	// print("Everyone:",allPeers, "Mature", matureLen, "NumBanks", numBanks)
 
 	theChosen := []string{}
 	counter := 0
@@ -336,12 +379,16 @@ func (chain *BlockChain) GetBankSetWhen(t int64) []string {
 		i++
 	}
 
-	print("Epoch:", curEpoch, "Chosen:", theChosen)
+	// print("Epoch:", curEpoch, "Chosen:", theChosen)
 	return append(superBank, theChosen...)
 }
 
-func (chain* BlockChain) GetMatureBlockLen() int64 {
-	curEpoch := time.Now().Unix() / EPOCHLEN
+func (chain *BlockChain) GetPrevBanks() []string {
+	return chain.GetBankSetWhen(time.Now().Unix() - EPOCHLEN)
+}
+
+func (chain* BlockChain) GetMatureBlockLen(t int64) int64 {
+	curEpoch := t / EPOCHLEN
 	mLen := 0
 	for i, b := range chain.Blocks {
 		// print("$$", b.Ts / EPOCHLEN, curEpoch - 2)
@@ -355,11 +402,7 @@ func (chain* BlockChain) GetMatureBlockLen() int64 {
 }
 
 func contains(arr []string, t string) bool {
-	for _,v := range arr {
-		if v == t {
-			return true
-		}
-	}
+	for _,v := range arr {if v == t {return true}}
 	return false
 }
 
@@ -367,7 +410,7 @@ func contains(arr []string, t string) bool {
 	check if the current chain length is matrue.
  */
 func (chain *BlockChain) IsAlmostSyncd() bool {
-	if chain.Size() > chain.GetMatureBlockLen() {
+	if chain.Size() > chain.GetMatureBlockLen(time.Now().Unix()) {
 		return true
 	}
 	return false

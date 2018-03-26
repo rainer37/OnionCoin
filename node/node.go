@@ -12,6 +12,7 @@ import(
 	"github.com/rainer37/OnionCoin/bank"
 	bc "github.com/rainer37/OnionCoin/blockChain"
 	"strings"
+	"encoding/json"
 )
 
 const NODEPREFIX = "[NODE]"
@@ -22,6 +23,7 @@ const IDLEN = 16
 var slient = false
 var opCount = 0
 var pathLength = 0
+var currentBanks []string
 
 type Node struct {
 	ID string
@@ -33,7 +35,6 @@ type Node struct {
 	bankProxy *bank.Bank
 	regChan chan []byte
 	iplookup chan string
-	blockBuffer chan int
 	chain *bc.BlockChain
 }
 
@@ -44,10 +45,10 @@ func NewNode(port string) *Node {
 	n.pkChan = make(chan []byte)
 	n.regChan = make(chan []byte)
 	n.iplookup = make(chan string)
-	n.blockBuffer = make(chan int)
 	n.sk = produceSK()
 	n.InitVault()
 	n.chain = bc.InitBlockChain()
+	currentBanks = []string{"FAKEID1338", "FAKEID1339"} // TODO: take these superpower out.
 	return n
 }
 
@@ -112,18 +113,54 @@ func produceSK() *rsa.PrivateKey {
 func (n *Node) bankStatusDetection() {
 	ticker := time.NewTicker(time.Second * 2)
 	for range ticker.C {
+		currentBanks = n.chain.GetBankIDSet()
 		if n.iamBank() {
-			print("My Turn To be Bank!")
+			print("		My Turn To be Bank!")
 			n.bankProxy.SetStatus(true)
 		} else {
+			// print("		Damn, not a bank!")
 			n.bankProxy.SetStatus(false)
 		}
-		// n.chain.GetBankIDSet()
+	}
+}
+
+/*
+	timer to check epoch change, update banksets, and start proposing timer.
+ */
+func (n *Node) epochTimer() {
+	epochLen := int64(bc.EPOCHLEN)
+	nextEpoch := (time.Now().Unix() / epochLen + 1) * epochLen
+	diff := nextEpoch - time.Now().Unix()
+	timer1 := time.NewTimer(time.Duration(diff) * time.Second)
+	<-timer1.C
+	ticker := time.NewTicker(time.Duration(epochLen) * time.Second)
+
+	for t := range ticker.C {
+		print("EPOCH:", t.Unix() / epochLen, t.Unix())
+		currentBanks = n.chain.GetBankIDSet()
+		go func() {
+			propTimer := time.NewTimer(bc.PROPOSINGTIME * time.Second)
+			if n.iamBank() {
+				go func() {
+					<-propTimer.C
+					fmt.Println("Time to propose my txns")
+					go func() {
+						for _, b := range currentBanks {
+							bpe := n.getPubRoutingInfo(b)
+							if bpe == nil { continue }
+							txnsBytes := n.getTxnsInBuffer()
+							p := n.prepareOMsg(TXNAGGRE, txnsBytes, bpe.Pk)
+							n.sendActive(p, bpe.Port)
+						}
+					}()
+				}()
+			}
+		}()
 	}
 }
 
 func (n *Node) random_exchg() {
-	ticker := time.NewTicker(time.Second * 2)
+	ticker := time.NewTicker(time.Second * 4)
 	for range ticker.C {
 		//fmt.Println("Tick at", t.Unix(), "SEND:", msgSendCount, "RECEIVED:", msgReceived, "OPS:", opCount)
 		if !n.iamBank() {
@@ -170,6 +207,29 @@ func (n *Node) random_msg() {
 	}
 }
 
+func (n *Node) aggregateTxnx() {
+	ticker := time.NewTicker(time.Second * 10)
+	for range ticker.C {
+		if n.iamBank() {
+			go func() {
+				for _, b := range currentBanks {
+					bpe := n.getPubRoutingInfo(b)
+					if bpe == nil { continue }
+					txnsBytes := n.getTxnsInBuffer()
+					p := n.prepareOMsg(TXNAGGRE, txnsBytes, bpe.Pk)
+					n.sendActive(p, bpe.Port)
+				}
+			}()
+		}
+	}
+}
+
+func (n *Node) getTxnsInBuffer() []byte {
+	txns, err := json.Marshal(n.bankProxy.GetTxnBuffer())
+	checkErr(err)
+	return txns
+}
+
 /*
 	check if n.ID is one of current bank ids.
  */
@@ -185,12 +245,12 @@ func (n *Node) isBank(id string) bool {
 	Check if the id given is a current bank.
  */
 func (n* Node) checkBankStatus(id string) bool {
-	banks := n.chain.GetBankIDSet()
-	for _,bid := range banks {
-		if bid == id {
-			return true
-		}
-	}
+	// banks := n.chain.GetBankIDSet()
+	return contains(currentBanks, id)
+}
+
+func contains(arr []string, t string) bool {
+	for _,v := range arr {if v == t {return true}}
 	return false
 }
 

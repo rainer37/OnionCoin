@@ -45,16 +45,16 @@ func (n *Node) SelfInit() {
 
 	p,err := strconv.Atoi(n.Port)
 	checkErr(err)
-	go n.syncBlockChain()
+	// go n.syncBlockChain()
 	//if !n.iamBank() {
 		// go n.random_exchg()
 		// go n.random_msg()
 	//}
-	// go n.bankStatusDetection()
-
+	go n.epochTimer()
+	//go n.bankStatusDetection()
+	//go n.aggregateTxnx()
 	n.Serve(LOCALHOST, p)
 }
-
 
 /*
 	Joining Routine:

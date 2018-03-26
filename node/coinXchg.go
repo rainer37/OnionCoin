@@ -94,13 +94,13 @@ func (n *Node) GetGenesisCoin() *coin.Coin {
 	5. deposit the newCoin.
 */
 func (n *Node) CoinExchange(dstID string) {
-	dstID = "FAKEID" + dstID
 	rwcn := coin.NewRawCoin(dstID)
 
 	// TODO: use more than just the genesis coin
 	gcoin := n.Vault.Withdraw(n.ID).Bytes()
-	print(len(gcoin))
-	banks := n.chain.GetBankIDSet()
+	// print(len(gcoin))
+	// banks := n.chain.GetBankIDSet()
+	banks := currentBanks
 	// print(banks)
 	banksPk := []rsa.PublicKey{} // records which banks are helping
 
@@ -160,7 +160,7 @@ func (n *Node) CoinExchange(dstID string) {
 	}
 
 	if layers == blockChain.NUMCOSIGNER {
-		print("New Coin Forged, Thanks Fellas!", len(rc))
+		// print("New Coin Forged, Thanks Fellas!", len(rc))
 		n.Deposit(coin.NewCoin(dstID, rc))
 		// print(n.Vault.Coins)
 	} else {

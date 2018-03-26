@@ -8,7 +8,6 @@ import (
 	"github.com/rainer37/OnionCoin/blockChain"
 	"strings"
 	"encoding/binary"
-	"fmt"
 )
 
 func TestPKRTxnToBytes(t *testing.T) {
@@ -30,36 +29,6 @@ func TestPKRTxnToBytes(t *testing.T) {
 
 	ptxn := blockChain.NewPKRTxn(newBieID, newBiePK, content, signers)
 	txnBytes := ptxn.ToBytes()
-
-	if strings.Trim(string(txnBytes[:16]), "\x00") != newBieID {
-		t.Error("ID not equal")
-	}
-
-	if string(ocrypto.EncodePK(newBiePK)) != string(txnBytes[16:148]) {
-		t.Error("PK not equal")
-	}
-
-	fmt.Println(binary.BigEndian.Uint64(txnBytes[148:156]), uint64(ts))
-
-	if binary.BigEndian.Uint64(txnBytes[148:156]) != uint64(ts) {
-		t.Error("Ts not equal")
-	}
-
-	if string(s1SigOnHash) != string(txnBytes[156:156+128]) {
-		t.Error("first signed hash not equal")
-	}
-
-	if string(s2SigOnHash) != string(txnBytes[156+128:156+256]) {
-		t.Error("second signed hash not equal")
-	}
-
-	if strings.Trim(string(txnBytes[156+256:156+256+16]), "\x00") != "FAKEID1338" {
-		t.Error("first signer id not equal")
-	}
-
-	if strings.Trim(string(txnBytes[156+256+16:156+256+32]), "\x00") != "FAKEID1339" {
-		t.Error("second signer id not equal")
-	}
 
 	ntxn := blockChain.ProduceTxn(txnBytes, '0').(blockChain.PKRegTxn)
 

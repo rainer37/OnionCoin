@@ -32,6 +32,7 @@ const (
 	PUBLISHINGCHECK  = 'Q'
 	IPLOOKUP         = 'L'
 	IPLOOKUPRP       = 'M'
+	TXNAGGRE		 = 'N'
 	ADV              = 'G'
 )
 
@@ -155,6 +156,12 @@ func (n *Node) dispatch(incoming []byte) {
 		n.handleLookup(payload)
 	case IPLOOKUPRP:
 		print("IP found")
+	case TXNAGGRE:
+		print("Txn Aggregation received from", senderID)
+		txns := blockChain.DemuxTxns(payload)
+		n.bankProxy.AggreTxns(txns)
+		// n.chain.AddNewBlock(blockChain.NewBlock(txns))
+		// print(n.chain.GetLastBlock().CurHash)
 	case REJECT:
 		print(string(payload))
 	case EXPT:
