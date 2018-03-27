@@ -50,7 +50,7 @@ func (n *Node) SelfInit() {
 		// go n.random_exchg()
 		// go n.random_msg()
 	//}
-	go n.epochTimer()
+	// go n.epochTimer()
 	//go n.bankStatusDetection()
 	//go n.aggregateTxnx()
 	n.Serve(LOCALHOST, p)

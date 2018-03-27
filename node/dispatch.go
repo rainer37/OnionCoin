@@ -22,6 +22,7 @@ const (
 	RAWCOINSIGNED    = 'B'
 	REGCOSIGNREQUEST = 'C'
 	REGCOSIGNREPLY   = 'D'
+	COINFEEDBACK     = 'E'
 	TXNRECEIVE       = 'G'
 	REJECT           = 'F'
 	CHAINSYNC        = 'S'
@@ -89,7 +90,7 @@ func (n *Node) dispatch(incoming []byte) {
 
 	switch opCode{
 	case FWD:
-		//print("Forwarding something from", senderID)
+		print("Forwarding something from", senderID)
 		n.forwardProtocol(payload, senderID)
 	case JOIN:
 		print("Joining", senderID)
@@ -100,12 +101,22 @@ func (n *Node) dispatch(incoming []byte) {
 	case FIND:
 		print("Finding")
 	case COINREWARD:
-		//print("Receiving a Coin")
+		print("Receiving a Coin")
+		spe := n.getPubRoutingInfo(senderID)
+		aye := "N"
+		if n.ValidateCoin(payload, senderID) {
+			aye = "Y"
+		}
+		p := n.prepareOMsg(COINFEEDBACK, []byte(aye), spe.Pk)
+		n.sendActive(p, spe.Port)
+	case COINFEEDBACK:
+		print("Feedback Received", string(payload[0]))
+		n.feedbackChan <- rune(payload[0])
 	case JOINACK:
-		print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
+		// print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
 		unmarshalRoutingInfo(payload)
 	case WELCOME:
-		print("WELCOME received from", senderID)
+		// print("WELCOME received from", senderID)
 		welcomeProtocol(payload)
 	case RAWCOINEXCHANGE:
 		//print("COINREWARD Exchange Requesting by", senderID)

@@ -1,6 +1,9 @@
 package node
 
-import "github.com/rainer37/OnionCoin/coin"
+import (
+	"github.com/rainer37/OnionCoin/coin"
+	"time"
+)
 
 var omsgCount = 0
 
@@ -11,28 +14,8 @@ var omsgCount = 0
  */
 func (n *Node) forwardProtocol(payload []byte, senderID string) {
 	nextID, prevCoin, iOnion := PeelOnion(n.sk, payload)
-
+	n.feedbackChan = make(chan rune)
 	// print(nextID, len(prevCoin), string(prevCoin), len(iOnion), len(iOnion))
-
-	// the most innerOnion should have the same ID as receiver ID.
-	if nextID == n.ID {
-		//print("destination reached")
-		omsgCount++
-		print("   MSG RECEIVED: ", string(iOnion))
-		return
-	}
-
-	npe := n.getPubRoutingInfo(nextID)
-
-	if npe == nil {
-		print("cannot verify next hop id")
-		return
-	}
-
-	go func() {
-		m := n.prepareOMsg(FWD,iOnion,npe.Pk)
-		n.sendActive(m, npe.Port)
-	}()
 
 	spe := n.getPubRoutingInfo(senderID)
 
@@ -43,7 +26,32 @@ func (n *Node) forwardProtocol(payload []byte, senderID string) {
 
 	// reply the coin to previous peer.
 	pm := n.prepareOMsg(COINREWARD, prevCoin, spe.Pk)
-	n.sendActive(pm, spe.Port)
+	go n.sendActive(pm, spe.Port)
+
+	// the most innerOnion should have the same ID as receiver ID.
+	if nextID == n.ID {
+		//print("destination reached")
+		omsgCount++
+		print("   MSG RECEIVED: [", string(iOnion),"]")
+		return
+	}
+
+	npe := n.getPubRoutingInfo(nextID)
+
+	if npe == nil {
+		print("cannot verify next hop id")
+		return
+	}
+
+	select {
+	case <-time.After(5 * time.Second):
+		print("no positive feedback, i won't help")
+	case feedback := <-n.feedbackChan:
+		if feedback == 'Y' {
+			m := n.prepareOMsg(FWD,iOnion,npe.Pk)
+			n.sendActive(m, npe.Port)
+		}
+	}
 }
 
 /*

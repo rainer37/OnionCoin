@@ -205,7 +205,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 		}
 	}
 
-	print("Enough Signing Received, Register Node", id, "by", len(signers), "Signer:", signers, len(regBytes))
+	print("Enough Signing Received, Register Node", id, "by", len(signers), "Signer:", signers)
 
 	txn := blockChain.NewPKRTxn(id, pk, regBytes, signers)
 	ok := n.bankProxy.AddTxn(txn)

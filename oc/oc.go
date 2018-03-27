@@ -65,7 +65,6 @@ func main() {
 	port := os.Args[2]
 
 	status := loadSavedStates(port)
-	fmt.Println("[MAIN] My Status:", status)
 
 	n := node.NewNode(port)
 	n.IP = LOCALHOST

@@ -6,6 +6,7 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/records"
+	"sort"
 )
 
 const BANK_PREFIX = "[BANK]"
@@ -17,6 +18,12 @@ type Bank struct {
 	chain *blockChain.BlockChain
 	status bool
 }
+
+type TxnSorter []blockChain.Txn
+
+func (a TxnSorter) Len() int           { return len(a) }
+func (a TxnSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a TxnSorter) Less(i, j int) bool { return a[i].GetTS() < a[j].GetTS() }
 
 func print(str ...interface{}) {
 	if slient {return}
@@ -60,9 +67,11 @@ func (bank *Bank) AddTxn(txn blockChain.Txn) bool {
 
 	if bank.status {
 		for len(bank.txnBuffer) >= blockChain.MAXNUMTXN {
-			bank.generateNewBlock()
+			bank.GenerateNewBlock()
 		}
 	}
+
+
 
 	return true
 }
@@ -137,10 +146,16 @@ func (bank *Bank) containsTxn(txn blockChain.Txn) bool {
 /*
 	generate a block from transaction buffer and push it to the system.
  */
-func (bank *Bank) generateNewBlock() bool {
+func (bank *Bank) GenerateNewBlock() bool {
+	if len(bank.txnBuffer) <= 0 {
+		return false
+	}
 	print("Fresh Block!", len(bank.txnBuffer))
-	newBlock := blockChain.NewBlock(bank.txnBuffer[:blockChain.MAXNUMTXN])
+	// newBlock := blockChain.NewBlock(bank.txnBuffer[:blockChain.MAXNUMTXN])
+	sort.Sort(TxnSorter(bank.txnBuffer))
+	newBlock := blockChain.NewBlock(bank.txnBuffer)
 	ok := bank.chain.AddNewBlock(newBlock)
+	print("NewBlock Hash:", string(newBlock.CurHash))
 	if ok {
 		bank.cleanBuffer()
 		return true
@@ -149,10 +164,11 @@ func (bank *Bank) generateNewBlock() bool {
 }
 
 func (bank *Bank) cleanBuffer() {
-	if len(bank.txnBuffer) > blockChain.MAXNUMTXN {
-		bank.txnBuffer = bank.txnBuffer[blockChain.MAXNUMTXN:]
-	} else {
-		bank.txnBuffer = []blockChain.Txn{}
-	}
+	//if len(bank.txnBuffer) > blockChain.MAXNUMTXN {
+	//	bank.txnBuffer = bank.txnBuffer[blockChain.MAXNUMTXN:]
+	//} else {
+	//	bank.txnBuffer = []blockChain.Txn{}
+	//}
+	bank.txnBuffer = []blockChain.Txn{}
 	print("Txn buffer cleared")
 }

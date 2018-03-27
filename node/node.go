@@ -35,6 +35,7 @@ type Node struct {
 	bankProxy *bank.Bank
 	regChan chan []byte
 	iplookup chan string
+	feedbackChan chan rune
 	chain *bc.BlockChain
 }
 
@@ -45,6 +46,7 @@ func NewNode(port string) *Node {
 	n.pkChan = make(chan []byte)
 	n.regChan = make(chan []byte)
 	n.iplookup = make(chan string)
+	n.feedbackChan = make(chan rune)
 	n.sk = produceSK()
 	n.InitVault()
 	n.chain = bc.InitBlockChain()
@@ -139,19 +141,31 @@ func (n *Node) epochTimer() {
 		print("EPOCH:", t.Unix() / epochLen, t.Unix())
 		currentBanks = n.chain.GetBankIDSet()
 		go func() {
-			propTimer := time.NewTimer(bc.PROPOSINGTIME * time.Second)
 			if n.iamBank() {
+				// start proposing timer
+				propTimer := time.NewTimer(bc.PROPOSINGTIME * time.Second)
 				go func() {
 					<-propTimer.C
-					fmt.Println("Time to propose my txns")
+					fmt.Println("Time to propose my txns", t.Unix())
 					go func() {
 						for _, b := range currentBanks {
+							if b == n.ID { continue }
 							bpe := n.getPubRoutingInfo(b)
 							if bpe == nil { continue }
 							txnsBytes := n.getTxnsInBuffer()
 							p := n.prepareOMsg(TXNAGGRE, txnsBytes, bpe.Pk)
 							n.sendActive(p, bpe.Port)
 						}
+					}()
+				}()
+
+				// start pushing timer
+				pushTimer := time.NewTimer(bc.PUSHTIME * time.Second)
+				go func() {
+					<-pushTimer.C
+					fmt.Println("Time to push my block", t.Unix())
+					go func() {
+						n.bankProxy.GenerateNewBlock()
 					}()
 				}()
 			}
