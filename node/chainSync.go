@@ -27,19 +27,21 @@ func (n *Node) syncBlockChain() {
 
 		// if !n.iamBank() { continue }
 
-		go func() {
-			bid := n.pickOneRandomBank()
-			buf := make([]byte, 8)
-			binary.BigEndian.PutUint64(buf, uint64(n.chain.Size()))
-			b := n.chain.GetLastBlock()
-			bhash := b.CurHash
-			bpk := n.getPubRoutingInfo(bid)
-			if bpk == nil { return }
-			p := n.prepareOMsg(CHAINSYNC, append(buf, bhash[:]...) , bpk.Pk)
-			n.sendActive(p, bpk.Port)
-		}()
+		go n.syncOnce()
 
 	}
+}
+
+func (n *Node) syncOnce() {
+	bid := n.pickOneRandomBank()
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, uint64(n.chain.Size()))
+	b := n.chain.GetLastBlock()
+	bhash := b.CurHash
+	bpk := n.getPubRoutingInfo(bid)
+	if bpk == nil { return }
+	p := n.prepareOMsg(CHAINSYNC, append(buf, bhash[:]...) , bpk.Pk)
+	n.sendActive(p, bpk.Port)
 }
 
 /*
@@ -145,9 +147,10 @@ func (n *Node) chainRepairReceived(payload []byte, senderID string) {
 			break
 		}
 	}
-
-	print("!!! i am broken at", start)
-	n.chain.TrimChain(int64(start))
+	if start != -1 {
+		print("!!! i am broken at", start)
+		n.chain.TrimChain(int64(start))
+	}
 }
 
 /*
@@ -179,7 +182,7 @@ func (n *Node) broadcastTxn(txn blockChain.Txn, txnType rune) {
  */
 func (n *Node) publishBlock() {
 
-	// banks := n.chain.GetBankIDSet()
+	// banks := n.chain.GetCurBankIDSet()
 	banks := currentBanks
 	for _, b := range banks {
 		if b == n.ID { continue }

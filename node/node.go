@@ -115,7 +115,7 @@ func produceSK() *rsa.PrivateKey {
 func (n *Node) bankStatusDetection() {
 	ticker := time.NewTicker(time.Second * 2)
 	for range ticker.C {
-		currentBanks = n.chain.GetBankIDSet()
+		currentBanks = n.chain.GetCurBankIDSet()
 		if n.iamBank() {
 			print("		My Turn To be Bank!")
 			n.bankProxy.SetStatus(true)
@@ -131,18 +131,22 @@ func (n *Node) bankStatusDetection() {
  */
 func (n *Node) epochTimer() {
 	epochLen := int64(bc.EPOCHLEN)
-	nextEpoch := (time.Now().Unix() / epochLen + 1) * epochLen
-	diff := nextEpoch - time.Now().Unix()
-	timer1 := time.NewTimer(time.Duration(diff) * time.Second)
-	<-timer1.C
-	ticker := time.NewTicker(time.Duration(epochLen) * time.Second)
 
+	if time.Now().Unix() % epochLen != 0 {
+		nextEpoch := (time.Now().Unix()/epochLen + 1) * epochLen
+		diff := nextEpoch - time.Now().Unix()
+		timer1 := time.NewTimer(time.Duration(diff) * time.Second)
+		<-timer1.C
+	}
+
+	ticker := time.NewTicker(time.Duration(epochLen) * time.Second)
 	for t := range ticker.C {
 		print("EPOCH:", t.Unix() / epochLen, t.Unix())
-		currentBanks = n.chain.GetBankIDSet()
+		currentBanks = n.chain.GetCurBankIDSet()
 		go func() {
 			if n.iamBank() {
 				// start proposing timer
+				n.bankProxy.SetStatus(true)
 				propTimer := time.NewTimer(bc.PROPOSINGTIME * time.Second)
 				go func() {
 					<-propTimer.C
@@ -153,8 +157,10 @@ func (n *Node) epochTimer() {
 							bpe := n.getPubRoutingInfo(b)
 							if bpe == nil { continue }
 							txnsBytes := n.getTxnsInBuffer()
-							p := n.prepareOMsg(TXNAGGRE, txnsBytes, bpe.Pk)
-							n.sendActive(p, bpe.Port)
+							if string(txnsBytes) != "null" {
+								p := n.prepareOMsg(TXNAGGRE, txnsBytes, bpe.Pk)
+								n.sendActive(p, bpe.Port)
+							}
 						}
 					}()
 				}()
@@ -168,6 +174,21 @@ func (n *Node) epochTimer() {
 						n.bankProxy.GenerateNewBlock()
 					}()
 				}()
+			} else if n.iamNextBank() {
+				n.bankProxy.SetStatus(false)
+				print("!!! i'm one of the next gen banks, so? !!!")
+				n.syncOnce()
+				//pullTimer := time.NewTimer(bc.PUSHTIME * time.Second)
+				//go func() {
+				//	<-pullTimer.C
+				//	fmt.Println("Time to push my block", t.Unix())
+				//	go func() {
+				//		n.bankProxy.GenerateNewBlock()
+				//	}()
+				//}()
+			} else {
+				n.bankProxy.SetStatus(false)
+				n.syncOnce()
 			}
 		}()
 	}
@@ -221,23 +242,6 @@ func (n *Node) random_msg() {
 	}
 }
 
-func (n *Node) aggregateTxnx() {
-	ticker := time.NewTicker(time.Second * 10)
-	for range ticker.C {
-		if n.iamBank() {
-			go func() {
-				for _, b := range currentBanks {
-					bpe := n.getPubRoutingInfo(b)
-					if bpe == nil { continue }
-					txnsBytes := n.getTxnsInBuffer()
-					p := n.prepareOMsg(TXNAGGRE, txnsBytes, bpe.Pk)
-					n.sendActive(p, bpe.Port)
-				}
-			}()
-		}
-	}
-}
-
 func (n *Node) getTxnsInBuffer() []byte {
 	txns, err := json.Marshal(n.bankProxy.GetTxnBuffer())
 	checkErr(err)
@@ -255,11 +259,14 @@ func (n *Node) isBank(id string) bool {
 	return n.checkBankStatus(id)
 }
 
+func (n *Node) iamNextBank() bool {
+	return contains(n.chain.GetNextBankIDSet(), n.ID)
+}
 /*
 	Check if the id given is a current bank.
  */
 func (n* Node) checkBankStatus(id string) bool {
-	// banks := n.chain.GetBankIDSet()
+	// banks := n.chain.GetCurBankIDSet()
 	return contains(currentBanks, id)
 }
 

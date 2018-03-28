@@ -24,6 +24,7 @@ type TxnSorter []blockChain.Txn
 func (a TxnSorter) Len() int           { return len(a) }
 func (a TxnSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a TxnSorter) Less(i, j int) bool { return a[i].GetTS() < a[j].GetTS() }
+//func (a TxnSorter) Less(i, j int) bool { return string(a[i].GetContent()) < string(a[j].GetContent()) }
 
 func print(str ...interface{}) {
 	if slient {return}
@@ -151,7 +152,6 @@ func (bank *Bank) GenerateNewBlock() bool {
 		return false
 	}
 	print("Fresh Block!", len(bank.txnBuffer))
-	// newBlock := blockChain.NewBlock(bank.txnBuffer[:blockChain.MAXNUMTXN])
 	sort.Sort(TxnSorter(bank.txnBuffer))
 	newBlock := blockChain.NewBlock(bank.txnBuffer)
 	ok := bank.chain.AddNewBlock(newBlock)

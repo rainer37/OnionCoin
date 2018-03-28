@@ -3,10 +3,8 @@ package blockChain
 import (
 	"crypto/rsa"
 	"github.com/rainer37/OnionCoin/ocrypto"
-	"encoding/binary"
 	"time"
 	"crypto/sha256"
-	"bytes"
 	"encoding/json"
 )
 
@@ -57,12 +55,41 @@ type BCNRDMTxn struct {
 	Verifiers 	[]string
 }
 
+func sortSigs(sigs []byte, verifiers []string) {
+	for i:=0; i<len(verifiers) - 1; i++ {
+		for j:=0; j<len(verifiers) -i - 1; j++ {
+			if verifiers[j] > verifiers[j+1] {
+				verifiers[j+1], verifiers[j] = verifiers[j], verifiers[j+1]
+				temp := make([]byte, SIGL)
+				copy(temp, sigs[(j+1) * SIGL:(j+2) * SIGL])
+				copy(sigs[(j+1) * SIGL:(j+2) * SIGL],sigs[j*SIGL:(j+1)*SIGL])
+				copy(sigs[j*SIGL:(j+1)*SIGL], temp)
+			}
+		}
+	}
+}
+
+const SIGL = 128
 func NewPKRTxn(id string, pk rsa.PublicKey, sigs []byte, verifiers []string) PKRegTxn {
+
+	for i:=0; i<len(verifiers) - 1; i++ {
+		for j:=0; j<len(verifiers) -i - 1; j++ {
+			if verifiers[j] > verifiers[j+1] {
+				verifiers[j+1], verifiers[j] = verifiers[j], verifiers[j+1]
+				temp := make([]byte, SIGL)
+				copy(temp, sigs[(j+1) * SIGL:(j+2) * SIGL])
+				copy(sigs[(j+1) * SIGL:(j+2) * SIGL],sigs[j*SIGL:(j+1)*SIGL])
+				copy(sigs[j*SIGL:(j+1)*SIGL], temp)
+			}
+		}
+	}
+
 	return PKRegTxn{id, ocrypto.EncodePK(pk), time.Now().Unix(), sigs, verifiers}
 }
 
-func NewCNEXTxn(coinNum uint64, coinBytes []byte, sigs []byte, verifiers []string) CNEXTxn {
-	return CNEXTxn{coinNum, coinBytes, time.Now().Unix(), sigs, verifiers}
+func NewCNEXTxn(coinNum uint64, coinBytes []byte, ts int64, sigs []byte, verifiers []string) CNEXTxn {
+	sortSigs(sigs, verifiers)
+	return CNEXTxn{coinNum, coinBytes, ts, sigs, verifiers}
 }
 
 /*
@@ -112,23 +139,26 @@ func (pkr PKRegTxn) GetTS() int64 { return pkr.Ts }
 	VHashi(128) : cosigned hash of the signedCoin
  */
 func (cnex CNEXTxn) ToBytes() []byte {
-	coinNumBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(coinNumBytes, cnex.CoinNum)
-
-	timeBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(timeBytes, uint64(cnex.Ts))
-
-	verBytes := []byte{}
-	for _, signer := range cnex.Verifiers {
-		sidBytes := make([]byte, 16)
-		copy(sidBytes, signer)
-		verBytes = append(verBytes, []byte(sidBytes)...)
-
-	}
-
-	cnexBytes := bytes.Join([][]byte{coinNumBytes, cnex.CoinBytes, timeBytes, cnex.Sigs, verBytes}, []byte{})
-
-	return cnexBytes
+	txnBytes, err := json.Marshal(cnex)
+	checkErr(err)
+	return txnBytes
+	//coinNumBytes := make([]byte, 8)
+	//binary.BigEndian.PutUint64(coinNumBytes, cnex.CoinNum)
+	//
+	//timeBytes := make([]byte, 8)
+	//binary.BigEndian.PutUint64(timeBytes, uint64(cnex.Ts))
+	//
+	//verBytes := []byte{}
+	//for _, signer := range cnex.Verifiers {
+	//	sidBytes := make([]byte, 16)
+	//	copy(sidBytes, signer)
+	//	verBytes = append(verBytes, []byte(sidBytes)...)
+	//
+	//}
+	//
+	//cnexBytes := bytes.Join([][]byte{coinNumBytes, cnex.CoinBytes, timeBytes, cnex.Sigs, verBytes}, []byte{})
+	//
+	//return cnexBytes
 }
 func (cnex CNEXTxn) GetCoinNum() uint64 { return cnex.CoinNum }
 func (cnex CNEXTxn) GetSigs() []byte { return cnex.Sigs }

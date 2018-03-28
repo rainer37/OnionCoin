@@ -166,7 +166,7 @@ func makeBytesLen(b []byte) []byte {
  */
 func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	//print("Starting Registration CoSign Protocol")
-	// banks := n.chain.GetBankIDSet()
+	// banks := n.chain.GetCurBankIDSet()
 	banks := currentBanks
 	counter := 1
 	newBieInfo := append(ocrypto.EncodePK(pk), []byte(id)...)

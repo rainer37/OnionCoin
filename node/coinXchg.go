@@ -25,11 +25,17 @@ var exMap = map[string]chan []byte{} // channels for coin exchanging
  */
 func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 	//print("Make a wish")
-	if len(payload) != BCOINSIZE * 2 + 8 {
+	if len(payload) != BCOINSIZE * 2 + 16 {
 		print("Wrong coin exchange len", len(payload))
 		return }
 
-	c := payload[BCOINSIZE+8:]
+	c := payload[BCOINSIZE+16:]
+
+	rwcn := make([]byte, BCOINSIZE)
+	copy(rwcn, payload[8:BCOINSIZE+8])
+	bfid := make([]byte, 8)
+	copy(bfid, payload[BCOINSIZE+8:BCOINSIZE+16])
+
 
 	// check validity, if not, abort
 	if !n.ValidateCoin(c, senderID) {
@@ -41,11 +47,13 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 
 	counterBytes := make([]byte, 2)
 	binary.BigEndian.PutUint16(counterBytes, 0)
-	// start CoSign protocol with counter 0.
-	n.coSignValidCoin(append(counterBytes, c...))
+	tsBytes := payload[:8]
 
-	rwcn := payload[:BCOINSIZE]
-	bfid := payload[BCOINSIZE:BCOINSIZE+8]
+	pb := append(tsBytes, c...)
+	pb = append(counterBytes, pb...)
+	// start CoSign protocol with counter 0.
+
+	n.coSignValidCoin(pb)
 
 	newCoin := n.blindSign(rwcn)
 	spk := n.getPubRoutingInfo(senderID)
@@ -99,7 +107,7 @@ func (n *Node) CoinExchange(dstID string) {
 	// TODO: use more than just the genesis coin
 	gcoin := n.Vault.Withdraw(n.ID).Bytes()
 	// print(len(gcoin))
-	// banks := n.chain.GetBankIDSet()
+	// banks := n.chain.GetCurBankIDSet()
 	banks := currentBanks
 	// print(banks)
 	banksPk := []rsa.PublicKey{} // records which banks are helping
@@ -107,6 +115,9 @@ func (n *Node) CoinExchange(dstID string) {
 	counter := 0
 	layers := 0
 	rc := rwcn.ToBytes()
+
+	tsBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(tsBytes, uint64(time.Now().Unix()))
 
 	for layers < blockChain.NUMCOSIGNER && counter < len(banks) {
 		bid := banks[counter]
@@ -119,9 +130,9 @@ func (n *Node) CoinExchange(dstID string) {
 		//print("Requesting", bid, "for signing rawCoin")
 
 		blindrwcn, bfid := BlindBytes(rc, &bpe.Pk)
-
 		payload := append(blindrwcn, []byte(bfid)...)
 		payload = append(payload, gcoin...) // TODO: append a real COINREWARD
+		payload = append(tsBytes, payload...)
 
 		fo := n.prepareOMsg(RAWCOINEXCHANGE, payload, bpe.Pk)
 
@@ -177,12 +188,12 @@ func (n *Node) coSignValidCoin(c []byte) {
 
 	counter := binary.BigEndian.Uint16(c[:2]) // get cosign counter first 2 bytes
 
-	c = c[2:]
+	cc := c[2:]
 
-	hashAndIds := sha256.Sum256(c[:128]) // get the hash(32) of coin
+	hashAndIds := sha256.Sum256(cc[8:136]) // get the hash(32) of coin
 
 	signedHash := n.blindSign(hashAndIds[:]) // sign the coin(128)
-	signedHash = append(c, signedHash...)
+	signedHash = append(cc, signedHash...)
 
 	newCounter := make([]byte, 2)
 	binary.BigEndian.PutUint16(newCounter, counter+1)
@@ -195,8 +206,8 @@ func (n *Node) coSignValidCoin(c []byte) {
 	// when there is enough sigs gathered, try publish the txn.
 	if counter+1 == blockChain.NUMCOSIGNER {
 		//print("Enough verifiers got, publish it")
-		cnum, cbytes, sigs, verifiers := decodeCNCosign(signedHash, counter+1)
-		txn := blockChain.NewCNEXTxn(cnum, cbytes, sigs, verifiers)
+		t, cnum, cbytes, sigs, verifiers := decodeCNCosign(signedHash, counter+1)
+		txn := blockChain.NewCNEXTxn(cnum, cbytes, t, sigs, verifiers)
 		// TODO: go n.broadcastTxn(txn)
 		ok := n.bankProxy.AddTxn(txn)
 		if ok {
@@ -211,9 +222,7 @@ func (n *Node) coSignValidCoin(c []byte) {
 
 	// randomly picks banks other than me
 	bid := n.pickOneRandomBank()
-
 	tpk := n.getPubRoutingInfo(bid)
-
 	payload := n.prepareOMsg(COINCOSIGN, signedHash, tpk.Pk)
 
 	//print("sending aggregated signed coin and cosign counter:", newCounter)
@@ -223,11 +232,12 @@ func (n *Node) coSignValidCoin(c []byte) {
 /*
 	Decode the bytes from CoSign protocol into correspoding info.
  */
-func decodeCNCosign(content []byte, counter uint16) (cnum uint64, cbytes []byte, sigs []byte, verifiers []string) {
-	cbytes = content[:128]
+func decodeCNCosign(content []byte, counter uint16) (ts int64, cnum uint64, cbytes []byte, sigs []byte, verifiers []string) {
+	ts = int64(binary.BigEndian.Uint64(content[:10]))
+	cbytes = content[8:136]
 	cnum = binary.BigEndian.Uint64(cbytes) // TODO: get real cnum
 
-	sigs_vrfers := content[128:]
+	sigs_vrfers := content[136:]
 
 	for i:=0; i<int(counter); i++ {
 		b := sigs_vrfers[i*144:(i+1)*144-1]
