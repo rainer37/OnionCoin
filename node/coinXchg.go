@@ -10,9 +10,11 @@ import (
 	"github.com/rainer37/OnionCoin/blockChain"
 	"time"
 	"strings"
+	"bytes"
+	"encoding/json"
 )
 
-const BCOINSIZE = 128
+const BCOINSIZE = 128 // raw
 const COSIGNTIMEOUT = 2
 
 var exMap = map[string]chan []byte{} // channels for coin exchanging
@@ -25,16 +27,18 @@ var exMap = map[string]chan []byte{} // channels for coin exchanging
  */
 func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 	//print("Make a wish")
-	if len(payload) != BCOINSIZE * 2 + 16 {
+	if len(payload) <= BCOINSIZE+ 16 {
 		print("Wrong coin exchange len", len(payload))
 		return }
 
 	c := payload[BCOINSIZE+16:]
+	cLen := len(payload) - BCOINSIZE - 16
 
 	rwcn := make([]byte, BCOINSIZE)
 	copy(rwcn, payload[8:BCOINSIZE+8])
+
 	bfid := make([]byte, 8)
-	copy(bfid, payload[BCOINSIZE+8:BCOINSIZE+16])
+	copy(bfid, payload[BCOINSIZE+8: BCOINSIZE+16])
 
 
 	// check validity, if not, abort
@@ -49,7 +53,11 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 	binary.BigEndian.PutUint16(counterBytes, 0)
 	tsBytes := payload[:8]
 
-	pb := append(tsBytes, c...)
+	cLenBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(cLenBytes, uint32(cLen))
+
+	pb := append(tsBytes, cLenBytes...)
+	pb = append(pb, c...)
 	pb = append(counterBytes, pb...)
 	// start CoSign protocol with counter 0.
 
@@ -90,7 +98,7 @@ func (n *Node) receiveNewCoin(payload []byte, senderID string) {
 func (n *Node) GetGenesisCoin() *coin.Coin {
 	pkHash := sha256.Sum256(ocrypto.EncodePK(n.sk.PublicKey))
 	gcoin := n.blindSign(pkHash[:])
-	return coin.NewCoin(n.ID, gcoin)
+	return coin.NewCoin(n.ID, gcoin, []string{n.ID})
 }
 
 /*
@@ -106,11 +114,12 @@ func (n *Node) CoinExchange(dstID string) {
 
 	// TODO: use more than just the genesis coin
 	gcoin := n.Vault.Withdraw(n.ID).Bytes()
+	print(string(gcoin))
 	// print(len(gcoin))
 	// banks := n.chain.GetCurBankIDSet()
 	banks := currentBanks
 	// print(banks)
-	banksPk := []rsa.PublicKey{} // records which banks are helping
+	signerBanks := []string{} // records which banks are helping
 
 	counter := 0
 	layers := 0
@@ -127,12 +136,11 @@ func (n *Node) CoinExchange(dstID string) {
 			return
 		}
 
-		//print("Requesting", bid, "for signing rawCoin")
+		// print("Requesting", bid, "for signing rawCoin")
 
-		blindrwcn, bfid := BlindBytes(rc, &bpe.Pk)
-		payload := append(blindrwcn, []byte(bfid)...)
-		payload = append(payload, gcoin...) // TODO: append a real COINREWARD
-		payload = append(tsBytes, payload...)
+		blindrwcn, bfid := BlindBytes(rc, &bpe.Pk) // TODO: append a real COINREWARD
+
+		payload := bytes.Join([][]byte{tsBytes, blindrwcn, []byte(bfid), gcoin}, []byte{})
 
 		fo := n.prepareOMsg(RAWCOINEXCHANGE, payload, bpe.Pk)
 
@@ -166,16 +174,16 @@ func (n *Node) CoinExchange(dstID string) {
 		}
 
 		rc = revealedCoin
-		banksPk = append(banksPk, bpe.Pk)
+		signerBanks = append(signerBanks, bid)
 		layers++
 	}
 
 	if layers == blockChain.NUMCOSIGNER {
 		// print("New Coin Forged, Thanks Fellas!", len(rc))
-		n.Deposit(coin.NewCoin(dstID, rc))
+		n.Deposit(coin.NewCoin(dstID, rc, signerBanks))
 		// print(n.Vault.Coins)
 	} else {
-		//print("Not Enough Banks To Forge a Coin, Try Next Epoch")
+		print("Not Enough Banks To Forge a Coin, Try Next Epoch")
 	}
 }
 
@@ -183,6 +191,7 @@ func (n *Node) CoinExchange(dstID string) {
 	Upon received a valid coin, the bank signs the coin and pass it to other banks
 	Till enough signatures gained, then publish it as a transaction.
 	Does the last CoSigner solves the puzzle of blind signers?
+	| counter(2) | ts(8) | cLen(4) | coin(cLen) | ... sigs
  */
 func (n *Node) coSignValidCoin(c []byte) {
 
@@ -190,7 +199,8 @@ func (n *Node) coSignValidCoin(c []byte) {
 
 	cc := c[2:]
 
-	hashAndIds := sha256.Sum256(cc[8:136]) // get the hash(32) of coin
+	cLen := binary.BigEndian.Uint32(cc[8:12])
+	hashAndIds := sha256.Sum256(cc[8 + 4: 8 + 4 + cLen]) // get the hash(32) of coin
 
 	signedHash := n.blindSign(hashAndIds[:]) // sign the coin(128)
 	signedHash = append(cc, signedHash...)
@@ -208,7 +218,8 @@ func (n *Node) coSignValidCoin(c []byte) {
 		//print("Enough verifiers got, publish it")
 		t, cnum, cbytes, sigs, verifiers := decodeCNCosign(signedHash, counter+1)
 		txn := blockChain.NewCNEXTxn(cnum, cbytes, t, sigs, verifiers)
-		// TODO: go n.broadcastTxn(txn)
+
+		// go n.broadcastTxn(txn, blockChain.MSG)
 		ok := n.bankProxy.AddTxn(txn)
 		if ok {
 			//print("time to publish this block")
@@ -216,7 +227,6 @@ func (n *Node) coSignValidCoin(c []byte) {
 		}
 		return
 	}
-
 
 	signedHash = append(newCounter, signedHash...) // add updated counter to the head.cvx
 
@@ -233,14 +243,16 @@ func (n *Node) coSignValidCoin(c []byte) {
 	Decode the bytes from CoSign protocol into correspoding info.
  */
 func decodeCNCosign(content []byte, counter uint16) (ts int64, cnum uint64, cbytes []byte, sigs []byte, verifiers []string) {
-	ts = int64(binary.BigEndian.Uint64(content[:10]))
-	cbytes = content[8:136]
+	ts = int64(binary.BigEndian.Uint64(content[:8]))
+	cLen := binary.BigEndian.Uint32(content[8:12])
+	cbytes = content[12 : 12 + cLen]
+
 	cnum = binary.BigEndian.Uint64(cbytes) // TODO: get real cnum
 
-	sigs_vrfers := content[136:]
+	sigs_vrfers := content[12 + cLen:]
 
 	for i:=0; i<int(counter); i++ {
-		b := sigs_vrfers[i*144:(i+1)*144-1]
+		b := sigs_vrfers[i*(128 + 16):(i+1)*(128 + 16)-1]
 		ver,sig := b[128:], b[:128]
 		sigs = append(sigs, sig...)
 		verifiers = append(verifiers, strings.Trim(string(ver), "\x00"))
@@ -280,13 +292,18 @@ func (n *Node) blindSign(rawCoin []byte) []byte {
 /*
 	validate the coin received by decrypting the coin multiple times then check against coinNum and senderID.
  */
-func (n *Node) ValidateCoin(coin []byte, senderID string) bool {
+func (n *Node) ValidateCoin(coinBytes []byte, senderID string) bool {
 	// TODO: validate coin that is signed by other banks
+	var ncoin coin.Coin
+	json.Unmarshal(coinBytes, &ncoin)
+	print(string(ncoin.Bytes()))
 
+	whoWasBanks := n.chain.GetBankSetWhen(int64(ncoin.Epoch) * blockChain.EPOCHLEN)
+	print(whoWasBanks)
 	// first check if it is a genesis coin.
 	spe := n.getPubRoutingInfo(senderID)
 	encSPK := sha256.Sum256(ocrypto.EncodePK(spe.Pk))
-	targetHash := ocrypto.EncryptBig(&spe.Pk, coin)
+	targetHash := ocrypto.EncryptBig(&spe.Pk, ncoin.Content)
 
 	if string(encSPK[:]) == string(targetHash) {
 		print(senderID, "GCoin received")

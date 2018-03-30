@@ -16,7 +16,7 @@ func TestOnionSingleWrap(t *testing.T) {
 	sk := ocrypto.RSAKeyGen()
 	pk := sk.PublicKey
 
-	coin := coin.NewCoin("1", []byte("rainer"))
+	coin := coin.NewCoin("1", []byte("rainer"), []string{"RG"})
 	coinByte := coin.Bytes()
 
 	nextHopID := "Ella"
@@ -43,7 +43,7 @@ func TestOnionTwoWrap(t *testing.T) {
 
 	sk := ocrypto.RSAKeyGen()
 	pk := sk.PublicKey
-	c := coin.NewCoin("1", []byte("rainer"))
+	c := coin.NewCoin("1", []byte("rainer"), []string{"RG"})
 	coinByte := c.Bytes()
 	nextHopID := "Ella"
 
@@ -51,7 +51,7 @@ func TestOnionTwoWrap(t *testing.T) {
 
 	sk2 := ocrypto.RSAKeyGen()
 	pk2 := sk2.PublicKey
-	coin2 := coin.NewCoin("1", []byte("tianrigu"))
+	coin2 := coin.NewCoin("1", []byte("tianrigu"), []string{"RG"})
 	coinByte2 := coin2.Bytes()
 	nextHopID2 := "Alle"
 

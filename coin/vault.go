@@ -4,6 +4,7 @@ import(
 	"os"
 	"io/ioutil"
 	"strings"
+	"encoding/json"
 )
 
 var balance = 1
@@ -28,8 +29,11 @@ func (vault *Vault) InitVault() {
 		// print("loading coin for", rid)
 		coinBytes, err := ioutil.ReadFile(COINDIR+f.Name())
 		checkErr(err)
+		var ncoin *Coin
+		err = json.Unmarshal(coinBytes, &ncoin)
+		checkErr(err)
+		// print(ncoin)
 		coins, ok := vault.Coins[rid]
-		ncoin := NewCoin(rid,coinBytes)
 		if !ok {
 			vault.Coins[rid] = []*Coin{ncoin}
 		} else {
@@ -62,14 +66,16 @@ func (vault *Vault) Deposit(coin *Coin) {
  */
 func (vault *Vault) Withdraw(rid string) *Coin {
 	// print("Withdrawing Coin :"+rid)
-	if vault.Coins[rid] == nil {
+	if len(vault.Coins[rid]) == 0 {
 		files, err := ioutil.ReadDir(COINDIR)
 		checkErr(err)
 		for _, f := range files {
 			if rid == f.Name()[:len(rid)] {
 				coinData, err := ioutil.ReadFile(f.Name())
 				checkErr(err)
-				ncoin := NewCoin(rid, coinData)
+				var ncoin *Coin
+				err = json.Unmarshal(coinData, &ncoin)
+				checkErr(err)
 				vault.Coins[rid] = []*Coin{ncoin}
 				return ncoin
 			}
@@ -78,11 +84,11 @@ func (vault *Vault) Withdraw(rid string) *Coin {
 		return nil
 	}
 	c := vault.Coins[rid][0]
-	//if len(vault.Coins[rid]) > 1 {
-	//	vault.Coins[rid] = vault.Coins[rid][1:]
-	//} else {
-	//	vault.Coins[rid] = vault.Coins[rid][:0]
-	//}
+	if len(vault.Coins[rid]) > 1 {
+		vault.Coins[rid] = vault.Coins[rid][1:]
+	} else {
+		vault.Coins[rid] = []*Coin{}
+	}
 	// balance--
 	return c
 }

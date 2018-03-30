@@ -3,11 +3,12 @@ package coin
 import(
 	"fmt"
 	"os"
-	"crypto/sha256"
 	"strconv"
 	"log"
 	"io/ioutil"
 	"time"
+	"encoding/json"
+	"github.com/rainer37/OnionCoin/blockChain"
 )
 
 const COINPREFIX = "[COIN]"
@@ -15,9 +16,10 @@ const COINLEN = 128
 const COINDIR = "coin/"
 
 type Coin struct {
-	RID string // receiver's ID
-	epoch uint64
+	RID     string // receiver's ID
+	Epoch   uint64
 	Content []byte
+	Signers []string
 }
 
 func print(str ...interface{}) {
@@ -25,11 +27,12 @@ func print(str ...interface{}) {
 	fmt.Println(str...)
 }
 
-func NewCoin(rid string, content []byte) *Coin {
+func NewCoin(rid string, content []byte, signers []string) *Coin {
 	coin := new(Coin)
 	coin.RID = rid
 	coin.Content = content
-	coin.epoch = uint64(time.Now().Unix())
+	coin.Epoch = uint64(time.Now().Unix()) / blockChain.EPOCHLEN
+	coin.Signers = signers
 	return coin
 }
 
@@ -44,23 +47,24 @@ func (c *Coin) GetRID() string {
 }
 
 func (c *Coin) Bytes() []byte {
-	return c.GetContent()
+	coinBytes, err :=json.Marshal(c)
+	checkErr(err)
+	return coinBytes
 }
 
 func (c *Coin) String() string {
-	hash := sha256.Sum256(c.Content)
-	return c.RID + " : " + string(hash[:])
+	return string(c.Bytes())
 }
 
 func (c *Coin) Store() {
-	e := strconv.FormatUint(c.epoch, 10)
+	e := strconv.FormatUint(c.Epoch, 10)
 	coinPath := COINDIR+c.RID+"_"+e
 	if ok, _ := exists(coinPath); !ok {
 		file, err := os.Create(coinPath)
 		defer file.Close()
 		checkErr(err)
 	}
-	ioutil.WriteFile(coinPath, c.Content, 0644)
+	ioutil.WriteFile(coinPath, c.Bytes(), 0644)
 	print("successfully save a coin on disk", coinPath)
 }
 

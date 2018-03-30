@@ -1,7 +1,6 @@
 package node
 
 import (
-	"github.com/rainer37/OnionCoin/coin"
 	"time"
 )
 
@@ -66,8 +65,8 @@ func (n *Node) WrapABigOnion(msg []byte, ids []string) []byte {
 
 	for i:=len(ids)-2; i > 0; i-- {
 		pe := n.getPubRoutingInfo(ids[i])
-		// c := n.Vault.Withdraw(ids[i-1])
-		c := coin.NewCoin(ids[i-1], []byte(""))
+		c := n.Vault.Withdraw(ids[i-1])
+		// c := coin.NewCoin(ids[i-1], []byte(""), []string{})
 		nextID := ids[i+1]
 		o = WrapOnion(pe.Pk, nextID, c.Bytes(), o)
 	}

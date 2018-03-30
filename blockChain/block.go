@@ -42,7 +42,7 @@ func (b *Block) GetCurHash() []byte {
 	binary.BigEndian.PutUint64(timestamp, uint64(b.Ts))
 	txnsBytes := TxnsToBytes(b.Txns)
 	data := bytes.Join([][]byte{b.PrevHash, txnsBytes, timestamp}, []byte{})
-	print(len(data))
+	// print(len(data))
 	hash := sha256.Sum256(data)
 	return hash[:]
 }

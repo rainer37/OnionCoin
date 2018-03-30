@@ -182,8 +182,6 @@ func (chain *BlockChain) GetPKFromChain(id string) *rsa.PublicKey {
 /*
 	Trim the blockchain starting at some point, and delete them from disk
 	then update chain struct and TIndex.
-	TODO: save the valid txns that are not in the new chain for future use.
-
  */
 func (chain *BlockChain) TrimChain(start int64) {
 	n := chain.Size()
@@ -220,7 +218,6 @@ func (chain *BlockChain) GenBlockBytes(index int64) []byte {
  */
 func (chain *BlockChain) updateIndex(b *Block) {
 	for _, t := range b.Txns {
-		//chain.TIndex.mutex.Lock()
 		switch v := t.(type) {
 		case PKRegTxn:
 			chain.TIndex.PKIndex[v.Id] = b.Depth
@@ -231,7 +228,6 @@ func (chain *BlockChain) updateIndex(b *Block) {
 		default:
 			print("what the fuck is this txn")
 		}
-		//chain.TIndex.mutex.Lock()
 	}
 
 	chain.TIndex.ChainLen = chain.Size()
@@ -349,8 +345,6 @@ func (chain *BlockChain) GetBankSetWhen(t int64) []string {
 	allPeers := chain.GetAllPeerIDs(matureLen)
 	numBanks := len(allPeers) / 2
 
-	//print("Everyone:",allPeers, "Mature", matureLen, "NumBanks", numBanks)
-
 	theChosen := []string{}
 	counter := 0
 	i := 0
@@ -363,7 +357,6 @@ func (chain *BlockChain) GetBankSetWhen(t int64) []string {
 		i++
 	}
 	// print("Epoch:", curEpoch, "Everyone:",allPeers, "Mature", matureLen, "Chosen:", theChosen)
-	//print("Epoch:", curEpoch, "Chosen:", theChosen)
 	return append(superBank, theChosen...)
 }
 

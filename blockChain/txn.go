@@ -13,6 +13,7 @@ const (
 	MSG = '1'
 	UPDATE = '2'
 )
+const SIGL = 128
 
 type Txn interface {
 	ToBytes() []byte
@@ -69,21 +70,8 @@ func sortSigs(sigs []byte, verifiers []string) {
 	}
 }
 
-const SIGL = 128
 func NewPKRTxn(id string, pk rsa.PublicKey, sigs []byte, verifiers []string) PKRegTxn {
-
-	for i:=0; i<len(verifiers) - 1; i++ {
-		for j:=0; j<len(verifiers) -i - 1; j++ {
-			if verifiers[j] > verifiers[j+1] {
-				verifiers[j+1], verifiers[j] = verifiers[j], verifiers[j+1]
-				temp := make([]byte, SIGL)
-				copy(temp, sigs[(j+1) * SIGL:(j+2) * SIGL])
-				copy(sigs[(j+1) * SIGL:(j+2) * SIGL],sigs[j*SIGL:(j+1)*SIGL])
-				copy(sigs[j*SIGL:(j+1)*SIGL], temp)
-			}
-		}
-	}
-
+	sortSigs(sigs, verifiers)
 	return PKRegTxn{id, ocrypto.EncodePK(pk), time.Now().Unix(), sigs, verifiers}
 }
 
@@ -95,25 +83,6 @@ func NewCNEXTxn(coinNum uint64, coinBytes []byte, ts int64, sigs []byte, verifie
 /*
 	ID(16) | PK(132) | Ts(8) | signedHashes | SignerIDs
  */
-//func (pkr PKRegTxn) ToBytes() []byte {
-//
-//	IDBytes := make([]byte, 16)
-//	copy(IDBytes, pkr.Id)
-//
-//	timeBytes := make([]byte, 8)
-//	binary.BigEndian.PutUint64(timeBytes, uint64(pkr.Ts))
-//
-//	pkrBytes := bytes.Join([][]byte{IDBytes, pkr.Pk, timeBytes, pkr.Sigs}, []byte{})
-//
-//	for _, signer := range pkr.Verifiers {
-//		sidBytes := make([]byte, 16)
-//		copy(sidBytes, signer)
-//		pkrBytes = append(pkrBytes, []byte(sidBytes)...)
-//	}
-//
-//	return pkrBytes
-//}
-
 func (pkr PKRegTxn) ToBytes() []byte {
 	txnBytes, err := json.Marshal(pkr)
 	checkErr(err)
@@ -142,24 +111,8 @@ func (cnex CNEXTxn) ToBytes() []byte {
 	txnBytes, err := json.Marshal(cnex)
 	checkErr(err)
 	return txnBytes
-	//coinNumBytes := make([]byte, 8)
-	//binary.BigEndian.PutUint64(coinNumBytes, cnex.CoinNum)
-	//
-	//timeBytes := make([]byte, 8)
-	//binary.BigEndian.PutUint64(timeBytes, uint64(cnex.Ts))
-	//
-	//verBytes := []byte{}
-	//for _, signer := range cnex.Verifiers {
-	//	sidBytes := make([]byte, 16)
-	//	copy(sidBytes, signer)
-	//	verBytes = append(verBytes, []byte(sidBytes)...)
-	//
-	//}
-	//
-	//cnexBytes := bytes.Join([][]byte{coinNumBytes, cnex.CoinBytes, timeBytes, cnex.Sigs, verBytes}, []byte{})
-	//
-	//return cnexBytes
 }
+
 func (cnex CNEXTxn) GetCoinNum() uint64 { return cnex.CoinNum }
 func (cnex CNEXTxn) GetSigs() []byte { return cnex.Sigs }
 func (cnex CNEXTxn) GetVerifiers() []string { return cnex.Verifiers }
