@@ -5,8 +5,7 @@ import (
 	"github.com/rainer37/OnionCoin/blockChain"
 	"crypto/sha256"
 	"strings"
-	"strconv"
-	"fmt"
+	"encoding/binary"
 )
 
 
@@ -36,8 +35,11 @@ func TestAddBlockToChain(t *testing.T) {
 		t.Error("Wrong prevHash")
 	}
 
+	timestamp := make([]byte, 8)
+	binary.BigEndian.PutUint64(timestamp, uint64(lb.Ts))
+
 	expectedHashes := append(lb.PrevHash, lb.GetContent()...)
-	expectedHashes = append(expectedHashes, []byte(strconv.FormatInt(lb.Ts, 10))...)
+	expectedHashes = append(expectedHashes, timestamp...)
 	expectedSHA := sha256.Sum256(expectedHashes)
 
 	if string(expectedSHA[:]) != string(lb.GetCurHash()) {
@@ -57,7 +59,7 @@ func TestGetBlock(t *testing.T) {
 	chain.AddNewBlock(block_2)
 	chain.AddNewBlock(block_3)
 
-	fmt.Println(chain.Size())
+	// fmt.Println(chain.Size())
 	if chain.Size() != size + 3 {
 		t.Error("Wrong Size")
 	}
@@ -70,7 +72,7 @@ func TestGetBlock(t *testing.T) {
 	phash2 := b_2.PrevHash
 	phash3 := b_3.PrevHash
 
-	if strings.Trim(string(phash1), "\x00") != "GENESIS_HASH_ON_MAR_2018" {
+	if strings.Trim(string(phash1), "\x00") != "_OC_GENESIS_HASH_ON_18_MAR_2018_" {
 		t.Error("Wrong prevHash")
 	}
 

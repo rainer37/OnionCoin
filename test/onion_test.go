@@ -29,11 +29,11 @@ func TestOnionSingleWrap(t *testing.T) {
 	}
 
 	if string(eCoin) != string(coinByte) {
-		t.Error("Wrong ID")
+		t.Error("Wrong coin Bytes")
 	}
 
 	if string(eMsg) != string(eMsg) {
-		t.Error("Wrong ID")
+		t.Error("Wrong Msg")
 	}
 
 }

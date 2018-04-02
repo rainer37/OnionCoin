@@ -240,7 +240,7 @@ func (chain *BlockChain) updateIndex(b *Block) {
 	checkErr(err)
 	f.Write(indexData)
 	f.Close()
-	print("Index updated")
+	// print("Index updated")
 }
 
 /*

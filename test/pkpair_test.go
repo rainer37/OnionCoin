@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 	"github.com/rainer37/OnionCoin/ocrypto"
-	"fmt"
 )
 
 func TestPKEncrypt(t *testing.T) {
@@ -29,7 +28,7 @@ func TestPKende(t *testing.T) {
 	cipher := ocrypto.BlindSign(sk, msg)
 	plain := ocrypto.EncryptBig(&pk, cipher)
 
-	fmt.Println(string(plain), len(plain), len(cipher))
+	// fmt.Println(string(plain), len(plain), len(cipher))
 	if string(plain) != string(msg) {
 		t.Error("Wrong pk en de")
 	}
@@ -74,7 +73,7 @@ func TestSignANDVerify(t *testing.T) {
 	msg := []byte("Hello World")
 
 	sig := ocrypto.RSASign(sk, msg)
-	fmt.Println(len(sig))
+	// fmt.Println(len(sig))
 	b := ocrypto.RSAVerify(&pk, sig, msg)
 	if !b {
 		t.Error("Signature verification failed")

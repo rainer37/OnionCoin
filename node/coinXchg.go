@@ -114,7 +114,7 @@ func (n *Node) CoinExchange(dstID string) {
 
 	// TODO: use more than just the genesis coin
 	gcoin := n.Vault.Withdraw(n.ID).Bytes()
-	print(string(gcoin))
+	print(rwcn.GetCoinNum(), string(gcoin))
 	// print(len(gcoin))
 	// banks := n.chain.GetCurBankIDSet()
 	banks := currentBanks
@@ -216,7 +216,7 @@ func (n *Node) coSignValidCoin(c []byte) {
 	// when there is enough sigs gathered, try publish the txn.
 	if counter+1 == blockChain.NUMCOSIGNER {
 		//print("Enough verifiers got, publish it")
-		t, cnum, cbytes, sigs, verifiers := decodeCNCosign(signedHash, counter+1)
+		t, cnum, cbytes, sigs, verifiers := n.decodeCNCosign(signedHash, counter+1)
 		txn := blockChain.NewCNEXTxn(cnum, cbytes, t, sigs, verifiers)
 
 		// go n.broadcastTxn(txn, blockChain.MSG)
@@ -242,12 +242,15 @@ func (n *Node) coSignValidCoin(c []byte) {
 /*
 	Decode the bytes from CoSign protocol into correspoding info.
  */
-func decodeCNCosign(content []byte, counter uint16) (ts int64, cnum uint64, cbytes []byte, sigs []byte, verifiers []string) {
+func (n *Node) decodeCNCosign(content []byte, counter uint16) (ts int64, cnum uint64, cbytes []byte, sigs []byte, verifiers []string) {
 	ts = int64(binary.BigEndian.Uint64(content[:8]))
 	cLen := binary.BigEndian.Uint32(content[8:12])
 	cbytes = content[12 : 12 + cLen]
 
-	cnum = binary.BigEndian.Uint64(cbytes) // TODO: get real cnum
+	var c coin.Coin
+	json.Unmarshal(cbytes, &c)
+	cnum, _ = n.getCoinNumAndIDHash(c)
+	// cnum = binary.BigEndian.Uint64(cbytes) // TODO: get real cnum
 
 	sigs_vrfers := content[12 + cLen:]
 
@@ -259,6 +262,23 @@ func decodeCNCosign(content []byte, counter uint16) (ts int64, cnum uint64, cbyt
 	}
 
 	return
+}
+
+func (n *Node) getCoinNumAndIDHash(c coin.Coin) (uint64, []byte) {
+	content := c.Content
+	signers := c.Signers
+
+	for i:=len(signers)-1; i>=0; i-- {
+		b := signers[i]
+		bpe := n.getPubRoutingInfo(b)
+		content = ocrypto.EncryptBig(&bpe.Pk, content)
+	}
+
+	// print(len(content), string(content))
+	if len(content) != 32 + 8 {
+		return 0, nil
+	}
+	return binary.BigEndian.Uint64(content[32:]), content[:32]
 }
 
 /*
@@ -298,8 +318,6 @@ func (n *Node) ValidateCoin(coinBytes []byte, senderID string) bool {
 	json.Unmarshal(coinBytes, &ncoin)
 	print(string(ncoin.Bytes()))
 
-	whoWasBanks := n.chain.GetBankSetWhen(int64(ncoin.Epoch) * blockChain.EPOCHLEN)
-	print(whoWasBanks)
 	// first check if it is a genesis coin.
 	spe := n.getPubRoutingInfo(senderID)
 	encSPK := sha256.Sum256(ocrypto.EncodePK(spe.Pk))
@@ -308,6 +326,33 @@ func (n *Node) ValidateCoin(coinBytes []byte, senderID string) bool {
 	if string(encSPK[:]) == string(targetHash) {
 		print(senderID, "GCoin received")
 		return true
+	}
+
+	// if not gcoin, check if the signers are in the same epoch, then check the signatures.
+	whoWasBanks := n.chain.GetBankSetWhen(int64(ncoin.Epoch) * blockChain.EPOCHLEN)
+	print(ncoin.Signers)
+	print(whoWasBanks)
+
+	for _, s := range(ncoin.Signers) {
+		if !contains(whoWasBanks, s) {
+			print("One of the signers is not supposed to be bank at that moment!")
+			return false
+		}
+	}
+
+	coinNum, idHash := n.getCoinNumAndIDHash(ncoin)
+	print("CoinNum:", coinNum)
+	h := sha256.Sum256([]byte(senderID))
+
+	if string(idHash) != string(h[:]) {
+		print("The coin id is not the senderID, sorry you have to use your own coin!")
+		return false
+	}
+
+	// then check if the coinNum has been recorded in previous txns.
+	if !blockChain.IsFreeCoinNum(coinNum) {
+		print("Same Coin Num Found!")
+		return false
 	}
 
 	return true

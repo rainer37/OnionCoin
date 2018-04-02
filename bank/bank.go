@@ -151,11 +151,11 @@ func (bank *Bank) GenerateNewBlock() bool {
 	if len(bank.txnBuffer) <= 0 {
 		return false
 	}
-	print("Fresh Block!", len(bank.txnBuffer))
+	print("Fresh Block with", len(bank.txnBuffer), "txns")
 	sort.Sort(TxnSorter(bank.txnBuffer))
 	newBlock := blockChain.NewBlock(bank.txnBuffer)
 	ok := bank.chain.AddNewBlock(newBlock)
-	print("NewBlock Hash:", string(newBlock.CurHash))
+	print("NewBlock Hash: [", string(newBlock.CurHash), "]")
 	if ok {
 		bank.cleanBuffer()
 		return true

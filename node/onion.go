@@ -3,7 +3,6 @@ package node
 import (
 	"fmt"
 	"crypto/rsa"
-	"github.com/rainer37/OnionCoin/coin"
 	"bytes"
 	"github.com/rainer37/OnionCoin/ocrypto"
 )
@@ -29,7 +28,10 @@ func WrapOnion(pk rsa.PublicKey, nextID string, coin []byte, content []byte) []b
 	nextIDBytes := make([]byte, IDLEN)
 	copy(nextIDBytes, nextID)
 
-	b := append(nextIDBytes, coin...)
+	cbytes := make([]byte, 256)
+	copy(cbytes, coin)
+
+	b := append(nextIDBytes, cbytes...)
 	b = append(b, content...)
 
 	cipher, cKey, err := ocrypto.BlockEncrypt(b, pk)
@@ -46,9 +48,10 @@ func PeelOnion(sk *rsa.PrivateKey, fullOnion []byte) (string, []byte, []byte) {
 	cKey, onion := fullOnion[:ocrypto.SYMKEYLEN], fullOnion[ocrypto.SYMKEYLEN:]
 	decryptedOnion, err := ocrypto.BlockDecrypt(onion, cKey, sk)
 	checkErr(err)
+	print(len(decryptedOnion))
 	return string(bytes.Trim(decryptedOnion[:IDLEN], "\x00")),
-	decryptedOnion[IDLEN:IDLEN+coin.COINLEN],
-	decryptedOnion[IDLEN+coin.COINLEN:]
+	bytes.Trim(decryptedOnion[IDLEN:IDLEN+256], "\x00"),
+	decryptedOnion[IDLEN+256:]
 }
 
 func (o *Onion) String() string {

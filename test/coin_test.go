@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/node"
-	"fmt"
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/blockChain"
 )
@@ -33,15 +32,15 @@ func TestRawCoinBlindbyBank(t *testing.T) {
 
 	brc, bfid := node.BlindBytes(rwcn.ToBytes(), &bankSK.PublicKey)
 
-	fmt.Println(len(brc))
+	//fmt.Println(len(brc))
 
 	signedBRC := ocrypto.BlindSign(bankSK, brc)
 
-	fmt.Println(len(signedBRC))
+	//fmt.Println(len(signedBRC))
 
 	coin := node.UnBlindBytes(signedBRC, bfid, &bankSK.PublicKey)
 
-	fmt.Println(len(coin))
+	//fmt.Println(len(coin))
 
 	if !ocrypto.VerifyBlindSig(&bankSK.PublicKey,rwcn.ToBytes(),coin) {
 		t.Error("wrong raw coin ex")
