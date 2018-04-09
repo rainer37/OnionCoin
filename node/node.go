@@ -132,25 +132,34 @@ func (n *Node) bankStatusDetection() {
 func (n *Node) epochTimer() {
 	epochLen := int64(bc.EPOCHLEN)
 
+	defer func() {
+		print("BOOM!\n\n\n\n")
+	}()
+
 	if time.Now().Unix() % epochLen != 0 {
 		nextEpoch := (time.Now().Unix()/epochLen + 1) * epochLen
 		diff := nextEpoch - time.Now().Unix()
+		print(diff)
 		timer1 := time.NewTimer(time.Duration(diff) * time.Second)
 		<-timer1.C
 	}
 
 	ticker := time.NewTicker(time.Duration(epochLen) * time.Second)
+	// n.syncOnce()
 	for t := range ticker.C {
-		print("EPOCH:", t.Unix() / epochLen, t.Unix())
+		print("EPOCH:", t.Unix() / epochLen, t.Unix(), currentBanks)
 		currentBanks = n.chain.GetCurBankIDSet()
 		go func() {
 			if n.iamBank() {
 				// start proposing timer
 				n.bankProxy.SetStatus(true)
+
 				propTimer := time.NewTimer(bc.PROPOSINGTIME * time.Second)
 				go func() {
 					<-propTimer.C
-					fmt.Println("Time to propose my txns", t.Unix())
+					bank.HashCmpMap = make(map[string]int)
+					print("Time to propose my txns", t.Unix())
+					n.syncOnce()
 					go func() {
 						for _, b := range currentBanks {
 							if b == n.ID { continue }
@@ -169,9 +178,28 @@ func (n *Node) epochTimer() {
 				pushTimer := time.NewTimer(bc.PUSHTIME * time.Second)
 				go func() {
 					<-pushTimer.C
-					fmt.Println("Time to push my block", t.Unix())
+					print("Time to push my block", t.Unix())
 					go func() {
-						n.bankProxy.GenerateNewBlock()
+						// n.bankProxy.GenerateNewBlock()
+						nb := n.bankProxy.GenNewBlock()
+						if nb != nil {
+							bank.HashCmpMap[string(nb.CurHash)] = 1
+							for _, b := range currentBanks {
+								if b == n.ID { continue }
+								bpe := n.getPubRoutingInfo(b)
+								if bpe == nil { continue }
+								p := n.prepareOMsg(HASHCMP, nb.CurHash, bpe.Pk)
+								n.sendActive(p, bpe.Port)
+							}
+							cmpTimer := time.NewTimer(2 * time.Second)
+							<-cmpTimer.C
+							if n.bankProxy.IsMajorityHash(string(nb.CurHash)) {
+								n.chain.StoreBlock(nb)
+							} else {
+								print("i has minor hash, wait for sync ***************************")
+							}
+							n.bankProxy.CleanBuffer()
+						}
 					}()
 				}()
 			} else if n.iamNextBank() {
@@ -203,6 +231,7 @@ func (n *Node) random_exchg() {
 			go func() {
 				if coin.GetBalance() > 0 {
 
+					if n.isSlientHours() { return }
 					n.CoinExchange(n.ID)
 					opCount++
 
@@ -222,6 +251,8 @@ func (n *Node) random_msg() {
 		if !n.iamBank() {
 			go func() {
 				if coin.GetBalance() > 0 {
+
+					if n.isSlientHours() { return }
 
 					path := records.RandomPath()
 					pathLength += len(path)
@@ -246,6 +277,15 @@ func (n *Node) getTxnsInBuffer() []byte {
 	txns, err := json.Marshal(n.bankProxy.GetTxnBuffer())
 	checkErr(err)
 	return txns
+}
+
+func (n *Node) isSlientHours() bool {
+	nextEpoch := (time.Now().Unix()/bc.EPOCHLEN + 1) * bc.EPOCHLEN
+	t := time.Now().Unix()
+	if t > nextEpoch - bc.PROPOSINGDELAY {
+		return true
+	}
+	return false
 }
 
 /*

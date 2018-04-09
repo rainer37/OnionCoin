@@ -7,10 +7,12 @@ import (
 	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/records"
 	"sort"
+	"time"
 )
 
 const BANK_PREFIX = "[BANK]"
 var slient = false
+var HashCmpMap map[string]int
 
 type Bank struct {
 	sk *rsa.PrivateKey
@@ -36,6 +38,7 @@ func InitBank(sk *rsa.PrivateKey, chain *blockChain.BlockChain) *Bank {
 	bank := new(Bank)
 	bank.sk = sk
 	bank.chain = chain
+	HashCmpMap = make(map[string]int)
 	return bank
 }
 
@@ -157,13 +160,45 @@ func (bank *Bank) GenerateNewBlock() bool {
 	ok := bank.chain.AddNewBlock(newBlock)
 	print("NewBlock Hash: [", string(newBlock.CurHash), "]")
 	if ok {
-		bank.cleanBuffer()
+		bank.CleanBuffer()
 		return true
 	}
 	return false
 }
 
-func (bank *Bank) cleanBuffer() {
+func (bank *Bank) GenNewBlock() *blockChain.Block {
+	if len(bank.txnBuffer) <= 0 {
+		return nil
+	}
+	print("Fresh Block with", len(bank.txnBuffer), "txns")
+	sort.Sort(TxnSorter(bank.txnBuffer))
+	newBlock := blockChain.NewBlock(bank.txnBuffer)
+
+	prevBlock := bank.chain.Blocks[bank.chain.Size()-1]
+	newBlock.PrevHash = prevBlock.CurHash
+	newBlock.Depth = prevBlock.Depth + 1
+	newBlock.Ts = time.Now().Unix()
+	newBlock.CurHash = newBlock.GetCurHash()
+
+	print("NewBlock Hash: [", string(newBlock.CurHash), "]")
+	return newBlock
+}
+
+func (bank *Bank) IsMajorityHash(hash string) bool {
+	maxCount := 0
+	myCount := HashCmpMap[hash]
+	for _, v := range HashCmpMap {
+		if v > maxCount {
+			maxCount = v
+		}
+	}
+	if myCount == maxCount {
+		return true
+	}
+	return false
+}
+
+func (bank *Bank) CleanBuffer() {
 	//if len(bank.txnBuffer) > blockChain.MAXNUMTXN {
 	//	bank.txnBuffer = bank.txnBuffer[blockChain.MAXNUMTXN:]
 	//} else {

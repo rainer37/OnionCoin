@@ -38,11 +38,11 @@ type PKRegTxn struct {
 	Coin Exchange Transactions
  */
 type CNEXTxn struct {
-	CoinNum   uint64
-	CoinBytes []byte
-	Ts        int64
-	Sigs      []byte
-	Verifiers []string
+	CoinNum   	uint64
+	CoinBytes 	[]byte
+	Ts        	int64
+	Sigs      	[]byte
+	Verifiers 	[]string
 }
 
 /*
@@ -56,20 +56,6 @@ type BCNRDMTxn struct {
 	Verifiers 	[]string
 }
 
-func sortSigs(sigs []byte, verifiers []string) {
-	for i:=0; i<len(verifiers) - 1; i++ {
-		for j:=0; j<len(verifiers) -i - 1; j++ {
-			if verifiers[j] > verifiers[j+1] {
-				verifiers[j+1], verifiers[j] = verifiers[j], verifiers[j+1]
-				temp := make([]byte, SIGL)
-				copy(temp, sigs[(j+1) * SIGL:(j+2) * SIGL])
-				copy(sigs[(j+1) * SIGL:(j+2) * SIGL],sigs[j*SIGL:(j+1)*SIGL])
-				copy(sigs[j*SIGL:(j+1)*SIGL], temp)
-			}
-		}
-	}
-}
-
 func NewPKRTxn(id string, pk rsa.PublicKey, sigs []byte, verifiers []string) PKRegTxn {
 	sortSigs(sigs, verifiers)
 	return PKRegTxn{id, ocrypto.EncodePK(pk), time.Now().Unix(), sigs, verifiers}
@@ -80,6 +66,10 @@ func NewCNEXTxn(coinNum uint64, coinBytes []byte, ts int64, sigs []byte, verifie
 	return CNEXTxn{coinNum, coinBytes, ts, sigs, verifiers}
 }
 
+func NewBCNRDMTxn(TxnID []byte, casherID string, ts int64, sigs []byte, verifiers []string) BCNRDMTxn {
+	sortSigs(sigs, verifiers)
+	return BCNRDMTxn{TxnID, casherID, ts, sigs, verifiers}
+}
 /*
 	ID(16) | PK(132) | Ts(8) | signedHashes | SignerIDs
  */
@@ -126,10 +116,19 @@ func (cnex CNEXTxn) GetContent() []byte {
 	return cnHash[:]
 }
 
-func (bcnrd BCNRDMTxn) ToBytes() []byte { return []byte{} }
+func (bcnrd BCNRDMTxn) ToBytes() []byte {
+	txnBytes, err := json.Marshal(bcnrd)
+	checkErr(err)
+	return txnBytes
+}
+
 func (bcnrd BCNRDMTxn) GetSigs() []byte { return bcnrd.Sigs }
 func (bcnrd BCNRDMTxn) GetVerifiers() []string { return bcnrd.Verifiers }
-func (bcnrd BCNRDMTxn) GetContent() []byte { return []byte{} }
+func (bcnrd BCNRDMTxn) GetContent() []byte {
+	idByets := make([]byte, 16)
+	copy(idByets, bcnrd.CasherID)
+	return append(bcnrd.TxnID, idByets...)
+}
 func (bcnrd BCNRDMTxn) GetTS() int64 { return bcnrd.Ts }
 
 /*
@@ -157,9 +156,23 @@ func ProduceTxn(data []byte, txnType rune) Txn {
 		json.Unmarshal(data, &txn)
 		return txn
 	case UPDATE:
-		txn := new(BCNRDMTxn)
+		txn := BCNRDMTxn{}
 		json.Unmarshal(data, &txn)
 		return txn
 	}
-	return new(PKRegTxn)
+	return nil
+}
+
+func sortSigs(sigs []byte, verifiers []string) {
+	for i:=0; i<len(verifiers) - 1; i++ {
+		for j:=0; j<len(verifiers) -i - 1; j++ {
+			if verifiers[j] > verifiers[j+1] {
+				verifiers[j+1], verifiers[j] = verifiers[j], verifiers[j+1]
+				temp := make([]byte, SIGL)
+				copy(temp, sigs[(j+1) * SIGL:(j+2) * SIGL])
+				copy(sigs[(j+1) * SIGL:(j+2) * SIGL],sigs[j*SIGL:(j+1)*SIGL])
+				copy(sigs[j*SIGL:(j+1)*SIGL], temp)
+			}
+		}
+	}
 }

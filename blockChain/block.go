@@ -40,9 +40,15 @@ func NewBlock(txns []Txn) *Block {
 func (b *Block) GetCurHash() []byte {
 	timestamp := make([]byte, 8)
 	binary.BigEndian.PutUint64(timestamp, uint64(b.Ts))
-	txnsBytes := TxnsToBytes(b.Txns)
+	// txnsBytes := TxnsToBytes(b.Txns)
+	txnsBytes := bytes.Join(b.TxnHashes, []byte{})
 	data := bytes.Join([][]byte{b.PrevHash, txnsBytes, timestamp}, []byte{})
 	// print(len(data))
+	//sum := 0
+	//for _, b := range data {
+	//	sum += int(b)
+	// }
+	// print(sum)
 	hash := sha256.Sum256(data)
 	return hash[:]
 }

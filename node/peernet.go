@@ -12,7 +12,7 @@ import (
 	"os"
 )
 
-const BUFSIZE = 4096 * 2
+const BUFSIZE = 4096 * 10
 const LOCALHOST = "127.0.0.1"
 const NEWBIEMARKER = "100000"
 
@@ -20,12 +20,12 @@ var msgSendCount = 0
 var msgReceived = 0
 
 func (n *Node) SelfInit() {
-	print("PeerNet Initiated.")
+	// print("PeerNet Initiated.")
 
 	n.bankProxy = bank.InitBank(n.sk, n.chain)
 
 	if n.iamBank() {
-		print("My Turn To be Bank!")
+		// print("My Turn To be Bank!")
 		n.bankProxy.SetStatus(true)
 	} else {
 		n.bankProxy.SetStatus(false)
@@ -141,7 +141,7 @@ func (n *Node) sendActive(msg []byte, add string) {
 	defer con.Close()
 	_, err = con.Write(msg)
 	if err != nil {
-		print(err)
+		print(err, len(msg))
 		return
 	}
 }

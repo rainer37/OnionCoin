@@ -61,7 +61,7 @@ func (c *RawCoin) ToBytes() []byte {
  */
 func genFreeCN() uint64 {
 	for {
-		cn := rand.Uint64()
+		cn := uint64(rand.Uint32())
 		if blockChain.IsFreeCoinNum(cn) {
 			return cn
 		}

@@ -52,11 +52,11 @@ func (vault *Vault) Contains(coin *Coin) bool {
 }
 
 func (vault *Vault) Deposit(coin *Coin) {
-	if !vault.Contains(coin) {
-		vault.Coins[coin.RID] = []*Coin{coin}
-	} else {
-		vault.Coins[coin.RID] = append(vault.Coins[coin.RID], coin)
-	}
+	//if !vault.Contains(coin) {
+	//	vault.Coins[coin.RID] = []*Coin{coin}
+	//} else {
+	//	vault.Coins[coin.RID] = append(vault.Coins[coin.RID], coin)
+	//}
 	coin.Store() // store the coin on disk
 	// balance++
 }
@@ -71,12 +71,16 @@ func (vault *Vault) Withdraw(rid string) *Coin {
 		checkErr(err)
 		for _, f := range files {
 			if rid == f.Name()[:len(rid)] {
-				coinData, err := ioutil.ReadFile(f.Name())
-				checkErr(err)
+				coinData, err := ioutil.ReadFile(COINDIR + f.Name())
+				if err != nil {
+					return nil
+				}
+				// checkErr(err)
 				var ncoin *Coin
 				err = json.Unmarshal(coinData, &ncoin)
 				checkErr(err)
 				vault.Coins[rid] = []*Coin{ncoin}
+				os.Remove(COINDIR + f.Name())
 				return ncoin
 			}
 		}

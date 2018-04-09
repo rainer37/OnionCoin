@@ -144,12 +144,13 @@ func (n *Node) chainRepairReceived(payload []byte, senderID string) {
 	for _, v := range arr {
 		if v.Depth < n.chain.Size() && string(n.chain.Blocks[v.Depth].CurHash[:8]) == string(v.Hash[:8]) {
 			start = v.Depth
-			break
+			// break
 		}
 	}
 	if start != -1 {
 		print("!!! i am broken at", start)
 		n.chain.TrimChain(int64(start))
+		n.syncOnce()
 	}
 }
 

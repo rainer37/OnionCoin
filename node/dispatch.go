@@ -7,6 +7,7 @@ import (
 	"errors"
 	"sync"
 	"github.com/rainer37/OnionCoin/blockChain"
+	"github.com/rainer37/OnionCoin/bank"
 )
 
 const (
@@ -34,6 +35,7 @@ const (
 	IPLOOKUP         = 'L'
 	IPLOOKUPRP       = 'M'
 	TXNAGGRE		 = 'N'
+	HASHCMP			 = 'O'
 	ADV              = 'G'
 )
 
@@ -173,6 +175,13 @@ func (n *Node) dispatch(incoming []byte) {
 		n.bankProxy.AggreTxns(txns)
 		// n.chain.AddNewBlock(blockChain.NewBlock(txns))
 		// print(n.chain.GetLastBlock().CurHash)
+	case HASHCMP:
+		// print("New Block Hash From", senderID, string(payload))
+		if _, ok := bank.HashCmpMap[string(payload)]; !ok{
+			bank.HashCmpMap[string(payload)] = 0
+		}
+		bank.HashCmpMap[string(payload)] += 1
+		// print(bank.HashCmpMap)
 	case REJECT:
 		print(string(payload))
 	case EXPT:
