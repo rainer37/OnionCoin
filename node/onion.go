@@ -28,7 +28,7 @@ func WrapOnion(pk rsa.PublicKey, nextID string, coin []byte, content []byte) []b
 	nextIDBytes := make([]byte, IDLEN)
 	copy(nextIDBytes, nextID)
 
-	cbytes := make([]byte, 256)
+	cbytes := make([]byte, 256) // TODO: adjust the size by real coin size.
 	copy(cbytes, coin)
 
 	b := append(nextIDBytes, cbytes...)
@@ -48,7 +48,7 @@ func PeelOnion(sk *rsa.PrivateKey, fullOnion []byte) (string, []byte, []byte) {
 	cKey, onion := fullOnion[:ocrypto.SYMKEYLEN], fullOnion[ocrypto.SYMKEYLEN:]
 	decryptedOnion, err := ocrypto.BlockDecrypt(onion, cKey, sk)
 	checkErr(err)
-	print(len(decryptedOnion))
+	// print(len(decryptedOnion))
 	return string(bytes.Trim(decryptedOnion[:IDLEN], "\x00")),
 	bytes.Trim(decryptedOnion[IDLEN:IDLEN+256], "\x00"),
 	decryptedOnion[IDLEN+256:]

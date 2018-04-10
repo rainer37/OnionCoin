@@ -47,8 +47,8 @@ func (n *Node) SelfInit() {
 	checkErr(err)
 	// go n.syncBlockChain()
 	//if !n.iamBank() {
-		go n.random_exchg()
-		// go n.random_msg()
+		//go n.random_exchg()
+		go n.random_msg()
 	//}
 	go n.epochTimer()
 	//go n.bankStatusDetection()

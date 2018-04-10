@@ -247,7 +247,7 @@ func (n *Node) random_exchg() {
 func (n *Node) random_msg() {
 	ticker := time.NewTicker(time.Second * 3)
 	for t := range ticker.C {
-		fmt.Println(t.Unix(), "SEND:", msgSendCount, "OPS:", opCount, "MSGCOUNT:", omsgCount, "PATHLEN:", pathLength)
+		print(t.Unix(), "SEND:", msgSendCount, "OPS:", opCount, "MSGCOUNT:", omsgCount, "PATHLEN:", pathLength)
 		if !n.iamBank() {
 			go func() {
 				if coin.GetBalance() > 0 {

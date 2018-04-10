@@ -112,7 +112,8 @@ func (n *Node) GetGenesisCoin() *coin.Coin {
 func (n *Node) CoinExchange(dstID string) {
 	rwcn := coin.NewRawCoin(dstID)
 
-	gcoin := n.Vault.Withdraw(n.ID).Bytes()
+	// gcoin := n.Vault.Withdraw(n.ID).Bytes()
+	gcoin := n.GetGenesisCoin().Bytes()
 	if gcoin == nil {
 		print("No More Coins To exchange")
 		return

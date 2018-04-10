@@ -20,15 +20,10 @@ type DepthHashPair struct {
 	randomly picks a bank to send CHAINSYNC req with my current depth, and the hash of last block.
  */
 func (n *Node) syncBlockChain() {
-
 	ticker := time.NewTicker(time.Second * SYNCPEROID)
 	for t := range ticker.C {
 		print("TS:", t.Unix(), "CHAINLEN:", n.chain.Size(), "LASTHASH:", string(n.chain.GetLastBlock().GetCurHash()[:8]))
-
-		// if !n.iamBank() { continue }
-
 		go n.syncOnce()
-
 	}
 }
 

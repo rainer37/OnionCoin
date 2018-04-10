@@ -5,7 +5,6 @@ import(
 	"os"
 	"github.com/rainer37/OnionCoin/node"
 	"github.com/rainer37/OnionCoin/records"
-	"github.com/rainer37/OnionCoin/ui"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/x509"
 	"io/ioutil"
@@ -82,7 +81,7 @@ func main() {
 		go n.SelfInit()
 	}
 
-	go ui.Listen(n)
+	// go ui.Listen(n)
 
 	select {}
 }
