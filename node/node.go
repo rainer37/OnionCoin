@@ -147,7 +147,8 @@ func (n *Node) epochTimer() {
 	ticker := time.NewTicker(time.Duration(epochLen) * time.Second)
 	// n.syncOnce()
 	for t := range ticker.C {
-		print("EPOCH:", t.Unix() / epochLen, t.Unix(), currentBanks)
+		print("[]", t.Unix(), "EPOCH:", t.Unix() / epochLen, "SEND:", msgSendCount, "MSG:", omsgCount,"BC:", bcCount, "PLen:", pathLength, "[]")
+		//fmt.Println("Tick at", t.Unix(), "SEND:", msgSendCount, "RECEIVED:", msgReceived, "OPS:", opCount)
 		currentBanks = n.chain.GetCurBankIDSet()
 		go func() {
 			if n.iamBank() {
@@ -245,9 +246,9 @@ func (n *Node) random_exchg() {
 }
 
 func (n *Node) random_msg() {
-	ticker := time.NewTicker(time.Second * 3)
-	for t := range ticker.C {
-		print(t.Unix(), "SEND:", msgSendCount, "OPS:", opCount, "MSGCOUNT:", omsgCount, "PATHLEN:", pathLength)
+	ticker := time.NewTicker(time.Second * 5)
+	for range ticker.C {
+		//print(t.Unix(), "SEND:", msgSendCount, "OPS:", opCount, "MSGCOUNT:", omsgCount, "PATHLEN:", pathLength)
 		if !n.iamBank() {
 			go func() {
 				if coin.GetBalance() > 0 {
@@ -255,12 +256,16 @@ func (n *Node) random_msg() {
 					if n.isSlientHours() { return }
 
 					path := records.RandomPath()
+					for _, b := range path {
+						n.CoinExchange(b)
+					}
 					pathLength += len(path)
 					msg := "hello, i am " + n.ID
-
+					print("COINS READY")
 					// fmt.Println("Path:", path)
 
 					n.SendOninoMsg(path, msg)
+					print("ONION FIRED")
 
 					opCount++
 

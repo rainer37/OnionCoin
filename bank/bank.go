@@ -11,7 +11,7 @@ import (
 )
 
 const BANK_PREFIX = "[BANK]"
-var slient = false
+var slient = true
 var HashCmpMap map[string]int
 
 type Bank struct {
@@ -74,8 +74,6 @@ func (bank *Bank) AddTxn(txn blockChain.Txn) bool {
 			bank.GenerateNewBlock()
 		}
 	}
-
-
 
 	return true
 }

@@ -12,12 +12,14 @@ import (
 	"strings"
 	"bytes"
 	"encoding/json"
+	"sync"
 )
 
 const BCOINSIZE = 128 // raw
 const COSIGNTIMEOUT = 2
 
 var exMap = map[string]chan []byte{} // channels for coin exchanging
+var m = sync.RWMutex{}
 
 /*
 	bank processing coin exchange request.
@@ -154,16 +156,19 @@ func (n *Node) CoinExchange(dstID string) {
 
 		var realCoin []byte
 
+		m.Lock()
 		select{
 		case reply := <-exMap[bfid]:
 			realCoin = reply
 			close(exMap[bfid])
+			m.Unlock()
 		case <-time.After(COSIGNTIMEOUT * time.Second):
 			print(bid, "no response, try next bank")
+			close(exMap[bfid])
 			counter++
+			m.Unlock()
 			continue
 		}
-
 		//print("waiting for response from", bid)
 
 		revealedCoin := UnBlindBytes(realCoin, bfid, &bpe.Pk)
@@ -331,10 +336,11 @@ func (n *Node) ValidateCoin(coinBytes []byte, senderID string) bool {
 	targetHash := ocrypto.EncryptBig(&spe.Pk, ncoin.Content)
 
 	if string(encSPK[:]) == string(targetHash) {
-		print(senderID, "GCoin received")
+		// print(senderID, "GCoin received")
 		return true
 	}
 
+	// TODO: remove this
 	return true
 	// if not gcoin, check if the signers are in the same epoch, then check the signatures.
 	whoWasBanks := n.chain.GetBankSetWhen(int64(ncoin.Epoch) * blockChain.EPOCHLEN)

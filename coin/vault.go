@@ -5,9 +5,11 @@ import(
 	"io/ioutil"
 	"strings"
 	"encoding/json"
+	"sync"
 )
 
 var balance = 1
+var me = sync.RWMutex{}
 
 type Vault struct {
 	Coins map[string][]*Coin
@@ -79,7 +81,9 @@ func (vault *Vault) Withdraw(rid string) *Coin {
 				var ncoin *Coin
 				err = json.Unmarshal(coinData, &ncoin)
 				checkErr(err)
+				me.Lock()
 				vault.Coins[rid] = []*Coin{ncoin}
+				me.Unlock()
 				os.Remove(COINDIR + f.Name())
 				return ncoin
 			}
@@ -87,12 +91,14 @@ func (vault *Vault) Withdraw(rid string) *Coin {
 		// print("No coin for this dude", rid)
 		return nil
 	}
+	me.Lock()
 	c := vault.Coins[rid][0]
 	if len(vault.Coins[rid]) > 1 {
 		vault.Coins[rid] = vault.Coins[rid][1:]
 	} else {
 		vault.Coins[rid] = []*Coin{}
 	}
+	me.Unlock()
 	// balance--
 	return c
 }

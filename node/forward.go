@@ -44,11 +44,13 @@ func (n *Node) forwardProtocol(payload []byte, senderID string) {
 
 	select {
 	case <-time.After(5 * time.Second):
-		print("no positive feedback, i won't help")
+		print("   Time out, no positive feedback, i won't help")
 	case feedback := <-n.feedbackChan:
 		if feedback == 'Y' {
 			m := n.prepareOMsg(FWD,iOnion,npe.Pk)
 			n.sendActive(m, npe.Port)
+		} else {
+			print("   no positive feedback, i won't help")
 		}
 	}
 }
@@ -65,7 +67,7 @@ func (n *Node) WrapABigOnion(msg []byte, ids []string) []byte {
 
 	for i:=len(ids)-2; i > 0; i-- {
 		pe := n.getPubRoutingInfo(ids[i])
-		n.CoinExchange(ids[i])
+		//n.CoinExchange(ids[i])
 		c := n.Vault.Withdraw(ids[i-1])
 		// c := coin.NewCoin(ids[i-1], []byte(""), []string{})
 		nextID := ids[i+1]
@@ -79,6 +81,7 @@ func (n *Node) WrapABigOnion(msg []byte, ids []string) []byte {
 	send a onion message toward the path defined by ids.
  */
 func (n *Node) SendOninoMsg(ids []string, msg string) {
+	print("SENDING:", ids)
 	m := n.WrapABigOnion([]byte(msg), ids)
 	npe := n.getPubRoutingInfo(ids[0])
 	m = n.prepareOMsg(FWD, m, npe.Pk)

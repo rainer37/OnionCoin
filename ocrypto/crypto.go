@@ -4,7 +4,6 @@ import(
 	crand "crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"log"
 	"crypto/aes"
 	"crypto/cipher"
 	"io"
@@ -23,7 +22,8 @@ var LABEL = []byte("orders")
 var rng = crand.Reader
 
 func checkErr(err error){
-	if err != nil { log.Fatal(err) }
+	//if err != nil { log.Fatal(err) }
+	if err != nil { print(err) }
 }
 
 func print(str ...interface{}) {

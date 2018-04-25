@@ -338,7 +338,7 @@ func (chain *BlockChain) GetNextBankIDSet() []string {
 
 func (chain *BlockChain) GetBankSetWhen(t int64) []string {
 	superBank := []string{"FAKEID1339", "FAKEID1338"} // TODO: super banks for now, remove them.
-
+	return superBank
 	curEpoch := t / EPOCHLEN
 
 	matureLen := chain.GetMatureBlockLen(t)

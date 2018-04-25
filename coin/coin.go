@@ -65,7 +65,7 @@ func (c *Coin) Store() {
 		checkErr(err)
 	}
 	ioutil.WriteFile(coinPath, c.Bytes(), 0644)
-	print("successfully save a coin on disk", coinPath)
+	// print("successfully save a coin on disk", coinPath)
 }
 
 func exists(path string) (bool, error) {

@@ -47,8 +47,8 @@ func (n *Node) SelfInit() {
 	checkErr(err)
 	// go n.syncBlockChain()
 	//if !n.iamBank() {
-		//go n.random_exchg()
-		go n.random_msg()
+	// go n.random_exchg()
+	go n.random_msg()
 	//}
 	go n.epochTimer()
 	//go n.bankStatusDetection()
@@ -116,7 +116,6 @@ func (n *Node) Serve(ip string, port int) {
 	print("Serving ["+addr.String()+"]")
 	for {
 		buffer := make([]byte, BUFSIZE)
-		msgReceived++
 		l, add, e := con.ReadFromUDP(buffer)
 		checkErr(e)
 		incoming := buffer[0:l]
@@ -132,7 +131,7 @@ func (n *Node) Serve(ip string, port int) {
 */
 func (n *Node) sendActive(msg []byte, add string) {
 	msgSendCount++
-	// fmt.Println(len(msg))
+	print(len(msg))
 	con, err := net.Dial("udp", ":"+add)
 	if err != nil {
 		print(err)
@@ -141,7 +140,7 @@ func (n *Node) sendActive(msg []byte, add string) {
 	defer con.Close()
 	_, err = con.Write(msg)
 	if err != nil {
-		print(err, len(msg))
+		print("WRITE ERR", err, len(msg))
 		return
 	}
 }

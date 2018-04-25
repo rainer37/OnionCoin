@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/blockChain"
+	"sync"
 )
 
 type RawCoin struct {
@@ -13,6 +14,7 @@ type RawCoin struct {
 	coinNum uint64
 }
 
+var met = sync.RWMutex{}
 var rawCoinBFs = make(map[string][]byte)
 
 func NewRawCoin(rid string) *RawCoin {
@@ -39,7 +41,9 @@ func (c *RawCoin) GetRIDHash() [32]byte {
 	Record blind factor of the exchanging RawCoins.
  */
 func RecordBF(rwid string, bf []byte) {
+	met.Lock()
 	rawCoinBFs[rwid] = bf
+	met.Unlock()
 }
 
 func GetBF(bfid string) []byte {
