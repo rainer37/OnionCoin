@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"bytes"
 	"github.com/rainer37/OnionCoin/ocrypto"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 /*
@@ -35,7 +36,7 @@ func WrapOnion(pk rsa.PublicKey, nextID string, coin []byte, content []byte) []b
 	b = append(b, content...)
 
 	cipher, cKey, err := ocrypto.BlockEncrypt(b, pk)
-	checkErr(err)
+	util.CheckErr(err)
 
 	cipher = append(cKey, cipher...)
 	return cipher
@@ -47,7 +48,7 @@ func PeelOnion(sk *rsa.PrivateKey, fullOnion []byte) (string, []byte, []byte) {
 	// First SYMKEYLEN == 32 is the symmetric key.
 	cKey, onion := fullOnion[:ocrypto.SYMKEYLEN], fullOnion[ocrypto.SYMKEYLEN:]
 	decryptedOnion, err := ocrypto.BlockDecrypt(onion, cKey, sk)
-	checkErr(err)
+	util.CheckErr(err)
 	// print(len(decryptedOnion))
 	return string(bytes.Trim(decryptedOnion[:IDLEN], "\x00")),
 	bytes.Trim(decryptedOnion[IDLEN:IDLEN+256], "\x00"),

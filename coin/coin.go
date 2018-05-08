@@ -4,11 +4,11 @@ import(
 	"fmt"
 	"os"
 	"strconv"
-	"log"
 	"io/ioutil"
 	"time"
 	"encoding/json"
 	"github.com/rainer37/OnionCoin/blockChain"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 const COINPREFIX = "[COIN]"
@@ -48,7 +48,7 @@ func (c *Coin) GetRID() string {
 
 func (c *Coin) Bytes() []byte {
 	coinBytes, err :=json.Marshal(c)
-	checkErr(err)
+	util.CheckErr(err)
 	return coinBytes
 }
 
@@ -59,22 +59,11 @@ func (c *Coin) String() string {
 func (c *Coin) Store() {
 	e := strconv.FormatUint(c.Epoch, 10)
 	coinPath := COINDIR+c.RID+"_"+e
-	if ok, _ := exists(coinPath); !ok {
+	if ok, _ := util.Exists(coinPath); !ok {
 		file, err := os.Create(coinPath)
 		defer file.Close()
-		checkErr(err)
+		util.CheckErr(err)
 	}
 	ioutil.WriteFile(coinPath, c.Bytes(), 0644)
 	// print("successfully save a coin on disk", coinPath)
-}
-
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil { return true, nil }
-	if os.IsNotExist(err) { return false, nil }
-	return true, err
-}
-
-func checkErr(err error){
-	if err != nil { log.Fatal(err) }
 }

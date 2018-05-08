@@ -8,7 +8,7 @@ import(
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/x509"
 	"io/ioutil"
-	"log"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 const LOCALHOST = "127.0.0.1"
@@ -21,17 +21,18 @@ const USAGE = "[MAIN] Usage:" + "\n\toc i [myport]" + "\n\toc j [myport] [joinpo
 func loadSavedStates(addr string) (status int){
 	status = 0
 
-	if yes, _ := exists(addr); !yes {
+	if yes, _ := util.Exists(addr); !yes {
 		os.Mkdir(addr, 0777)
 		status = 1
 	}
 
 	os.Chdir(addr) // go into oc info dir
 
-	if yes, _ := exists(SELFSKEYPATH); !yes {
+	// check if has sk locally.
+	if yes, _ := util.Exists(SELFSKEYPATH); !yes {
 		file, err := os.Create(SELFSKEYPATH)
 		defer file.Close()
-		checkErr(err)
+		util.CheckErr(err)
 		sk := ocrypto.RSAKeyGen()
 		skBytes := x509.MarshalPKCS1PrivateKey(sk)
 		ioutil.WriteFile(SELFSKEYPATH, skBytes, 0644)
@@ -84,15 +85,4 @@ func main() {
 	// go ui.Listen(n)
 
 	select {}
-}
-
-func checkErr(err error){
-	if err != nil { log.Fatal(err) }
-}
-
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil { return true, nil }
-	if os.IsNotExist(err) { return false, nil }
-	return true, err
 }

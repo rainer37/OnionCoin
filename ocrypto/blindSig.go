@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"crypto/rand"
 	"io"
+	"time"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 var bigZero = big.NewInt(0)
@@ -15,10 +17,14 @@ var bigOne = big.NewInt(1)
 	return blindeddata, blindfactor
  */
 func Blind(key *rsa.PublicKey, data []byte) ([]byte, []byte) {
+	start := time.Now()
+
 	blinded, bfactor, err := blind(rng, key, new(big.Int).SetBytes(data))
 	if err != nil {
 		panic(err)
 	}
+	ela := time.Since(start)
+	RSATime += ela.Nanoseconds()
 	return blinded.Bytes(), bfactor.Bytes()
 }
 
@@ -26,10 +32,14 @@ func Blind(key *rsa.PublicKey, data []byte) ([]byte, []byte) {
 	removing the blind factor
  */
 func Unblind(key *rsa.PublicKey, blindedSig, bfactor []byte) []byte {
+	start := time.Now()
+
 	m := new(big.Int).SetBytes(blindedSig)
 	bfactorBig := new(big.Int).SetBytes(bfactor)
 	m.Mul(m, bfactorBig)
 	m.Mod(m, key.N)
+	ela := time.Since(start)
+	RSATime += ela.Nanoseconds()
 	return m.Bytes()
 }
 
@@ -37,16 +47,24 @@ func Unblind(key *rsa.PublicKey, blindedSig, bfactor []byte) []byte {
 	Blind signing, which is a bit different from crypto/rsa.Sign
  */
 func BlindSign(key *rsa.PrivateKey, data []byte) []byte {
+	start := time.Now()
+
 	c := new(big.Int).SetBytes(data)
 	m, err := decrypt(rand.Reader, key, c)
-	checkErr(err)
+	// print(c, len(data), m, key.N)
+	util.CheckErr(err)
+	ela := time.Since(start)
+	RSATime += ela.Nanoseconds()
 	return m.Bytes()
 }
 
 func VerifyBlindSig(key *rsa.PublicKey, data, sig []byte) bool {
+	start := time.Now()
 	m := new(big.Int).SetBytes(data)
 	bigSig := new(big.Int).SetBytes(sig)
 	c := encrypt(new(big.Int), key, bigSig)
+	ela := time.Since(start)
+	RSATime += ela.Nanoseconds()
 	return m.Cmp(c) == 0
 }
 
@@ -114,6 +132,7 @@ func encrypt(cipher *big.Int, pub *rsa.PublicKey, m *big.Int) *big.Int {
 func decrypt(random io.Reader, priv *rsa.PrivateKey, c *big.Int) (m *big.Int, err error) {
 	if c.Cmp(priv.N) > 0 {
 		err = rsa.ErrDecryption
+		print("\nBOOOO!\n")
 		return
 	}
 

@@ -16,44 +16,33 @@ const NUMNODEINFO = 10
 const REGISTER = "PKRQ"
 const PKRQACK  = "PKAK"
 const PKRQCODELEN = 4
-const PKRQLEN = 132
+const PKRQLEN = ocrypto.RSAKEYLEN / 8 + 4
 const NUMREGCOSIGNER = 2
 
-func (n *Node) joinProtocol(payload []byte) bool {
+func (n *Node) joinProtocol(payload []byte) {
 
-	addrANDisNew := strings.Split(string(payload), "@")
+	IDAndAddr := strings.Split(string(payload), "@")
 
-	if len(addrANDisNew) != 2 {
+	if len(IDAndAddr) != 2 {
 		print("Invalid JOIN format, reject")
-		return false
+		return
 	}
 
-	address, isNew := addrANDisNew[0], addrANDisNew[1]
-
-	//print("starting handle JOIN from", address, isNew)
-
-	senderID := FAKEID +strings.Split(address,":")[1]
-	senderPort := strings.Split(address,":")[1]
+	senderID := IDAndAddr[0]
+	senderPort := strings.Split(IDAndAddr[1],":")[1]
 	//n.insert(senderID, address)
 
-	if isNew == NEWBIEMARKER {
-		// very new node joining the system.
-		// print("Welcome to OnionCon", senderID)
-		jackPayload := n.gatherRoutingInfo()
-		tpk := records.GetKeyByID(senderID)
-		if tpk == nil {
-			return false
-		}
-		jack := n.prepareOMsg(JOINACK, jackPayload, tpk.Pk)
-		records.KeyRepo[senderID].Port = senderPort
-		n.sendActive(jack, senderPort)
-		// print("JOIN ACK sent", len(jack))
-	} else {
-		print("Invalid JOIN status, reject")
-		return false
+	// very new node joining the system.
+	jackPayload := n.gatherRoutingInfo()
+	tpk := records.GetKeyByID(senderID)
+	if tpk == nil {
+		return
 	}
+	jack := n.prepareOMsg(JOINACK, jackPayload, tpk.Pk)
+	records.KeyRepo[senderID].Port = senderPort
+	n.sendActive(jack, senderPort)
 
-	return true
+	n.welcomeNewBie(senderID)
 }
 
 /*
@@ -66,13 +55,14 @@ func (n* Node) newbieJoin(incoming []byte) bool {
 	// if the newbie is joining, special protocol is invoked.
 	if string(incoming[:PKRQCODELEN]) == REGISTER {
 		newBiePk := ocrypto.DecodePK(incoming[PKRQCODELEN:PKRQCODELEN+PKRQLEN])
-		senderAddr := string(incoming[PKRQCODELEN+PKRQLEN:])
+		senderID := string(incoming[PKRQCODELEN+PKRQLEN:])
+		senderAddr := senderID[6:]
 
 		// TODO: remove this cond
-		if senderAddr[:4] != "1339" {
-			n.registerCoSign(newBiePk, FAKEID+senderAddr)
+		if senderID != "FAKEID1339" {
+			n.registerCoSign(newBiePk, senderID)
 		} else {
-			newbieID := "FAKEID"+senderAddr[:4]
+			newbieID := senderID
 			superPK := ocrypto.EncodePK(newBiePk)
 			pkHash := sha256.Sum256(superPK)
 			sig1 := n.blindSign(append(pkHash[:], []byte(newbieID)...))
@@ -82,13 +72,12 @@ func (n* Node) newbieJoin(incoming []byte) bool {
 			n.bankProxy.AddTxn(txn)
 		}
 
-		records.InsertEntry(FAKEID+senderAddr, newBiePk, time.Now().Unix(), LOCALHOST, senderAddr)
+		records.InsertEntry(senderID, newBiePk, time.Now().Unix(), LOCALHOST, senderAddr)
 		// PKAK | EncodedPK | PortListening
-		n.sendActive([]byte(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port), senderAddr)
+		n.sendActive([]byte(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey))), senderAddr)
 		return true
 	} else if string(incoming[:PKRQCODELEN]) == PKRQACK {
 		// return the pk to the requesting node to finish the join protocol.
-		//print("thank you for the pub-key, you are now registered")
 		confirmBytes := incoming[PKRQCODELEN:PKRQCODELEN + PKRQLEN]
 		n.pkChan <- confirmBytes
 		return true
@@ -208,10 +197,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	print("Enough Signing Received, Register Node", id, "by", len(signers), "Signer:", signers)
 
 	txn := blockChain.NewPKRTxn(id, pk, regBytes, signers)
-	ok := n.bankProxy.AddTxn(txn)
-	if ok {
-		// n.publishBlock()
-	}
+	n.bankProxy.AddTxn(txn)
 
 	// TODO: sync this?
 	go n.broadcastTxn(txn, blockChain.PK)

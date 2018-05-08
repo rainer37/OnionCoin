@@ -150,7 +150,9 @@ func (n *Node) CoinExchange(dstID string) {
 
 		fo := n.prepareOMsg(RAWCOINEXCHANGE, payload, bpe.Pk)
 
+		m.Lock()
 		exMap[bfid] = make(chan []byte)
+		m.Unlock()
 
 		n.sendActive(fo, bpe.Port)
 
@@ -182,7 +184,7 @@ func (n *Node) CoinExchange(dstID string) {
 			continue
 		}
 
-		rc = revealedCoin
+		rc = revealedCoin[:32] // reduce the size to 32 to avoid long asym enc.
 		signerBanks = append(signerBanks, bid)
 		layers++
 	}

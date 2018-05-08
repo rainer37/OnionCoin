@@ -10,6 +10,7 @@ import (
 	"github.com/rainer37/OnionCoin/blockChain"
 	"crypto/sha256"
 	"os"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 const BUFSIZE = 4096 * 10
@@ -44,7 +45,7 @@ func (n *Node) SelfInit() {
 	}
 
 	p,err := strconv.Atoi(n.Port)
-	checkErr(err)
+	util.CheckErr(err)
 	// go n.syncBlockChain()
 	//if !n.iamBank() {
 	// go n.random_exchg()
@@ -71,33 +72,39 @@ func (n *Node) IniJoin(address string, status int) {
 	go n.SelfInit()
 
 	JID := FAKEID + address // FOR NOW ONLY USE FAKEID + PORT AS THE ID.
-	if status == 0 {
-		payload := []byte(n.IP + ":" + n.Port + "@" + NEWBIEMARKER)
-		pe := n.getPubRoutingInfo(JID)
-		if pe == nil {
-			print("Cannot Join On this Unregistered Peer")
-			os.Exit(1)
-			return
-		}
-		p := n.prepareOMsg(JOIN, payload, pe.Pk)
-		n.sendActive(p, address)
-	} else if status == 1 {
+
+	// if i am new to system, register first.
+	if status == 1 {
 		print("Im Newbie")
 		if !n.isBank(JID) {
-			print("NewBie Please Join On The Bank Node For Registration.")
+			print("I need to join on banks")
 			return
 		}
 
-		n.sendActive([]byte(REGISTER+string(ocrypto.EncodePK(n.sk.PublicKey))+n.Port), address)
+		/*
+			REGISTER | EncodedPK(RSAKEYLEN / 8) | MyID
+		*/
+		encodedPK := ocrypto.EncodePK(n.sk.PublicKey)
+		n.sendActive([]byte(REGISTER+string(encodedPK)+n.ID), address)
+
 		enPk := <-n.pkChan // waiting for registration cosign finish.
+
 		print("Good! I'm Now Registered")
 		talkingPK := ocrypto.DecodePK(enPk)
 		records.InsertEntry(JID, talkingPK, time.Now().Unix(), LOCALHOST, address)
-
-		payload := []byte(n.IP+":"+n.Port+"@"+NEWBIEMARKER)
-		joinMsg := n.prepareOMsg(JOIN, payload, talkingPK)
-		n.sendActive(joinMsg, address)
 	}
+
+	pe := n.getPubRoutingInfo(JID)
+	if pe == nil {
+		print("Cannot Join On this Unregistered Peer")
+		os.Exit(1)
+		return
+	}
+
+	// ID @ IP:port
+	payload := []byte(n.ID + "@" + n.IP+":"+n.Port)
+	joinMsg := n.prepareOMsg(JOIN, payload, pe.Pk)
+	n.sendActive(joinMsg, address)
 
 	select{}
 }
@@ -109,15 +116,14 @@ func (n *Node) IniJoin(address string, status int) {
 func (n *Node) Serve(ip string, port int) {
 	addr := net.UDPAddr{Port: port, IP: net.ParseIP(ip)}
 	con, err := net.ListenUDP("udp", &addr)
-	checkErr(err)
-
+	util.CheckErr(err)
 
 	defer con.Close()
 	print("Serving ["+addr.String()+"]")
 	for {
 		buffer := make([]byte, BUFSIZE)
 		l, add, e := con.ReadFromUDP(buffer)
-		checkErr(e)
+		util.CheckErr(e)
 		incoming := buffer[0:l]
 		if l < 50 {
 			print("From", add, l, "bytes : [", string(incoming), "]")
@@ -131,7 +137,7 @@ func (n *Node) Serve(ip string, port int) {
 */
 func (n *Node) sendActive(msg []byte, add string) {
 	msgSendCount++
-	print(len(msg))
+	// fmt.Println(len(msg))
 	con, err := net.Dial("udp", ":"+add)
 	if err != nil {
 		print(err)

@@ -25,7 +25,9 @@ type TxnSorter []blockChain.Txn
 
 func (a TxnSorter) Len() int           { return len(a) }
 func (a TxnSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a TxnSorter) Less(i, j int) bool { return a[i].GetTS() < a[j].GetTS() }
+func (a TxnSorter) Less(i, j int) bool {
+	return a[i].GetTS() < a[j].GetTS() || (a[i].GetTS() == a[j].GetTS() && a[i].GetContent()[0] < a[j].GetContent()[0])
+}
 //func (a TxnSorter) Less(i, j int) bool { return string(a[i].GetContent()) < string(a[j].GetContent()) }
 
 func print(str ...interface{}) {

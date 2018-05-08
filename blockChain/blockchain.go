@@ -8,7 +8,6 @@ import(
 	"fmt"
 	"crypto/rsa"
 	"os"
-	"log"
 	"time"
 	"encoding/json"
 	"strconv"
@@ -16,12 +15,13 @@ import(
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"sync"
 	"sort"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 const BKCHPREFIX = "[BKCH] "
 const CHAINDIR = "chainData/"
 const TINDEXDIR = CHAINDIR + "TIndex"
-const NUMCOSIGNER = 2
+const NUMCOSIGNER = 1
 const EPOCHLEN = 10
 const PROPOSINGDELAY = 5
 const PUSHINGDELAY = 3
@@ -30,7 +30,7 @@ const PUSHTIME = EPOCHLEN - PUSHINGDELAY
 const MAXNUMTXN = 500
 const MATUREDIFF = 2
 
-var slient = false
+var slient = true
 var GENESISBLOCK = Block{[]byte("ONCE UPON A TIME IN OLD ERA"), []byte("_OC_GENESIS_HASH_ON_18_MAR_2018_"), 0, 0, 0, nil, nil}
 
 func print(str ...interface{}) {
@@ -67,13 +67,13 @@ func InitBlockChain() *BlockChain {
 	chain := new(BlockChain)
 	chain.Blocks = []*Block{&GENESISBLOCK}
 
-	if ok, _ := exists(TINDEXDIR); !ok {
+	if ok, _ := util.Exists(TINDEXDIR); !ok {
 		os.Create(TINDEXDIR)
 	}
 
 	chain.TIndex.mutex = &sync.Mutex{}
 
-	if ok, _ := exists(CHAINDIR); !ok {
+	if ok, _ := util.Exists(CHAINDIR); !ok {
 		os.Mkdir(CHAINDIR, 0777)
 		chain.TIndex.PKIndex = make(map[string]int64)
 		chain.TIndex.CNIndex = make(map[string]int64)
@@ -97,7 +97,7 @@ func (chain *BlockChain) loadChainAndIndex() {
 	chain.TIndex.CNIndex = make(map[string]int64)
 
 	files, err := ioutil.ReadDir(CHAINDIR)
-	checkErr(err)
+	util.CheckErr(err)
 
 	for _, f := range files {
 		if f.Name() != "TIndex" && f.Name() != ".DS_Store"{
@@ -137,17 +137,17 @@ func (chain *BlockChain) StoreBlock(b *Block) {
 	// print("writing block to disk, depth:", b.Depth)
 
 	blockData, err := json.Marshal(b)
-	checkErr(err)
+	util.CheckErr(err)
 
 	blockFileName := strconv.FormatInt(b.Depth, 10)
 
-	if ok, _ := exists(CHAINDIR + blockFileName); ok {
+	if ok, _ := util.Exists(CHAINDIR + blockFileName); ok {
 		print("duplicate block depth detected!")
 		return
 	}
 
 	f, err := os.Create(CHAINDIR + blockFileName)
-	checkErr(err)
+	util.CheckErr(err)
 	f.Write(blockData)
 	f.Close()
 
@@ -209,7 +209,7 @@ func (chain *BlockChain) GetLastBlock() *Block {
 func (chain *BlockChain) GenBlockBytes(index int64) []byte {
 	blo := chain.GetBlock(index)
 	b, err := json.Marshal(blo)
-	checkErr(err)
+	util.CheckErr(err)
 	return b
 }
 
@@ -234,10 +234,10 @@ func (chain *BlockChain) updateIndex(b *Block) {
 	chain.TIndex.LastUpdate = time.Now().Unix()
 
 	indexData, err := json.Marshal(chain.TIndex)
-	checkErr(err)
+	util.CheckErr(err)
 
 	f, err := os.Create(TINDEXDIR)
-	checkErr(err)
+	util.CheckErr(err)
 	f.Write(indexData)
 	f.Close()
 	// print("Index updated")
@@ -249,7 +249,7 @@ func (chain *BlockChain) updateIndex(b *Block) {
 func readABlock(name string) *Block {
 	blockPath := CHAINDIR + name
 	dat, err := ioutil.ReadFile(blockPath)
-	checkErr(err)
+	util.CheckErr(err)
 	return DeMuxBlock(dat)
 }
 
@@ -338,13 +338,13 @@ func (chain *BlockChain) GetNextBankIDSet() []string {
 
 func (chain *BlockChain) GetBankSetWhen(t int64) []string {
 	superBank := []string{"FAKEID1339", "FAKEID1338"} // TODO: super banks for now, remove them.
-	return superBank
+	// return superBank
 	curEpoch := t / EPOCHLEN
 
 	matureLen := chain.GetMatureBlockLen(t)
 	allPeers := chain.GetAllPeerIDs(matureLen)
-	numBanks := len(allPeers) / 2
-
+	numBanks := len(allPeers) / 8
+	return append(superBank, allPeers...)
 	theChosen := []string{}
 	counter := 0
 	i := 0
@@ -406,19 +406,8 @@ func IsFreeCoinNum(coinNum uint64) bool {
 func (chain *BlockChain) String() (s string) {
 	for _,v := range chain.Blocks {
 		b, err := json.Marshal(v)
-		checkErr(err)
+		util.CheckErr(err)
 		s += string(b) + "\n"
 	}
 	return
-}
-
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil { return true, nil }
-	if os.IsNotExist(err) { return false, nil }
-	return true, err
-}
-
-func checkErr(err error){
-	if err != nil { log.Fatal(err) }
 }

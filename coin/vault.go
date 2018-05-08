@@ -6,6 +6,7 @@ import(
 	"strings"
 	"encoding/json"
 	"sync"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 var balance = 1
@@ -21,19 +22,19 @@ func (vault *Vault) Len() int {
 
 func (vault *Vault) InitVault() {
 	vault.Coins = make(map[string][]*Coin)
-	if ok, _ := exists("coin"); !ok {
+	if ok, _ := util.Exists("coin"); !ok {
 		os.Mkdir(COINDIR, 0777)
 	}
 	files, err := ioutil.ReadDir(COINDIR)
-	checkErr(err)
+	util.CheckErr(err)
 	for _, f := range files {
 		rid := strings.Split(f.Name(), "_")[0]
 		// print("loading coin for", rid)
 		coinBytes, err := ioutil.ReadFile(COINDIR+f.Name())
-		checkErr(err)
+		util.CheckErr(err)
 		var ncoin *Coin
 		err = json.Unmarshal(coinBytes, &ncoin)
-		checkErr(err)
+		util.CheckErr(err)
 		// print(ncoin)
 		coins, ok := vault.Coins[rid]
 		if !ok {
@@ -70,7 +71,7 @@ func (vault *Vault) Withdraw(rid string) *Coin {
 	// print("Withdrawing Coin :"+rid)
 	if len(vault.Coins[rid]) == 0 {
 		files, err := ioutil.ReadDir(COINDIR)
-		checkErr(err)
+		util.CheckErr(err)
 		for _, f := range files {
 			if rid == f.Name()[:len(rid)] {
 				coinData, err := ioutil.ReadFile(COINDIR + f.Name())
@@ -80,7 +81,7 @@ func (vault *Vault) Withdraw(rid string) *Coin {
 				// checkErr(err)
 				var ncoin *Coin
 				err = json.Unmarshal(coinData, &ncoin)
-				checkErr(err)
+				util.CheckErr(err)
 				me.Lock()
 				vault.Coins[rid] = []*Coin{ncoin}
 				me.Unlock()

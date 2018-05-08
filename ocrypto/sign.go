@@ -6,18 +6,26 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto"
+	"time"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 func RSASign(sk *rsa.PrivateKey, msg []byte) []byte {
+	start := time.Now()
 	hashed := sha256.Sum256(msg)
 	signature, err := rsa.SignPKCS1v15(rng, sk, crypto.SHA256, hashed[:])
-	checkErr(err)
+	util.CheckErr(err)
+	ela := time.Since(start)
+	RSATime += ela.Nanoseconds()
 	return signature
 }
 
 func RSAVerify(pk *rsa.PublicKey, sig []byte, msg []byte) bool {
+	start := time.Now()
 	hashed := sha256.Sum256(msg)
 	err := rsa.VerifyPKCS1v15(pk, crypto.SHA256, hashed[:], sig)
+	ela := time.Since(start)
+	RSATime += ela.Nanoseconds()
 	if err != nil {
 		return false
 	}

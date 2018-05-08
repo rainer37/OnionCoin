@@ -27,9 +27,9 @@ import (
 */
 
 const (
-	CIPHERKEYLEN = 128
+	CIPHERKEYLEN = ocrypto.RSAKEYLEN / 8
 	TSLEN = 8
-	HASHLEN = 128
+	HASHLEN = ocrypto.RSAKEYLEN / 8 //128
 	PAYLOADLENLEN = 4
 	IDLEN = 16
 )

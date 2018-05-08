@@ -2,13 +2,11 @@ package node
 
 import (
 	"encoding/binary"
-	"time"
 	"math/rand"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"encoding/json"
+	"github.com/rainer37/OnionCoin/util"
 )
-
-const SYNCPEROID = 5
 
 type DepthHashPair struct {
 	Depth int64
@@ -16,17 +14,9 @@ type DepthHashPair struct {
 }
 
 /*
-	Try sync block chain with peers periodically.
+	Try sync block chain with one peer once.
 	randomly picks a bank to send CHAINSYNC req with my current depth, and the hash of last block.
  */
-func (n *Node) syncBlockChain() {
-	ticker := time.NewTicker(time.Second * SYNCPEROID)
-	for t := range ticker.C {
-		print("TS:", t.Unix(), "CHAINLEN:", n.chain.Size(), "LASTHASH:", string(n.chain.GetLastBlock().GetCurHash()[:8]))
-		go n.syncOnce()
-	}
-}
-
 func (n *Node) syncOnce() {
 	bid := n.pickOneRandomBank()
 	buf := make([]byte, 8)
@@ -57,8 +47,8 @@ func (n *Node) pickOneRandomBank() string {
 	reply : my current depth and the missing blocks starting with peer's current depth
  */
 func (n *Node) chainSyncRequested(payload []byte, senderID string) {
-	peerDepth := int64(binary.BigEndian.Uint64(payload[:8]))
-	bHash := payload[8:]
+	peerDepth := int64(binary.BigEndian.Uint64(payload[:8])) // requesting peer's current chain length
+	bHash := payload[8:] // hash of the last block from requesting peer.
 	
 	// if the peer has longer chain, ignore it.
 	if peerDepth >= n.chain.Size() {
@@ -83,8 +73,8 @@ func (n *Node) chainSyncRequested(payload []byte, senderID string) {
 			n.sendActive(p, spk.Port)
 		}
 	} else {
-		n.handleBranching(senderID)
 		print("!!! found", senderID, "has minor branch")
+		n.handleBranching(senderID)
 	}
 }
 
@@ -108,18 +98,18 @@ func (n *Node) chainSyncAckReceived(payload []byte, senderID string) {
  */
 func (n *Node) handleBranching(senderID string) {
 	a := []DepthHashPair{}
-	i := n.chain.Size() - 100
-	if i < 1 {
-		i = 1
-	}
+	i := n.chain.Size() - 20
+	if i < 1 { i = 1 }
+
 	for ; i < n.chain.Size() ; i++ {
 		b := n.chain.Blocks[i]
-		bHash := b.CurHash
-		dhp := DepthHashPair{i, bHash[:8]}
+		bHash := b.CurHash[:8]
+		dhp := DepthHashPair{i, bHash}
 		a = append(a, dhp)
 	}
 	arr, err := json.Marshal(a)
-	checkErr(err)
+	util.CheckErr(err)
+
 	spe := n.getPubRoutingInfo(senderID)
 	p := n.prepareOMsg(CHAINREPAIR, arr, spe.Pk)
 	n.sendActive(p, spe.Port)
@@ -146,18 +136,20 @@ func (n *Node) chainRepairReceived(payload []byte, senderID string) {
 		print("!!! i am broken at", start)
 		n.chain.TrimChain(int64(start))
 		n.syncOnce()
+	} else {
+		print("What kind of chain i have? nothing is right")
 	}
 }
 
-/*
-	Repair the blockChain by trimming at specific point
-	and sync with others later.
- */
-func (n *Node) repairChain(payload []byte) {
-	trimmingStart := binary.BigEndian.Uint64(payload[:8])
-	print("trimming everything starting at", trimmingStart + 1)
-	n.chain.TrimChain(int64(trimmingStart + 1))
-}
+///*
+//	Repair the blockChain by trimming at specific point
+//	and sync with others later.
+// */
+//func (n *Node) repairChain(payload []byte) {
+//	trimmingStart := binary.BigEndian.Uint64(payload[:8])
+//	print("trimming everything starting at", trimmingStart + 1)
+//	n.chain.TrimChain(int64(trimmingStart + 1))
+//}
 
 /*
 	broadcast the txn to other banks with best effort.

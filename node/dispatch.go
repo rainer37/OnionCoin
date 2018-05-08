@@ -8,6 +8,7 @@ import (
 	"sync"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/bank"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 const (
@@ -35,8 +36,6 @@ const (
 	CHAINSYNC        = 'S'
 	CHAINSYNCACK     = 'T'
 	CHAINREPAIR      = 'U'
-	CHAINREPAIRREPLY = 'V'
-	ADV              = 'G'
 )
 
 var mutex = sync.Mutex{}
@@ -77,6 +76,68 @@ func (n *Node) syntaxCheck(incoming []byte) (error, rune, string, *records.PKEnt
 }
 
 /*
+	Requests regarding blockchain has format:
+	000[OPCODE][SENDERI]
+ */
+func (n *Node) chainRequest(payload []byte) bool {
+	//if string(payload[:3]) != "000" { return false }
+	//
+	//switch payload[4] {
+	//case TXNRECEIVE:
+	//	bcCount++
+	//	print("A Txn Received from", senderID)
+	//	txn := blockChain.ProduceTxn(payload[1:], rune(payload[0]))
+	//	n.bankProxy.AddTxn(txn)
+	//case CHAINSYNC:
+	//	bcCount++
+	//	//print("BlockChain Sync Req Received from", senderID)
+	//	n.chainSyncRequested(payload, senderID)
+	//case CHAINSYNCACK:
+	//	bcCount++
+	//	mutex.Lock()
+	//	//print("BlockChain Sync Ack Received from", senderID)
+	//	n.chainSyncAckReceived(payload, senderID)
+	//	mutex.Unlock()
+	//case CHAINREPAIR:
+	//	bcCount++
+	//	print(senderID, "tries to repair its chain")
+	//	n.chainRepairReceived(payload, senderID)
+	//case CHAINREPAIRREPLY:
+	//	bcCount++
+	//	print("repair the chain according to", senderID)
+	//	n.repairChain(payload)
+	//case PUBLISHINGBLOCK:
+	//	bcCount++
+	//	print(senderID, "is trying to publish a block")
+	//	depth := binary.BigEndian.Uint64(payload[:8])
+	//	print("block depth:", depth, n.chain.Size())
+	//case PUBLISHINGCHECK:
+	//	bcCount++
+	//	print(senderID, "responded with publishing status")
+	//case TXNAGGRE:
+	//	bcCount++
+	//	print("Txn Aggregation received from", senderID)
+	//	txns := blockChain.DemuxTxns(payload)
+	//	n.bankProxy.AggreTxns(txns)
+	//	// n.chain.AddNewBlock(blockChain.NewBlock(txns))
+	//	// print(n.chain.GetLastBlock().CurHash)
+	//case HASHCMP:
+	//	bcCount++
+	//	// print("New Block Hash From", senderID, string(payload))
+	//	if _, ok := bank.HashCmpMap[string(payload)]; !ok{
+	//		bank.HashCmpMap[string(payload)] = 0
+	//	}
+	//	bank.HashCmpMap[string(payload)] += 1
+	//	// print(bank.HashCmpMap)
+	//}
+	return false
+}
+
+func (n *Node) chainDispatch(incoming []byte) {
+
+}
+
+/*
 	Unmarshal the incoming packet to Omsg and verify the signature.
 	Then dispatch the OMsg to its OpCode.
  */
@@ -87,8 +148,12 @@ func (n *Node) dispatch(incoming []byte) {
 	// if it's a newbie request, it cannot be a OMsg.
 	if ok { return }
 
+	ok = n.chainRequest(incoming)
+
+	if ok { n.chainDispatch(incoming) ; return }
+
 	err, opCode, senderID, senderPK, payload := n.syntaxCheck(incoming)
-	checkErr(err)
+	util.CheckErr(err)
 
 	switch opCode{
 	case FWD:
@@ -96,10 +161,7 @@ func (n *Node) dispatch(incoming []byte) {
 		n.forwardProtocol(payload, senderID)
 	case JOIN:
 		print("Joining", senderID)
-		ok := n.joinProtocol(payload)
-		if ok {
-			n.welcomeNewBie(senderID)
-		}
+		n.joinProtocol(payload)
 	case FIND:
 		print("Finding")
 	case COINREWARD:
@@ -156,12 +218,8 @@ func (n *Node) dispatch(incoming []byte) {
 		mutex.Unlock()
 	case CHAINREPAIR:
 		bcCount++
-		print(senderID, "tries to repair its chain")
+		print(senderID, "tries to help repairing my chain")
 		n.chainRepairReceived(payload, senderID)
-	case CHAINREPAIRREPLY:
-		bcCount++
-		print("repair the chain according to", senderID)
-		n.repairChain(payload)
 	case PUBLISHINGBLOCK:
 		bcCount++
 		print(senderID, "is trying to publish a block")
@@ -170,11 +228,6 @@ func (n *Node) dispatch(incoming []byte) {
 	case PUBLISHINGCHECK:
 		bcCount++
 		print(senderID, "responded with publishing status")
-	case IPLOOKUP:
-		print(senderID, "is looking for someone")
-		n.handleLookup(payload)
-	case IPLOOKUPRP:
-		print("IP found")
 	case TXNAGGRE:
 		bcCount++
 		print("Txn Aggregation received from", senderID)
@@ -190,6 +243,11 @@ func (n *Node) dispatch(incoming []byte) {
 		}
 		bank.HashCmpMap[string(payload)] += 1
 		// print(bank.HashCmpMap)
+	case IPLOOKUP:
+		print(senderID, "is looking for someone")
+		n.handleLookup(payload)
+	case IPLOOKUPRP:
+		print("IP found")
 	case REJECT:
 		print(string(payload))
 	case EXPT:

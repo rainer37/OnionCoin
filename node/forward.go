@@ -69,7 +69,6 @@ func (n *Node) WrapABigOnion(msg []byte, ids []string) []byte {
 		pe := n.getPubRoutingInfo(ids[i])
 		//n.CoinExchange(ids[i])
 		c := n.Vault.Withdraw(ids[i-1])
-		// c := coin.NewCoin(ids[i-1], []byte(""), []string{})
 		nextID := ids[i+1]
 		o = WrapOnion(pe.Pk, nextID, c.Bytes(), o)
 	}

@@ -9,8 +9,9 @@ import (
 	"path/filepath"
 	"io/ioutil"
 	"strings"
-	"log"
 	"math/rand"
+	"sync"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 type PKEntry struct {
@@ -23,16 +24,19 @@ type PKEntry struct {
 const KEYDIR = "keys/"
 const RECORDPREFIX = "[RCOD]"
 var KeyRepo map[string]*PKEntry // map[id:string] entry:PKEntry
+var mete = sync.RWMutex{}
 
 /*
 	check if there is PKEntry associated with id in memory and on disk.
  */
 func GetKeyByID(id string) *PKEntry {
+	mete.Lock()
+	defer mete.Unlock()
 	pe := KeyRepo[id]
 	if pe != nil { return pe }
-	if yes,_:=exists(KEYDIR+id); yes {
+	if yes,_:=util.Exists(KEYDIR+id); yes {
 		dat, err := ioutil.ReadFile(KEYDIR+id)
-		checkErr(err)
+		util.CheckErr(err)
 		pe = BytesToPKEntry(dat)
 		return pe
 	}
@@ -40,6 +44,9 @@ func GetKeyByID(id string) *PKEntry {
 }
 
 func InsertEntry(id string, pk rsa.PublicKey, recTime int64, ip string, port string) {
+	mete.Lock()
+	defer mete.Unlock()
+
 	if pe := KeyRepo[id]; pe != nil {
 		if pe.Time < recTime {
 			pe.IP = ip
@@ -60,7 +67,7 @@ func InsertEntry(id string, pk rsa.PublicKey, recTime int64, ip string, port str
 func GenerateKeyRepo() {
 	print("Generating Key Repo")
 	KeyRepo = make(map[string]*PKEntry)
-	if yes, _ := exists(KEYDIR); !yes {
+	if yes, _ := util.Exists(KEYDIR); !yes {
 		os.Mkdir(KEYDIR, 0777)
 	}
 	populatePKEntry()
@@ -73,7 +80,7 @@ func (e PKEntry) Bytes() []byte {
 	var b bytes.Buffer
 	enc := gob.NewEncoder(&b)
 	err := enc.Encode(PKEntry{e.Pk, e.IP, e.Port, e.Time})
-	checkErr(err)
+	util.CheckErr(err)
 	return b.Bytes()
 }
 
@@ -100,7 +107,7 @@ func writePE(pe *PKEntry, id string) {
 	os.Create(path)
 	file, err := os.OpenFile(path, os.O_RDWR, 0777)
 	defer file.Close()
-	checkErr(err)
+	util.CheckErr(err)
 	fmt.Fprintf(file, "%s", pe.Bytes())
 }
 
@@ -110,7 +117,7 @@ func writePE(pe *PKEntry, id string) {
 func populatePKEntry() {
 	dir := KEYDIR
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		checkErr(err)
+		util.CheckErr(err)
 		dat, err := ioutil.ReadFile(path)
 		id := strings.Split(path, "/")[len(strings.Split(path, "/"))-1]
 		pe := BytesToPKEntry(dat)
@@ -119,7 +126,7 @@ func populatePKEntry() {
 		}
 		return nil
 	})
-	checkErr(err)
+	util.CheckErr(err)
 }
 
 func allIDs() (ids []string) {
@@ -131,7 +138,7 @@ func allIDs() (ids []string) {
 
 func RandomPath() (path []string) {
 	count := 0
-	num := len(KeyRepo) / 2
+	num := rand.Int() % 2 + 2
 	ids := allIDs()
 	for count < num {
 		index := rand.Int() % len(KeyRepo)
@@ -151,17 +158,6 @@ func contains(ids []string, id string) bool {
 		}
 	}
 	return false
-}
-
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil { return true, nil }
-	if os.IsNotExist(err) { return false, nil }
-	return true, err
-}
-
-func checkErr(err error){
-	if err != nil { log.Fatal(err) }
 }
 
 func print(str ...interface{}) {

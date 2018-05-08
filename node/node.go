@@ -2,7 +2,6 @@ package node
 
 import(
 	"fmt"
-	"log"
 	"crypto/rsa"
 	"crypto/x509"
 	"io/ioutil"
@@ -13,6 +12,8 @@ import(
 	bc "github.com/rainer37/OnionCoin/blockChain"
 	"strings"
 	"encoding/json"
+	"github.com/rainer37/OnionCoin/ocrypto"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 const NODEPREFIX = "[NODE]"
@@ -103,9 +104,9 @@ func (n *Node) getPubRoutingInfo(id string) *records.PKEntry {
  */
 func produceSK() *rsa.PrivateKey {
 	dat, err := ioutil.ReadFile(SELFSKEYPATH)
-	checkErr(err)
+	util.CheckErr(err)
 	sk, err := x509.ParsePKCS1PrivateKey(dat)
-	checkErr(err)
+	util.CheckErr(err)
 	return sk
 }
 
@@ -147,7 +148,8 @@ func (n *Node) epochTimer() {
 	ticker := time.NewTicker(time.Duration(epochLen) * time.Second)
 	// n.syncOnce()
 	for t := range ticker.C {
-		print("[]", t.Unix(), "EPOCH:", t.Unix() / epochLen, "SEND:", msgSendCount, "MSG:", omsgCount,"BC:", bcCount, "PLen:", pathLength, "[]")
+		fmt.Println(t.Unix() / epochLen, msgSendCount - bcCount , omsgCount, pathLength, ocrypto.RSATime, ocrypto.AESTime)
+		// fmt.Println("[]", t.Unix(), "EPOCH:", t.Unix() / epochLen, "SEND:", msgSendCount, "MSG:", omsgCount,"BC:", bcCount, "PLen:", pathLength, "[]")
 		//fmt.Println("Tick at", t.Unix(), "SEND:", msgSendCount, "RECEIVED:", msgReceived, "OPS:", opCount)
 		currentBanks = n.chain.GetCurBankIDSet()
 		go func() {
@@ -224,7 +226,7 @@ func (n *Node) epochTimer() {
 }
 
 func (n *Node) random_exchg() {
-	ticker := time.NewTicker(time.Second * 4)
+	ticker := time.NewTicker(time.Second * 1)
 	for range ticker.C {
 		//fmt.Println("Tick at", t.Unix(), "SEND:", msgSendCount, "RECEIVED:", msgReceived, "OPS:", opCount)
 		if !n.iamBank() {
@@ -246,7 +248,7 @@ func (n *Node) random_exchg() {
 }
 
 func (n *Node) random_msg() {
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second * 1)
 	for range ticker.C {
 		//print(t.Unix(), "SEND:", msgSendCount, "OPS:", opCount, "MSGCOUNT:", omsgCount, "PATHLEN:", pathLength)
 		if !n.iamBank() {
@@ -261,11 +263,11 @@ func (n *Node) random_msg() {
 					}
 					pathLength += len(path)
 					msg := "hello, i am " + n.ID
-					print("COINS READY")
+					//print("COINS READY")
 					// fmt.Println("Path:", path)
 
 					n.SendOninoMsg(path, msg)
-					print("ONION FIRED")
+					//print("ONION FIRED")
 
 					opCount++
 
@@ -280,7 +282,7 @@ func (n *Node) random_msg() {
 
 func (n *Node) getTxnsInBuffer() []byte {
 	txns, err := json.Marshal(n.bankProxy.GetTxnBuffer())
-	checkErr(err)
+	util.CheckErr(err)
 	return txns
 }
 
@@ -318,10 +320,6 @@ func (n* Node) checkBankStatus(id string) bool {
 func contains(arr []string, t string) bool {
 	for _,v := range arr {if v == t {return true}}
 	return false
-}
-
-func checkErr(err error){
-	if err != nil { log.Fatal(err) }
 }
 
 func print(str ...interface{}) {
