@@ -6,6 +6,7 @@ import (
 	"time"
 	"crypto/sha256"
 	"encoding/json"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 const (
@@ -75,7 +76,7 @@ func NewBCNRDMTxn(TxnID []byte, casherID string, ts int64, sigs []byte, verifier
  */
 func (pkr PKRegTxn) ToBytes() []byte {
 	txnBytes, err := json.Marshal(pkr)
-	checkErr(err)
+	util.CheckErr(err)
 	return txnBytes
 }
 
@@ -99,7 +100,7 @@ func (pkr PKRegTxn) GetTS() int64 { return pkr.Ts }
  */
 func (cnex CNEXTxn) ToBytes() []byte {
 	txnBytes, err := json.Marshal(cnex)
-	checkErr(err)
+	util.CheckErr(err)
 	return txnBytes
 }
 
@@ -118,7 +119,7 @@ func (cnex CNEXTxn) GetContent() []byte {
 
 func (bcnrd BCNRDMTxn) ToBytes() []byte {
 	txnBytes, err := json.Marshal(bcnrd)
-	checkErr(err)
+	util.CheckErr(err)
 	return txnBytes
 }
 

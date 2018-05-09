@@ -23,9 +23,12 @@ func Blind(key *rsa.PublicKey, data []byte) ([]byte, []byte) {
 	if err != nil {
 		panic(err)
 	}
+	b, bf := blinded.Bytes(), bfactor.Bytes()
 	ela := time.Since(start)
-	RSATime += ela.Nanoseconds()
-	return blinded.Bytes(), bfactor.Bytes()
+	RSATime += ela.Nanoseconds()/nano
+	RSAStep++
+
+	return b, bf
 }
 
 /*
@@ -38,9 +41,11 @@ func Unblind(key *rsa.PublicKey, blindedSig, bfactor []byte) []byte {
 	bfactorBig := new(big.Int).SetBytes(bfactor)
 	m.Mul(m, bfactorBig)
 	m.Mod(m, key.N)
+	b := m.Bytes()
 	ela := time.Since(start)
-	RSATime += ela.Nanoseconds()
-	return m.Bytes()
+	RSATime += ela.Nanoseconds()/nano
+	RSAStep++
+	return b
 }
 
 /*
@@ -53,9 +58,11 @@ func BlindSign(key *rsa.PrivateKey, data []byte) []byte {
 	m, err := decrypt(rand.Reader, key, c)
 	// print(c, len(data), m, key.N)
 	util.CheckErr(err)
+	b := m.Bytes()
 	ela := time.Since(start)
-	RSATime += ela.Nanoseconds()
-	return m.Bytes()
+	RSATime += ela.Nanoseconds()/nano
+	RSAStep++
+	return b
 }
 
 func VerifyBlindSig(key *rsa.PublicKey, data, sig []byte) bool {
@@ -64,7 +71,8 @@ func VerifyBlindSig(key *rsa.PublicKey, data, sig []byte) bool {
 	bigSig := new(big.Int).SetBytes(sig)
 	c := encrypt(new(big.Int), key, bigSig)
 	ela := time.Since(start)
-	RSATime += ela.Nanoseconds()
+	RSATime += ela.Nanoseconds()/nano
+	RSAStep++
 	return m.Cmp(c) == 0
 }
 
@@ -117,7 +125,12 @@ func modInverse(a, n *big.Int) (ia *big.Int, ok bool) {
 	from go's crypto/rsa, standard rsa encryption of m	m^e mod pub.N
  */
 func EncryptBig(pub *rsa.PublicKey, m []byte) []byte {
-	return encrypt(new(big.Int), pub, new(big.Int).SetBytes(m)).Bytes()
+	start := time.Now()
+	en := encrypt(new(big.Int), pub, new(big.Int).SetBytes(m)).Bytes()
+	ela := time.Since(start)
+	RSATime += ela.Nanoseconds()/nano
+	RSAStep++
+	return en
 }
 
 /*

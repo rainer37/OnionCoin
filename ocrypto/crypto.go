@@ -24,7 +24,9 @@ var LABEL = []byte("orders")
 var rng = crand.Reader
 var RSATime int64 = 0
 var AESTime int64 = 0
-
+var nano int64 = 1000000
+var RSAStep = 0
+var AESStep = 0
 func print(str ...interface{}) {
 	fmt.Print(CRYPTOPREFIX+" ")
 	fmt.Println(str...)
@@ -43,7 +45,8 @@ func PKEncrypt(pk rsa.PublicKey, payload []byte) []byte {
 	cipher, err := rsa.EncryptOAEP(sha256.New(), rng, &pk, payload, LABEL)
 	util.CheckErr(err)
 	ela := time.Since(start)
-	RSATime += ela.Nanoseconds()/1000000000
+	RSATime += ela.Nanoseconds()/nano
+	RSAStep++
 	return cipher
 }
 
@@ -52,7 +55,9 @@ func PKDecrypt(sk *rsa.PrivateKey, payload []byte) []byte {
 	plain, err := rsa.DecryptOAEP(sha256.New(), rng, sk, payload, LABEL)
 	util.CheckErr(err)
 	ela := time.Since(start)
-	RSATime += ela.Nanoseconds()/1000000000
+	RSATime += ela.Nanoseconds()/nano
+	RSAStep++
+
 	return plain
 }
 
@@ -75,7 +80,7 @@ func AESEncrypt(key []byte, payload []byte) ([]byte, error) {
 
 	ela := time.Since(start)
 	AESTime += ela.Nanoseconds()/1000
-
+	AESStep++
 	return cipher, nil
 }
 
@@ -99,7 +104,7 @@ func AESDecrypt(key []byte, cipherText []byte) ([]byte, error){
 
 	ela := time.Since(start)
 	AESTime += ela.Nanoseconds()/1000
-
+	AESStep++
 	return plain, err
 }
 

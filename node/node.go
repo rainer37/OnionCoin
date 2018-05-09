@@ -21,10 +21,11 @@ const FAKEID = "FAKEID"
 const SELFSKEYPATH = "self.sk"
 const IDLEN = 16
 
-var slient = false
+var slient = true
 var opCount = 0
 var pathLength = 0
 var currentBanks []string
+var ela time.Time
 
 type Node struct {
 	ID string
@@ -52,6 +53,7 @@ func NewNode(port string) *Node {
 	n.InitVault()
 	n.chain = bc.InitBlockChain()
 	currentBanks = []string{"FAKEID1338", "FAKEID1339"} // TODO: take these superpower out.
+	ela = time.Now()
 	return n
 }
 
@@ -148,7 +150,8 @@ func (n *Node) epochTimer() {
 	ticker := time.NewTicker(time.Duration(epochLen) * time.Second)
 	// n.syncOnce()
 	for t := range ticker.C {
-		fmt.Println(t.Unix() / epochLen, msgSendCount - bcCount , omsgCount, pathLength, ocrypto.RSATime, ocrypto.AESTime)
+		percent := float64(ocrypto.RSATime) / float64(time.Since(ela).Nanoseconds() / 1000000)
+		fmt.Println(t.Unix() / epochLen, msgSendCount - bcCount , omsgCount, pathLength, ocrypto.RSAStep, ocrypto.AESStep, ocrypto.RSATime, ocrypto.AESTime, percent * 100,"%")
 		// fmt.Println("[]", t.Unix(), "EPOCH:", t.Unix() / epochLen, "SEND:", msgSendCount, "MSG:", omsgCount,"BC:", bcCount, "PLen:", pathLength, "[]")
 		//fmt.Println("Tick at", t.Unix(), "SEND:", msgSendCount, "RECEIVED:", msgReceived, "OPS:", opCount)
 		currentBanks = n.chain.GetCurBankIDSet()
