@@ -18,7 +18,6 @@ var bigOne = big.NewInt(1)
  */
 func Blind(key *rsa.PublicKey, data []byte) ([]byte, []byte) {
 	start := time.Now()
-
 	blinded, bfactor, err := blind(rng, key, new(big.Int).SetBytes(data))
 	if err != nil {
 		panic(err)
@@ -27,7 +26,6 @@ func Blind(key *rsa.PublicKey, data []byte) ([]byte, []byte) {
 	ela := time.Since(start)
 	RSATime += ela.Nanoseconds()/nano
 	RSAStep++
-
 	return b, bf
 }
 
@@ -36,7 +34,6 @@ func Blind(key *rsa.PublicKey, data []byte) ([]byte, []byte) {
  */
 func Unblind(key *rsa.PublicKey, blindedSig, bfactor []byte) []byte {
 	start := time.Now()
-
 	m := new(big.Int).SetBytes(blindedSig)
 	bfactorBig := new(big.Int).SetBytes(bfactor)
 	m.Mul(m, bfactorBig)
@@ -53,10 +50,8 @@ func Unblind(key *rsa.PublicKey, blindedSig, bfactor []byte) []byte {
  */
 func BlindSign(key *rsa.PrivateKey, data []byte) []byte {
 	start := time.Now()
-
 	c := new(big.Int).SetBytes(data)
 	m, err := decrypt(rand.Reader, key, c)
-	// print(c, len(data), m, key.N)
 	util.CheckErr(err)
 	b := m.Bytes()
 	ela := time.Since(start)

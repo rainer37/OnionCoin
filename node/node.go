@@ -8,7 +8,6 @@ import(
 	"time"
 	"github.com/rainer37/OnionCoin/coin"
 	"github.com/rainer37/OnionCoin/records"
-	"github.com/rainer37/OnionCoin/bank"
 	bc "github.com/rainer37/OnionCoin/blockChain"
 	"strings"
 	"encoding/json"
@@ -19,9 +18,8 @@ import(
 const NODEPREFIX = "[NODE]"
 const FAKEID = "FAKEID"
 const SELFSKEYPATH = "self.sk"
-const IDLEN = 16
 
-var slient = true
+var silent = true
 var opCount = 0
 var pathLength = 0
 var currentBanks []string
@@ -34,7 +32,7 @@ type Node struct {
 	*coin.Vault
 	sk *rsa.PrivateKey
 	pkChan chan []byte // for pk lookup await when joining
-	bankProxy *bank.Bank
+	bankProxy *Bank
 	regChan chan []byte
 	iplookup chan string
 	feedbackChan chan rune
@@ -133,7 +131,7 @@ func (n *Node) bankStatusDetection() {
 	timer to check epoch change, update banksets, and start proposing timer.
  */
 func (n *Node) epochTimer() {
-	epochLen := int64(bc.EPOCHLEN)
+	epochLen := int64(util.EPOCHLEN)
 
 	defer func() {
 		print("BOOM!\n\n\n\n")
@@ -152,18 +150,17 @@ func (n *Node) epochTimer() {
 	for t := range ticker.C {
 		percent := float64(ocrypto.RSATime) / float64(time.Since(ela).Nanoseconds() / 1000000)
 		fmt.Println(t.Unix() / epochLen, msgSendCount - bcCount , omsgCount, pathLength, ocrypto.RSAStep, ocrypto.AESStep, ocrypto.RSATime, ocrypto.AESTime, percent * 100,"%")
-		// fmt.Println("[]", t.Unix(), "EPOCH:", t.Unix() / epochLen, "SEND:", msgSendCount, "MSG:", omsgCount,"BC:", bcCount, "PLen:", pathLength, "[]")
-		//fmt.Println("Tick at", t.Unix(), "SEND:", msgSendCount, "RECEIVED:", msgReceived, "OPS:", opCount)
+		fmt.Println(currentBanks)
 		currentBanks = n.chain.GetCurBankIDSet()
 		go func() {
 			if n.iamBank() {
 				// start proposing timer
 				n.bankProxy.SetStatus(true)
 
-				propTimer := time.NewTimer(bc.PROPOSINGTIME * time.Second)
+				propTimer := time.NewTimer(util.PROPOSINGTIME * time.Second)
 				go func() {
 					<-propTimer.C
-					bank.HashCmpMap = make(map[string]int)
+					HashCmpMap = make(map[string]int)
 					print("Time to propose my txns", t.Unix())
 					n.syncOnce()
 					go func() {
@@ -181,7 +178,7 @@ func (n *Node) epochTimer() {
 				}()
 
 				// start pushing timer
-				pushTimer := time.NewTimer(bc.PUSHTIME * time.Second)
+				pushTimer := time.NewTimer(util.PUSHTIME * time.Second)
 				go func() {
 					<-pushTimer.C
 					print("Time to push my block", t.Unix())
@@ -189,7 +186,7 @@ func (n *Node) epochTimer() {
 						// n.bankProxy.GenerateNewBlock()
 						nb := n.bankProxy.GenNewBlock()
 						if nb != nil {
-							bank.HashCmpMap[string(nb.CurHash)] = 1
+							HashCmpMap[string(nb.CurHash)] = 1
 							for _, b := range currentBanks {
 								if b == n.ID { continue }
 								bpe := n.getPubRoutingInfo(b)
@@ -251,7 +248,7 @@ func (n *Node) random_exchg() {
 }
 
 func (n *Node) random_msg() {
-	ticker := time.NewTicker(time.Second * 1)
+	ticker := time.NewTicker(time.Second * 5)
 	for range ticker.C {
 		//print(t.Unix(), "SEND:", msgSendCount, "OPS:", opCount, "MSGCOUNT:", omsgCount, "PATHLEN:", pathLength)
 		if !n.iamBank() {
@@ -290,9 +287,9 @@ func (n *Node) getTxnsInBuffer() []byte {
 }
 
 func (n *Node) isSlientHours() bool {
-	nextEpoch := (time.Now().Unix()/bc.EPOCHLEN + 1) * bc.EPOCHLEN
+	nextEpoch := (time.Now().Unix()/util.EPOCHLEN + 1) * util.EPOCHLEN
 	t := time.Now().Unix()
-	if t > nextEpoch - bc.PROPOSINGDELAY {
+	if t > nextEpoch - util.PROPOSINGDELAY {
 		return true
 	}
 	return false
@@ -310,23 +307,18 @@ func (n *Node) isBank(id string) bool {
 }
 
 func (n *Node) iamNextBank() bool {
-	return contains(n.chain.GetNextBankIDSet(), n.ID)
+	return util.Contains(n.chain.GetNextBankIDSet(), n.ID)
 }
 /*
 	Check if the id given is a current bank.
  */
 func (n* Node) checkBankStatus(id string) bool {
 	// banks := n.chain.GetCurBankIDSet()
-	return contains(currentBanks, id)
-}
-
-func contains(arr []string, t string) bool {
-	for _,v := range arr {if v == t {return true}}
-	return false
+	return util.Contains(currentBanks, id)
 }
 
 func print(str ...interface{}) {
-	if slient {
+	if silent {
 		return
 	}
 	fmt.Print(NODEPREFIX+" ")

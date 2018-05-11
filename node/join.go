@@ -7,17 +7,16 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"time"
 	"crypto/rsa"
-	"crypto/sha256"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"bytes"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 const NUMNODEINFO = 10
 const REGISTER = "PKRQ"
 const PKRQACK  = "PKAK"
 const PKRQCODELEN = 4
-const PKRQLEN = ocrypto.RSAKEYLEN / 8 + 4
-const NUMREGCOSIGNER = 2
+const PKRQLEN = util.RSAKEYLEN / 8 + 4
 
 func (n *Node) joinProtocol(payload []byte) {
 
@@ -34,7 +33,7 @@ func (n *Node) joinProtocol(payload []byte) {
 
 	// very new node joining the system.
 	jackPayload := n.gatherRoutingInfo()
-	tpk := records.GetKeyByID(senderID)
+	tpk := n.getPubRoutingInfo(senderID)
 	if tpk == nil {
 		return
 	}
@@ -64,7 +63,7 @@ func (n* Node) newbieJoin(incoming []byte) bool {
 		} else {
 			newbieID := senderID
 			superPK := ocrypto.EncodePK(newBiePk)
-			pkHash := sha256.Sum256(superPK)
+			pkHash := util.ShaHash(superPK)
 			sig1 := n.blindSign(append(pkHash[:], []byte(newbieID)...))
 			sig2 := n.blindSign(append(pkHash[:], []byte(newbieID)...))
 			signers := []string{n.ID, n.ID}
@@ -72,7 +71,7 @@ func (n* Node) newbieJoin(incoming []byte) bool {
 			n.bankProxy.AddTxn(txn)
 		}
 
-		records.InsertEntry(senderID, newBiePk, time.Now().Unix(), LOCALHOST, senderAddr)
+		records.InsertEntry(senderID, newBiePk, time.Now().Unix(), util.LOCALHOST, senderAddr)
 		// PKAK | EncodedPK | PortListening
 		n.sendActive([]byte(PKRQACK+string(ocrypto.EncodePK(n.sk.PublicKey))), senderAddr)
 		return true
@@ -161,13 +160,13 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	newBieInfo := append(ocrypto.EncodePK(pk), []byte(id)...)
 
 	// first sign it by myself.
-	pkHash := sha256.Sum256(ocrypto.EncodePK(pk))
+	pkHash := util.ShaHash(ocrypto.EncodePK(pk))
 	mySig := n.blindSign(append(pkHash[:], []byte(id)...))
 	regBytes := mySig
 	signers := []string{n.ID}
 
 	for _, b := range banks {
-		if counter == NUMREGCOSIGNER {
+		if counter == util.NUMCOSIGNER {
 			break
 		}
 		if b != n.ID {
@@ -207,7 +206,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string){
 	Upon received register request, sign the pk, and reply it.
  */
 func (n *Node) regCoSignRequest(payload []byte, senderID string) {
-	pkHash := sha256.Sum256(payload[:PKRQLEN])
+	pkHash := util.ShaHash(payload[:PKRQLEN])
 	mySig := n.blindSign(append(pkHash[:], payload[PKRQLEN:]...))
 	spk := n.getPubRoutingInfo(senderID)
 	p := n.prepareOMsg(REGCOSIGNREPLY, mySig, spk.Pk)

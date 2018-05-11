@@ -39,23 +39,23 @@ func TestPKRTxnToBytes(t *testing.T) {
 		t.Error("PK not equal")
 	}
 
-	if ntxn.Ts != ts {
+	if ntxn.Ts != ts || ptxn.GetTS() != ts{
 		t.Error("Ts not equal")
 	}
 
-	if string(s1SigOnHash) != string(ntxn.Sigs[:128]) {
+	if string(s1SigOnHash) != string(ntxn.Sigs[:128]) || string(s1SigOnHash) != string(ptxn.GetSigs()[:128]) {
 		t.Error("first signed hash not equal")
 	}
 
-	if string(s2SigOnHash) != string(ntxn.Sigs[128:]) {
+	if string(s2SigOnHash) != string(ntxn.Sigs[128:]) || string(s2SigOnHash) != string(ptxn.GetSigs()[128:]) {
 		t.Error("second signed hash not equal")
 	}
 
-	if ntxn.Verifiers[0] != "FAKEID1338" {
+	if ntxn.Verifiers[0] != "FAKEID1338" || ptxn.GetVerifiers()[0] != "FAKEID1338" {
 		t.Error("first signer id not equal")
 	}
 
-	if ntxn.Verifiers[1] != "FAKEID1339" {
+	if ntxn.Verifiers[1] != "FAKEID1339" || ptxn.GetVerifiers()[1] != "FAKEID1339" {
 		t.Error("second signer id not equal")
 	}
 
@@ -81,34 +81,6 @@ func TestCNEXTxnToBytes(t *testing.T) {
 
 	ctxn := blockChain.NewCNEXTxn(1234567, cBytes, ts, content, signers)
 	txnBytes := ctxn.ToBytes()
-	//
-	//if binary.BigEndian.Uint64(txnBytes[:8]) != 1234567 {
-	//	t.Error("coinNum not equal")
-	//}
-	//
-	//if string(cBytes) != string(txnBytes[8:136]) {
-	//	t.Error("coinBytes not equal")
-	//}
-	//
-	//if binary.BigEndian.Uint64(txnBytes[136:144]) != uint64(ts) {
-	//	t.Error("Ts not equal")
-	//}
-	//
-	//if string(s1SigOnHash) != string(txnBytes[144:144+128]) {
-	//	t.Error("first signed hash not equal")
-	//}
-	//
-	//if string(s2SigOnHash) != string(txnBytes[144+128:144+256]) {
-	//	t.Error("second signed hash not equal")
-	//}
-	//
-	//if strings.Trim(string(txnBytes[144+256:144+256+16]), "\x00") != "FAKEID1338" {
-	//	t.Error("first signer id not equal")
-	//}
-	//
-	//if strings.Trim(string(txnBytes[144+256+16:144+256+32]), "\x00") != "FAKEID1339" {
-	//	t.Error("second signer id not equal")
-	//}
 
 	ntxn := blockChain.ProduceTxn(txnBytes, '1').(blockChain.CNEXTxn)
 

@@ -23,6 +23,7 @@ type PKEntry struct {
 
 const KEYDIR = "keys/"
 const RECORDPREFIX = "[RCOD]"
+
 var KeyRepo map[string]*PKEntry // map[id:string] entry:PKEntry
 var mete = sync.RWMutex{}
 
@@ -34,7 +35,7 @@ func GetKeyByID(id string) *PKEntry {
 	defer mete.Unlock()
 	pe := KeyRepo[id]
 	if pe != nil { return pe }
-	if yes,_:=util.Exists(KEYDIR+id); yes {
+	if yes , _ := util.Exists(KEYDIR+id); yes {
 		dat, err := ioutil.ReadFile(KEYDIR+id)
 		util.CheckErr(err)
 		pe = BytesToPKEntry(dat)
@@ -65,7 +66,6 @@ func InsertEntry(id string, pk rsa.PublicKey, recTime int64, ip string, port str
 	read key repo blockchain file from disk and load entries into KeyRepo
  */
 func GenerateKeyRepo() {
-	print("Generating Key Repo")
 	KeyRepo = make(map[string]*PKEntry)
 	if yes, _ := util.Exists(KEYDIR); !yes {
 		os.Mkdir(KEYDIR, 0777)
@@ -129,10 +129,11 @@ func populatePKEntry() {
 	util.CheckErr(err)
 }
 
+/*
+	get all ids in my key repo.
+ */
 func allIDs() (ids []string) {
-	for i := range KeyRepo {
-		ids = append(ids, i)
-	}
+	for i := range KeyRepo { ids = append(ids, i) }
 	return
 }
 
@@ -143,21 +144,12 @@ func RandomPath() (path []string) {
 	for count < num {
 		index := rand.Int() % len(KeyRepo)
 		id := ids[index]
-		if !contains(path, id) {
+		if !util.Contains(path, id) {
 			path = append(path, id)
 			count++
 		}
 	}
 	return
-}
-
-func contains(ids []string, id string) bool {
-	for _, v := range ids {
-		if v == id {
-			return true
-		}
-	}
-	return false
 }
 
 func print(str ...interface{}) {

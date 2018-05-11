@@ -2,10 +2,10 @@ package coin
 
 import (
 	"math/rand"
-	"crypto/sha256"
 	"encoding/binary"
-	"github.com/rainer37/OnionCoin/blockChain"
 	"sync"
+	"github.com/rainer37/OnionCoin/util"
+	"github.com/rainer37/OnionCoin/blockChain"
 )
 
 type RawCoin struct {
@@ -15,12 +15,12 @@ type RawCoin struct {
 }
 
 var met = sync.RWMutex{}
-var rawCoinBFs = make(map[string][]byte)
+var rawCoinBFs = make(map[string][]byte) // map of blind factors
 
 func NewRawCoin(rid string) *RawCoin {
 	rwcoin := new(RawCoin)
 	rwcoin.rid = rid
-	rwcoin.ridHash = sha256.Sum256([]byte(rid))
+	rwcoin.ridHash = util.ShaHash([]byte(rid))
 	rwcoin.coinNum = genFreeCN()
 	return rwcoin
 }

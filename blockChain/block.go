@@ -3,9 +3,9 @@ package blockChain
 import (
 	"strconv"
 	"bytes"
-	"crypto/sha256"
 	"time"
 	"encoding/binary"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 type Block struct {
@@ -26,7 +26,7 @@ func NewBlock(txns []Txn) *Block {
 	b.Txns = txns
 	b.TxnHashes = make([][]byte, len(txns))
 	for i, t := range b.Txns {
-		h := sha256.Sum256(t.GetContent())
+		h := util.ShaHash(t.GetContent())
 		b.TxnHashes[i] = h[:]
 	}
 	b.NumTxn = len(txns)
@@ -42,21 +42,16 @@ func (b *Block) GetCurHash() []byte {
 	binary.BigEndian.PutUint64(timestamp, uint64(b.Ts))
 	// txnsBytes := TxnsToBytes(b.Txns)
 
-	txnsBytes := b.TxnHashes[0]
+
+	txnsBytes := make([]byte, 32)
 	for _, h := range b.TxnHashes {
 		for i, c := range h {
 			txnsBytes[i] += c
 		}
 	}
-	// txnsBytes := bytes.Join(b.TxnHashes, []byte{})
+
 	data := bytes.Join([][]byte{b.PrevHash, txnsBytes, timestamp}, []byte{})
-	// print(len(data))
-	//sum := 0
-	//for _, b := range data {
-	//	sum += int(b)
-	// }
-	// print(sum)
-	hash := sha256.Sum256(data)
+	hash := util.ShaHash(data)
 	return hash[:]
 }
 

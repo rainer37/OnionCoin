@@ -13,7 +13,6 @@ func TestBlindAndUnBlind(t *testing.T) {
 	pk := &sk.PublicKey
 	bsig, bfactor := ocrypto.Blind(pk, msg)
 	bsign := ocrypto.BlindSign(sk, bsig)
-	t.Log(len(bsign))
 	nmsg := ocrypto.Unblind(pk, bsign, bfactor)
 
 	if !ocrypto.VerifyBlindSig(pk, msg, nmsg) {

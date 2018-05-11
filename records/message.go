@@ -7,6 +7,7 @@ import (
 	"time"
 	"fmt"
 	"bytes"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 /*
@@ -23,15 +24,15 @@ import (
 	[??] 	: 4 byte length of payload
 	[??]	: payload and chaos
 
-
 */
 
 const (
-	CIPHERKEYLEN = ocrypto.RSAKEYLEN / 8
 	TSLEN = 8
-	HASHLEN = ocrypto.RSAKEYLEN / 8 //128
+	HASHLEN = util.RSAKEYLEN / 8 //128
 	PAYLOADLENLEN = 4
-	IDLEN = 16
+	TS_OFFSET = util.IDLEN + 1
+	PLD_LEN_OFFSET = TS_OFFSET + TSLEN
+	PLD_OFFSET = PLD_LEN_OFFSET + HASHLEN + PAYLOADLENLEN
 )
 
 type OnionMsg interface {
@@ -53,24 +54,23 @@ func (omsg *OMsg) GetOPCode() rune {
 }
 
 func (omsg *OMsg) GetSenderID() string {
-
-	return string(bytes.Trim(omsg.B[1:1 + IDLEN], "\x00")) // trim trailing NULL
+	return string(bytes.Trim(omsg.B[1:1 + util.IDLEN], "\x00")) // trim trailing NULL
 }
 
 func (omsg *OMsg) GetTS() uint32 {
-	return uint32(binary.BigEndian.Uint32(omsg.B[1 + IDLEN : 1 + IDLEN + TSLEN]))
+	return uint32(binary.BigEndian.Uint32(omsg.B[TS_OFFSET: PLD_LEN_OFFSET]))
 }
 
 func (omsg *OMsg) GetLenPayload() int {
-	return int(binary.BigEndian.Uint32(omsg.B[1 + IDLEN + TSLEN + HASHLEN : 1 + IDLEN + TSLEN + HASHLEN + PAYLOADLENLEN]))
+	return int(binary.BigEndian.Uint32(omsg.B[PLD_LEN_OFFSET + HASHLEN : PLD_OFFSET]))
 }
 
 func (omsg *OMsg) GetPayload() []byte {
-	return omsg.B[1 + IDLEN + TSLEN + HASHLEN + PAYLOADLENLEN :1 + IDLEN + TSLEN + HASHLEN + PAYLOADLENLEN + omsg.GetLenPayload()]
+	return omsg.B[PLD_OFFSET : PLD_OFFSET + omsg.GetLenPayload()]
 }
 
 func (omsg *OMsg) GetPayloadTsHash() []byte {
-	return omsg.B[1 + IDLEN + TSLEN : 1 + IDLEN + TSLEN + HASHLEN]
+	return omsg.B[PLD_LEN_OFFSET : PLD_LEN_OFFSET + HASHLEN]
 }
 
 func (omsg *OMsg) VerifySig(pk *rsa.PublicKey) bool {
@@ -79,14 +79,18 @@ func (omsg *OMsg) VerifySig(pk *rsa.PublicKey) bool {
 	return ocrypto.RSAVerify(pk, hash, payload)
 }
 
+/*
+	First Decrypt the encrypted symkey with my private key,
+	then decrypt the rest of msg with sym key, and return omsg.
+ */
 func UnmarshalOMsg(msg []byte, sk *rsa.PrivateKey) (*OMsg, bool) {
 	omsg := new(OMsg)
-	if len(msg) < CIPHERKEYLEN {
+	if len(msg) < util.CIPHERKEYLEN {
 		return nil, false
 	}
-	b, err := ocrypto.BlockDecrypt(msg[CIPHERKEYLEN:], msg[:CIPHERKEYLEN], sk)
+	b, err := ocrypto.BlockDecrypt(msg[util.CIPHERKEYLEN:], msg[:util.CIPHERKEYLEN], sk)
 	if err != nil {
-		fmt.Println(1,err.Error())
+		fmt.Println("block Decrypt",err.Error())
 		return nil, false
 	}
 	omsg.B = b
@@ -98,29 +102,25 @@ func UnmarshalOMsg(msg []byte, sk *rsa.PrivateKey) (*OMsg, bool) {
 	pk : target public key
  */
 func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey, pk rsa.PublicKey) []byte {
-	buffer := make([]byte,1)
-	buffer[0] = byte(opCode)
+	op_buf := make([]byte,1)
+	op_buf[0] = byte(opCode)
 
-	buf := make([]byte, IDLEN)
-	copy(buf[:], nodeID)
+	if len(nodeID) > util.IDLEN { return nil }
 
-	buffer = append(buffer, buf...)
+	id_buf := make([]byte, util.IDLEN)
+	copy(id_buf[:], nodeID)
 
-	buf = make([]byte, TSLEN)
-	binary.BigEndian.PutUint64(buf, uint64(time.Now().Unix()))
-	buffer = append(buffer, buf...)
+	ts_buf := make([]byte, TSLEN)
+	binary.BigEndian.PutUint64(ts_buf, uint64(time.Now().Unix()))
 
-	buf = make([]byte, HASHLEN)
+	hash_buf := make([]byte, HASHLEN)
 	sig := ocrypto.RSASign(sk, payload)
-	copy(buf, sig)
+	copy(hash_buf, sig)
 
-	buffer = append(buffer, buf...)
+	pld_len_buf := make([]byte, PAYLOADLENLEN)
+	binary.BigEndian.PutUint32(pld_len_buf, uint32(len(payload)))
 
-	buf = make([]byte, PAYLOADLENLEN)
-	binary.BigEndian.PutUint32(buf, uint32(len(payload)))
-	buffer = append(buffer, buf...)
-
-	buffer = append(buffer, payload...)
+	buffer := bytes.Join([][]byte{op_buf, id_buf, ts_buf, hash_buf, pld_len_buf, payload}, []byte{})
 
 	cipher, ckey, err := ocrypto.BlockEncrypt(buffer, pk)
 
@@ -129,9 +129,5 @@ func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey,
 		return nil
 	}
 
-	ckey = append(ckey, cipher...)
-
-	return ckey
+	return append(ckey, cipher...)
 }
-
-

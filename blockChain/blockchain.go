@@ -5,7 +5,6 @@ package blockChain
 */
 
 import(
-	"fmt"
 	"crypto/rsa"
 	"os"
 	"time"
@@ -16,25 +15,19 @@ import(
 	"sync"
 	"sort"
 	"github.com/rainer37/OnionCoin/util"
+	"fmt"
 )
 
 const BKCHPREFIX = "[BKCH] "
 const CHAINDIR = "chainData/"
 const TINDEXDIR = CHAINDIR + "TIndex"
-const NUMCOSIGNER = 1
-const EPOCHLEN = 10
-const PROPOSINGDELAY = 5
-const PUSHINGDELAY = 3
-const PROPOSINGTIME = EPOCHLEN - PROPOSINGDELAY
-const PUSHTIME = EPOCHLEN - PUSHINGDELAY
-const MAXNUMTXN = 500
-const MATUREDIFF = 2
+const GENSIS_HASH = "_OC_GENESIS_HASH_ON_18_MAR_2018_"
 
-var slient = true
-var GENESISBLOCK = Block{[]byte("ONCE UPON A TIME IN OLD ERA"), []byte("_OC_GENESIS_HASH_ON_18_MAR_2018_"), 0, 0, 0, nil, nil}
+const silent = false
+var GENESISBLOCK = Block{[]byte("ONCE UPON A TIME IN OLD ERA"), []byte(GENSIS_HASH), 0, 0, 0, nil, nil}
 
 func print(str ...interface{}) {
-	if slient {
+	if silent {
 		return
 	}
 	fmt.Print(BKCHPREFIX+" ")
@@ -119,14 +112,14 @@ func (chain *BlockChain) loadChainAndIndex() {
 func (chain *BlockChain) AddNewBlock(block *Block) bool {
 	// print("Adding a new block")
 
-	// should try pull the block again from the network first before publish it.
 	prevBlock := chain.Blocks[chain.Size()-1]
+
 	block.PrevHash = prevBlock.CurHash
 	block.Depth = prevBlock.Depth + 1
 	block.Ts = time.Now().Unix()
 	block.CurHash = block.GetCurHash()
-	chain.StoreBlock(block)
 
+	chain.StoreBlock(block)
 	return true
 }
 
@@ -154,7 +147,7 @@ func (chain *BlockChain) StoreBlock(b *Block) {
 	chain.updateIndex(b)
 	chain.Blocks = append(chain.Blocks, b)
 
-	print("new block written, depth:", b.Depth, "Epoch:", b.Ts / EPOCHLEN)
+	print("new block written, depth:", b.Depth, "Epoch:", b.Ts / util.EPOCHLEN)
 }
 
 /*
@@ -314,9 +307,9 @@ func DemuxTxnsHelper(itemsMap []interface{}) (buffer []Txn){
 func (chain *BlockChain) GetAllPeerIDs(max int64) []string {
 	peers := []string{}
 	for i,v := range chain.TIndex.PKIndex {
-		if i == "FAKEID1338" || i == "FAKEID1339" {
-			continue
-		}
+		//if i == "FAKEID1338" || i == "FAKEID1339" {
+		//	continue
+		//}
 
 		if v <= max {
 			peers = append(peers, i)
@@ -331,7 +324,7 @@ func (chain *BlockChain) GetCurBankIDSet() []string {
 }
 
 func (chain *BlockChain) GetNextBankIDSet() []string {
-	nbanks := chain.GetBankSetWhen(time.Now().Unix() + EPOCHLEN)
+	nbanks := chain.GetBankSetWhen(time.Now().Unix() + util.EPOCHLEN)
 	// print(nbanks)
 	return nbanks
 }
@@ -339,58 +332,48 @@ func (chain *BlockChain) GetNextBankIDSet() []string {
 func (chain *BlockChain) GetBankSetWhen(t int64) []string {
 	superBank := []string{"FAKEID1339", "FAKEID1338"} // TODO: super banks for now, remove them.
 	// return superBank
-	curEpoch := t / EPOCHLEN
+	curEpoch := t / util.EPOCHLEN
 
 	matureLen := chain.GetMatureBlockLen(t)
 	allPeers := chain.GetAllPeerIDs(matureLen)
-	numBanks := len(allPeers) / 8
-	return append(superBank, allPeers...)
+	fmt.Println(allPeers, matureLen)
+	numBanks := len(allPeers) / 2
+	// return append(superBank, allPeers...)
 	theChosen := []string{}
 	counter := 0
 	i := 0
 	for counter < numBanks {
 		newChosen := allPeers[(curEpoch * int64(i+1)) % int64(len(allPeers))]
-		if !contains(theChosen, newChosen) {
+		if !util.Contains(theChosen, newChosen) {
 			theChosen = append(theChosen, newChosen)
 			counter++
 		}
 		i++
 	}
+	if matureLen < 2 {
+		return superBank
+	}
 	// print("Epoch:", curEpoch, "Everyone:",allPeers, "Mature", matureLen, "Chosen:", theChosen)
-	return append(superBank, theChosen...)
+	return theChosen
+//	return append(superBank, theChosen...)
 }
 
 func (chain *BlockChain) GetPrevBanks() []string {
-	return chain.GetBankSetWhen(time.Now().Unix() - EPOCHLEN)
+	return chain.GetBankSetWhen(time.Now().Unix() - util.EPOCHLEN)
 }
 
 func (chain* BlockChain) GetMatureBlockLen(t int64) int64 {
-	curEpoch := t / EPOCHLEN
+	curEpoch := t / util.EPOCHLEN
 	mLen := 0
 	for i, b := range chain.Blocks {
 		// print("$$", b.Ts / EPOCHLEN, curEpoch - 2)
-		if b.Ts / EPOCHLEN < curEpoch - MATUREDIFF {
+		if b.Ts / util.EPOCHLEN < curEpoch - util.MATUREDIFF {
 			mLen = i
 		} else {
 			break
 		}
 	}
 	return int64(mLen)
-}
-
-func contains(arr []string, t string) bool {
-	for _,v := range arr {if v == t {return true}}
-	return false
-}
-
-/*
-	check if the current chain length is matrue.
- */
-func (chain *BlockChain) IsAlmostSyncd() bool {
-	if chain.Size() > chain.GetMatureBlockLen(time.Now().Unix()) {
-		return true
-	}
-	return false
 }
 
 /*

@@ -7,7 +7,6 @@ import(
 	"io/ioutil"
 	"time"
 	"encoding/json"
-	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/util"
 )
 
@@ -31,7 +30,7 @@ func NewCoin(rid string, content []byte, signers []string) *Coin {
 	coin := new(Coin)
 	coin.RID = rid
 	coin.Content = content
-	coin.Epoch = uint64(time.Now().Unix()) / blockChain.EPOCHLEN
+	coin.Epoch = uint64(time.Now().Unix()) / util.EPOCHLEN
 	coin.Signers = signers
 	return coin
 }
@@ -47,7 +46,7 @@ func (c *Coin) GetRID() string {
 }
 
 func (c *Coin) Bytes() []byte {
-	coinBytes, err :=json.Marshal(c)
+	coinBytes, err := json.Marshal(c)
 	util.CheckErr(err)
 	return coinBytes
 }

@@ -11,7 +11,6 @@ import(
 	"github.com/rainer37/OnionCoin/util"
 )
 
-const LOCALHOST = "127.0.0.1"
 const SELFSKEYPATH = "self.sk"
 const USAGE = "[MAIN] Usage:" + "\n\toc i [myport]" + "\n\toc j [myport] [joinport]"
 /*
@@ -67,8 +66,8 @@ func main() {
 	status := loadSavedStates(port)
 
 	n := node.NewNode(port)
-	n.IP = LOCALHOST
-	n.ID = node.FAKEID+n.Port
+	n.IP = util.LOCALHOST
+	n.ID = node.FAKEID + n.Port
 
 	gcoin := n.GetGenesisCoin()
 	n.Vault.Deposit(gcoin)

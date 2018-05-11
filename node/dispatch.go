@@ -4,11 +4,10 @@ import (
 	"github.com/rainer37/OnionCoin/records"
 	"crypto/rsa"
 	"encoding/binary"
-	"errors"
 	"sync"
 	"github.com/rainer37/OnionCoin/blockChain"
-	"github.com/rainer37/OnionCoin/bank"
 	"github.com/rainer37/OnionCoin/util"
+	"errors"
 )
 
 const (
@@ -17,7 +16,6 @@ const (
 	FIND             = '2'
 	COINREWARD       = '3'
 	COINCOSIGN       = '4'
-	EXPT             = '5'
 	JOINACK          = '6'
 	WELCOME          = '7'
 	RAWCOINEXCHANGE  = 'A'
@@ -25,7 +23,6 @@ const (
 	REGCOSIGNREQUEST = 'C'
 	REGCOSIGNREPLY   = 'D'
 	COINFEEDBACK     = 'E'
-	REJECT           = 'F'
 	TXNRECEIVE       = 'G'
 	IPLOOKUP         = 'L'
 	IPLOOKUPRP       = 'M'
@@ -44,7 +41,7 @@ var bcCount = 0
 	check the OMsg bytes received, verify the sig by senderID, and return [err, opCode, ID, pkEntry, payload]
  */
 func (n *Node) syntaxCheck(incoming []byte) (error, rune, string, *records.PKEntry, []byte) {
-	omsg, ok := n.UnmarshalOMsg(incoming)
+	omsg, ok := n.unMarshalOMsg(incoming)
 
 	if !ok {
 		return errors.New("cannot Unmarshal Msg, discard it." + string(len(incoming))), ' ', "", nil, nil
@@ -64,8 +61,6 @@ func (n *Node) syntaxCheck(incoming []byte) (error, rune, string, *records.PKEnt
 	if !verifySig(omsg, &senderPK.Pk) {
 		rjmsg := "Cannot verify sig from msg, discard it."
 		print(rjmsg)
-		n.sendReject(rjmsg, senderPK)
-		return errors.New( "cannot verify sig from msg, discard it"), ' ', "", nil, nil
 	}
 
 	// print("verified ID", senderID)
@@ -80,56 +75,6 @@ func (n *Node) syntaxCheck(incoming []byte) (error, rune, string, *records.PKEnt
 	000[OPCODE][SENDERI]
  */
 func (n *Node) chainRequest(payload []byte) bool {
-	//if string(payload[:3]) != "000" { return false }
-	//
-	//switch payload[4] {
-	//case TXNRECEIVE:
-	//	bcCount++
-	//	print("A Txn Received from", senderID)
-	//	txn := blockChain.ProduceTxn(payload[1:], rune(payload[0]))
-	//	n.bankProxy.AddTxn(txn)
-	//case CHAINSYNC:
-	//	bcCount++
-	//	//print("BlockChain Sync Req Received from", senderID)
-	//	n.chainSyncRequested(payload, senderID)
-	//case CHAINSYNCACK:
-	//	bcCount++
-	//	mutex.Lock()
-	//	//print("BlockChain Sync Ack Received from", senderID)
-	//	n.chainSyncAckReceived(payload, senderID)
-	//	mutex.Unlock()
-	//case CHAINREPAIR:
-	//	bcCount++
-	//	print(senderID, "tries to repair its chain")
-	//	n.chainRepairReceived(payload, senderID)
-	//case CHAINREPAIRREPLY:
-	//	bcCount++
-	//	print("repair the chain according to", senderID)
-	//	n.repairChain(payload)
-	//case PUBLISHINGBLOCK:
-	//	bcCount++
-	//	print(senderID, "is trying to publish a block")
-	//	depth := binary.BigEndian.Uint64(payload[:8])
-	//	print("block depth:", depth, n.chain.Size())
-	//case PUBLISHINGCHECK:
-	//	bcCount++
-	//	print(senderID, "responded with publishing status")
-	//case TXNAGGRE:
-	//	bcCount++
-	//	print("Txn Aggregation received from", senderID)
-	//	txns := blockChain.DemuxTxns(payload)
-	//	n.bankProxy.AggreTxns(txns)
-	//	// n.chain.AddNewBlock(blockChain.NewBlock(txns))
-	//	// print(n.chain.GetLastBlock().CurHash)
-	//case HASHCMP:
-	//	bcCount++
-	//	// print("New Block Hash From", senderID, string(payload))
-	//	if _, ok := bank.HashCmpMap[string(payload)]; !ok{
-	//		bank.HashCmpMap[string(payload)] = 0
-	//	}
-	//	bank.HashCmpMap[string(payload)] += 1
-	//	// print(bank.HashCmpMap)
-	//}
 	return false
 }
 
@@ -185,7 +130,7 @@ func (n *Node) dispatch(incoming []byte) {
 	case RAWCOINEXCHANGE:
 		//print("COINREWARD Exchange Requesting by", senderID)
 		if !n.iamBank() {
-			n.sendReject("SRY IM NOT BANK", senderPK)
+			print("SRY IM NOT BANK", senderPK)
 			return
 		}
 		n.receiveRawCoin(payload, senderID)
@@ -238,31 +183,19 @@ func (n *Node) dispatch(incoming []byte) {
 	case HASHCMP:
 		bcCount++
 		// print("New Block Hash From", senderID, string(payload))
-		if _, ok := bank.HashCmpMap[string(payload)]; !ok{
-			bank.HashCmpMap[string(payload)] = 0
+		if _, ok := HashCmpMap[string(payload)]; !ok{
+			HashCmpMap[string(payload)] = 0
 		}
-		bank.HashCmpMap[string(payload)] += 1
+		HashCmpMap[string(payload)] += 1
 		// print(bank.HashCmpMap)
 	case IPLOOKUP:
 		print(senderID, "is looking for someone")
 		n.handleLookup(payload)
 	case IPLOOKUPRP:
 		print("IP found")
-	case REJECT:
-		print(string(payload))
-	case EXPT:
-		//any exception
 	default:
 		print("Unknown Msg, discard.")
 	}
-}
-
-/*
-	reject some one when exceptional cases came up.
- */
-func (n *Node) sendReject(msg string, senderPK *records.PKEntry) {
-	rej := n.prepareOMsg(REJECT,[]byte(msg), senderPK.Pk)
-	n.sendActive(rej, senderPK.Port)
 }
 
 /*
@@ -276,7 +209,7 @@ func (n *Node) prepareOMsg(opCode rune, payload []byte, pk rsa.PublicKey) []byte
 	Retrieve the encrypted symmetric key, and decrypt it
 	Decrypt the rest of incoming packet, and return it as OMsg
  */
-func (n* Node) UnmarshalOMsg(incoming []byte) (*records.OMsg, bool) {
+func (n* Node) unMarshalOMsg(incoming []byte) (*records.OMsg, bool) {
 	return records.UnmarshalOMsg(incoming, n.sk)
 }
 

@@ -31,7 +31,7 @@ func (n *Node) forwardProtocol(payload []byte, senderID string) {
 	if nextID == n.ID {
 		//print("destination reached")
 		omsgCount++
-		print("   MSG RECEIVED: [", string(iOnion),"]")
+		print("   MSG RECEIVED: [", string(iOnion),"] FROM", senderID)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (n *Node) WrapABigOnion(msg []byte, ids []string) []byte {
 	send a onion message toward the path defined by ids.
  */
 func (n *Node) SendOninoMsg(ids []string, msg string) {
-	print("SENDING:", ids)
+	print("SENDING ALONG:", ids)
 	m := n.WrapABigOnion([]byte(msg), ids)
 	npe := n.getPubRoutingInfo(ids[0])
 	m = n.prepareOMsg(FWD, m, npe.Pk)

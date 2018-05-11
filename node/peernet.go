@@ -5,38 +5,30 @@ import (
 	"strconv"
 	"github.com/rainer37/OnionCoin/records"
 	"time"
-	"github.com/rainer37/OnionCoin/bank"
 	"github.com/rainer37/OnionCoin/ocrypto"
-	"github.com/rainer37/OnionCoin/blockChain"
-	"crypto/sha256"
 	"os"
 	"github.com/rainer37/OnionCoin/util"
+	"github.com/rainer37/OnionCoin/blockChain"
 )
 
 const BUFSIZE = 4096 * 10
-const LOCALHOST = "127.0.0.1"
-const NEWBIEMARKER = "100000"
 
 var msgSendCount = 0
-var msgReceived = 0
 
 func (n *Node) SelfInit() {
-	// print("PeerNet Initiated.")
 
-	n.bankProxy = bank.InitBank(n.sk, n.chain)
+	n.bankProxy = InitBank(n.sk, n.chain)
 
+	n.bankProxy.SetStatus(false)
 	if n.iamBank() {
-		// print("My Turn To be Bank!")
 		n.bankProxy.SetStatus(true)
-	} else {
-		n.bankProxy.SetStatus(false)
 	}
 
 	records.InsertEntry(n.ID, n.sk.PublicKey, time.Now().Unix(), n.IP, n.Port)
 
 	if n.ID == "FAKEID1338" && n.chain.Size() < 2{
 		superPK := ocrypto.EncodePK(n.sk.PublicKey)
-		pkHash := sha256.Sum256(superPK)
+		pkHash := util.ShaHash(superPK)
 		sig1 := n.blindSign(append(pkHash[:], []byte(n.ID)...))
 		sig2 := n.blindSign(append(pkHash[:], []byte(n.ID)...))
 		signers := []string{n.ID, n.ID}
@@ -46,14 +38,12 @@ func (n *Node) SelfInit() {
 
 	p,err := strconv.Atoi(n.Port)
 	util.CheckErr(err)
-	// go n.syncBlockChain()
-	//if !n.iamBank() {
+
 	// go n.random_exchg()
 	go n.random_msg()
-	//}
 	go n.epochTimer()
-	//go n.bankStatusDetection()
-	n.Serve(LOCALHOST, p)
+
+	n.Serve(util.LOCALHOST, p)
 }
 
 /*
@@ -85,13 +75,13 @@ func (n *Node) IniJoin(address string, status int) {
 			REGISTER | EncodedPK(RSAKEYLEN / 8) | MyID
 		*/
 		encodedPK := ocrypto.EncodePK(n.sk.PublicKey)
-		n.sendActive([]byte(REGISTER+string(encodedPK)+n.ID), address)
+		n.sendActive([]byte(REGISTER + string(encodedPK) + n.ID), address)
 
 		enPk := <-n.pkChan // waiting for registration cosign finish.
 
 		print("Good! I'm Now Registered")
 		talkingPK := ocrypto.DecodePK(enPk)
-		records.InsertEntry(JID, talkingPK, time.Now().Unix(), LOCALHOST, address)
+		records.InsertEntry(JID, talkingPK, time.Now().Unix(), util.LOCALHOST, address)
 	}
 
 	pe := n.getPubRoutingInfo(JID)
@@ -102,7 +92,7 @@ func (n *Node) IniJoin(address string, status int) {
 	}
 
 	// ID @ IP:port
-	payload := []byte(n.ID + "@" + n.IP+":"+n.Port)
+	payload := []byte(n.ID + "@" + n.IP + ":" + n.Port)
 	joinMsg := n.prepareOMsg(JOIN, payload, pe.Pk)
 	n.sendActive(joinMsg, address)
 
@@ -119,15 +109,12 @@ func (n *Node) Serve(ip string, port int) {
 	util.CheckErr(err)
 
 	defer con.Close()
-	print("Serving ["+addr.String()+"]")
+	print("Serving [" + addr.String() + "]")
 	for {
 		buffer := make([]byte, BUFSIZE)
-		l, add, e := con.ReadFromUDP(buffer)
+		l, _, e := con.ReadFromUDP(buffer)
 		util.CheckErr(e)
 		incoming := buffer[0:l]
-		if l < 50 {
-			print("From", add, l, "bytes : [", string(incoming), "]")
-		}
 		go n.dispatch(incoming)
 	}
 }
@@ -138,16 +125,9 @@ func (n *Node) Serve(ip string, port int) {
 func (n *Node) sendActive(msg []byte, add string) {
 	msgSendCount++
 	// fmt.Println(len(msg))
-	con, err := net.Dial("udp", ":"+add)
-	if err != nil {
-		print(err)
-		return
-	}
+	con, err := net.Dial("udp", ":" + add)
+	util.CheckErr(err)
 	defer con.Close()
 	_, err = con.Write(msg)
-	if err != nil {
-		print("WRITE ERR", err, len(msg))
-		return
-	}
+	util.CheckErr(err)
 }
-

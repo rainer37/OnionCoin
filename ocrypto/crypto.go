@@ -14,19 +14,20 @@ import(
 	"math/rand"
 	"time"
 	"github.com/rainer37/OnionCoin/util"
+	"crypto"
 )
 
 const CRYPTOPREFIX = "[CRYP]"
-const RSAKEYLEN = 1024
-const SYMKEYLEN = 128
 
 var LABEL = []byte("orders")
 var rng = crand.Reader
+
 var RSATime int64 = 0
 var AESTime int64 = 0
 var nano int64 = 1000000
 var RSAStep = 0
 var AESStep = 0
+
 func print(str ...interface{}) {
 	fmt.Print(CRYPTOPREFIX+" ")
 	fmt.Println(str...)
@@ -35,7 +36,7 @@ func print(str ...interface{}) {
 // generate a pub/private key pair.
 // public key is inside of PrivateKey by invoking .PublicKey
 func RSAKeyGen() *rsa.PrivateKey {
-	key, err := rsa.GenerateKey(rng, RSAKEYLEN)
+	key, err := rsa.GenerateKey(rng, util.RSAKEYLEN)
 	util.CheckErr(err)
 	return key
 }
@@ -59,6 +60,28 @@ func PKDecrypt(sk *rsa.PrivateKey, payload []byte) []byte {
 	RSAStep++
 
 	return plain
+}
+
+func RSASign(sk *rsa.PrivateKey, msg []byte) []byte {
+	start := time.Now()
+	hashed := util.ShaHash(msg)
+	signature, err := rsa.SignPKCS1v15(rng, sk, crypto.SHA256, hashed[:])
+	util.CheckErr(err)
+	ela := time.Since(start)
+	RSATime += ela.Nanoseconds()/nano
+	RSAStep++
+	return signature
+}
+
+func RSAVerify(pk *rsa.PublicKey, sig []byte, msg []byte) bool {
+	start := time.Now()
+	hashed := util.ShaHash(msg)
+	err := rsa.VerifyPKCS1v15(pk, crypto.SHA256, hashed[:], sig)
+	ela := time.Since(start)
+	RSATime += ela.Nanoseconds()/nano
+	RSAStep++
+	if err != nil { return false }
+	return true
 }
 
 func AESEncrypt(key []byte, payload []byte) ([]byte, error) {
@@ -135,7 +158,7 @@ func EncodePK(pubkey rsa.PublicKey) []byte {
 }
 
 func DecodePK(enkey []byte) rsa.PublicKey {
-	NLen := RSAKEYLEN / 8
+	NLen := util.RSAKEYLEN / 8
 	if len(enkey) != NLen + 4 {
 		panic("wrong length of encoded pk")
 	}

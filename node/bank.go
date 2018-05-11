@@ -1,17 +1,15 @@
-package bank
+package node
 
 import (
 	"crypto/rsa"
-	"fmt"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/records"
 	"sort"
 	"time"
+	"github.com/rainer37/OnionCoin/util"
 )
 
-const BANK_PREFIX = "[BANK]"
-var slient = true
 var HashCmpMap map[string]int
 
 type Bank struct {
@@ -27,13 +25,6 @@ func (a TxnSorter) Len() int           { return len(a) }
 func (a TxnSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a TxnSorter) Less(i, j int) bool {
 	return a[i].GetTS() < a[j].GetTS() || (a[i].GetTS() == a[j].GetTS() && a[i].GetContent()[0] < a[j].GetContent()[0])
-}
-//func (a TxnSorter) Less(i, j int) bool { return string(a[i].GetContent()) < string(a[j].GetContent()) }
-
-func print(str ...interface{}) {
-	if slient {return}
-	fmt.Print(BANK_PREFIX+" ")
-	fmt.Println(str...)
 }
 
 func InitBank(sk *rsa.PrivateKey, chain *blockChain.BlockChain) *Bank {
@@ -69,10 +60,10 @@ func (bank *Bank) AddTxn(txn blockChain.Txn) bool {
 		return false
 	}
 	bank.txnBuffer = append(bank.txnBuffer, txn)
-	print("Txn added, current buffer load:", float32(len(bank.txnBuffer)) / blockChain.MAXNUMTXN, len(bank.txnBuffer))
+	print("Txn added, current buffer load:", float32(len(bank.txnBuffer)) / util.MAXNUMTXN, len(bank.txnBuffer))
 
 	if bank.status {
-		for len(bank.txnBuffer) >= blockChain.MAXNUMTXN {
+		for len(bank.txnBuffer) >= util.MAXNUMTXN {
 			bank.GenerateNewBlock()
 		}
 	}
@@ -87,7 +78,7 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 	verifiers := txn.GetVerifiers()
 	sigs := txn.GetSigs()
 
-	if len(verifiers) != blockChain.NUMCOSIGNER || len(verifiers) != len(sigs) / 128 {
+	if len(verifiers) != util.NUMCOSIGNER || len(verifiers) != len(sigs) / 128 {
 		print("number of sigs does not match number of banks", len(verifiers), len(sigs) / 128)
 		return false
 	}
@@ -104,7 +95,7 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 		}
 	}
 	if matchCounter != len(verifiers) {
-		print("Some signer was not a bank at that time", matchCounter, blockChain.NUMCOSIGNER)
+		print("Some signer was not a bank at that time", matchCounter, util.NUMCOSIGNER)
 		return false
 	}
 

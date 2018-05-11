@@ -4,7 +4,6 @@ import (
 	"github.com/rainer37/OnionCoin/coin"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/rsa"
-	"crypto/sha256"
 	"encoding/binary"
 	"math/rand"
 	"github.com/rainer37/OnionCoin/blockChain"
@@ -13,6 +12,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"sync"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 const BCOINSIZE = 128 // raw
@@ -31,7 +31,8 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 	//print("Make a wish")
 	if len(payload) <= BCOINSIZE+ 16 {
 		print("Wrong coin exchange len", len(payload))
-		return }
+		return
+	}
 
 	c := payload[BCOINSIZE+16:]
 	cLen := len(payload) - BCOINSIZE - 16
@@ -65,7 +66,7 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 
 	n.coSignValidCoin(pb)
 
-	newCoin := n.blindSign(rwcn)
+	newCoin := n.blindSign(rwcn[:32])
 	spk := n.getPubRoutingInfo(senderID)
 
 	if spk == nil {
@@ -98,7 +99,7 @@ func (n *Node) receiveNewCoin(payload []byte, senderID string) {
 	Generate the genesis coin with my signed pk.
  */
 func (n *Node) GetGenesisCoin() *coin.Coin {
-	pkHash := sha256.Sum256(ocrypto.EncodePK(n.sk.PublicKey))
+	pkHash := util.ShaHash(ocrypto.EncodePK(n.sk.PublicKey))
 	gcoin := n.blindSign(pkHash[:])
 	return coin.NewCoin(n.ID, gcoin, []string{n.ID})
 }
@@ -133,7 +134,7 @@ func (n *Node) CoinExchange(dstID string) {
 	tsBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(tsBytes, uint64(time.Now().Unix()))
 
-	for layers < blockChain.NUMCOSIGNER && counter < len(banks) {
+	for layers < util.NUMCOSIGNER && counter < len(banks) {
 		banks = currentBanks
 		bid := banks[counter]
 		bpe := n.getPubRoutingInfo(bid)
@@ -189,7 +190,7 @@ func (n *Node) CoinExchange(dstID string) {
 		layers++
 	}
 
-	if layers == blockChain.NUMCOSIGNER {
+	if layers == util.NUMCOSIGNER {
 		// print("New Coin Forged, Thanks Fellas!", len(rc))
 		n.Deposit(coin.NewCoin(dstID, rc, signerBanks))
 		// print(n.Vault.Coins)
@@ -211,7 +212,7 @@ func (n *Node) coSignValidCoin(c []byte) {
 	cc := c[2:]
 
 	cLen := binary.BigEndian.Uint32(cc[8:12])
-	hashAndIds := sha256.Sum256(cc[8 + 4: 8 + 4 + cLen]) // get the hash(32) of coin
+	hashAndIds := util.ShaHash(cc[8 + 4: 8 + 4 + cLen]) // get the hash(32) of coin
 
 	signedHash := n.blindSign(hashAndIds[:]) // sign the coin(128)
 	signedHash = append(cc, signedHash...)
@@ -219,13 +220,13 @@ func (n *Node) coSignValidCoin(c []byte) {
 	newCounter := make([]byte, 2)
 	binary.BigEndian.PutUint16(newCounter, counter+1)
 
-	idBytes := make([]byte, IDLEN)
+	idBytes := make([]byte, util.IDLEN)
 	copy(idBytes, n.ID)
 
 	signedHash = append(signedHash, idBytes[:]...) // append verifier to it
 
 	// when there is enough sigs gathered, try publish the txn.
-	if counter+1 == blockChain.NUMCOSIGNER {
+	if counter+1 == util.NUMCOSIGNER {
 		//print("Enough verifiers got, publish it")
 		t, cnum, cbytes, sigs, verifiers := n.decodeCNCosign(signedHash, counter+1)
 		var c coin.Coin
@@ -334,7 +335,7 @@ func (n *Node) ValidateCoin(coinBytes []byte, senderID string) bool {
 
 	// first check if it is a genesis coin.
 	spe := n.getPubRoutingInfo(senderID)
-	encSPK := sha256.Sum256(ocrypto.EncodePK(spe.Pk))
+	encSPK := util.ShaHash(ocrypto.EncodePK(spe.Pk))
 	targetHash := ocrypto.EncryptBig(&spe.Pk, ncoin.Content)
 
 	if string(encSPK[:]) == string(targetHash) {
@@ -345,12 +346,12 @@ func (n *Node) ValidateCoin(coinBytes []byte, senderID string) bool {
 	// TODO: remove this
 	return true
 	// if not gcoin, check if the signers are in the same epoch, then check the signatures.
-	whoWasBanks := n.chain.GetBankSetWhen(int64(ncoin.Epoch) * blockChain.EPOCHLEN)
+	whoWasBanks := n.chain.GetBankSetWhen(int64(ncoin.Epoch) * util.EPOCHLEN)
 	// print(ncoin.Signers)
 	// print(whoWasBanks)
 
 	for _, s := range(ncoin.Signers) {
-		if !contains(whoWasBanks, s) {
+		if !util.Contains(whoWasBanks, s) {
 			print("One of the signers is not supposed to be bank at that moment!")
 			return false
 		}
@@ -358,7 +359,7 @@ func (n *Node) ValidateCoin(coinBytes []byte, senderID string) bool {
 
 	coinNum, idHash := n.getCoinNumAndIDHash(ncoin)
 	print("CoinNum:", coinNum)
-	h := sha256.Sum256([]byte(senderID))
+	h := util.ShaHash([]byte(senderID))
 
 	if string(idHash) != string(h[:]) {
 		print("The coin id is not the senderID, sorry you have to use your own coin!")
@@ -384,7 +385,7 @@ func ValidateCoinByKey(coinBytes []byte, senderID string, pk *rsa.PublicKey) boo
 		return false
 	}
 
-	idHash := sha256.Sum256([]byte(senderID))
+	idHash := util.ShaHash([]byte(senderID))
 	targetHash := c[:32]
 	coinNum := c[32:]
 

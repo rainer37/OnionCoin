@@ -4,9 +4,8 @@ import (
 	"crypto/rsa"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"time"
-	"crypto/sha256"
-	"encoding/json"
 	"github.com/rainer37/OnionCoin/util"
+	"encoding/json"
 )
 
 const (
@@ -86,7 +85,7 @@ func (pkr PKRegTxn) GetSigs() []byte { return pkr.Sigs }
 	PK register txn content: pk + id
  */
 func (pkr PKRegTxn) GetContent() []byte {
-	pkHash := sha256.Sum256(pkr.Pk)
+	pkHash := util.ShaHash(pkr.Pk)
 	return append(pkHash[:], []byte(pkr.Id)...)
 }
 
@@ -113,7 +112,7 @@ func (cnex CNEXTxn) GetTS() int64 { return cnex.Ts }
 	coin exchange content: coin bytes
  */
 func (cnex CNEXTxn) GetContent() []byte {
-	cnHash := sha256.Sum256(cnex.CoinBytes)
+	cnHash := util.ShaHash(cnex.CoinBytes)
 	return cnHash[:]
 }
 
@@ -135,12 +134,11 @@ func (bcnrd BCNRDMTxn) GetTS() int64 { return bcnrd.Ts }
 /*
 	translate []Txn into bytes
  */
-func TxnsToBytes(t []Txn) []byte {
-	aggre := []byte{}
+func TxnsToBytes(t []Txn) (aggre []byte) {
 	for _,txn := range t {
 		aggre = append(aggre, txn.ToBytes()...)
 	}
-	return aggre
+	return
 }
 
 /*

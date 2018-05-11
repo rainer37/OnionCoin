@@ -8,10 +8,9 @@ import (
 )
 
 func TestOMsgMashal(t *testing.T) {
-	//msg := "the-key-has-to-be-32-bytes-long!"
 
 	sk := ocrypto.RSAKeyGen()
-	payload := []byte("rainer is god")
+	payload := []byte("gods upon sky")
 	nodeID := "Ella"
 	m := records.MarshalOMsg('0', payload, nodeID, sk, sk.PublicKey)
 

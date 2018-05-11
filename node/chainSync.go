@@ -97,7 +97,7 @@ func (n *Node) chainSyncAckReceived(payload []byte, senderID string) {
 	current use first 8 bytes out of 32 bytes sha256.
  */
 func (n *Node) handleBranching(senderID string) {
-	a := []DepthHashPair{}
+	var a []DepthHashPair
 	i := n.chain.Size() - 20
 	if i < 1 { i = 1 }
 

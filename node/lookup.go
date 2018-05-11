@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"github.com/rainer37/OnionCoin/records"
 	"strings"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 func (n *Node) LookUpPK(address string) rsa.PublicKey {
@@ -19,7 +20,7 @@ func (n *Node) LookUpPK(address string) rsa.PublicKey {
  */
 func (n *Node) LookUpIP(id string) {
 	for _ ,v := range records.KeyRepo {
-		targetID := make([]byte, IDLEN)
+		targetID := make([]byte, util.IDLEN)
 		copy(targetID, id)
 		p := n.prepareOMsg(IPLOOKUP, append(targetID , []byte(n.addr())...), v.Pk)
 		go n.sendActive(p, v.Port)
