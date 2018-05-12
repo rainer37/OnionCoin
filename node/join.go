@@ -32,8 +32,7 @@ func (n *Node) joinProtocol(payload []byte) {
 		return
 	}
 
-	jack := n.prepareOMsg(JOINACK, ackPayload, tpe.Pk)
-	n.sendActive(jack, senderPort)
+	n.sendOMsg(JOINACK, ackPayload, tpe)
 
 	n.recordPE(senderID, tpe.Pk, senderIP, senderPort)
 
@@ -50,16 +49,15 @@ func (n *Node) joinProtocol(payload []byte) {
 func (n* Node) newbieJoin(b []byte) bool {
 	// if the newbie is joining, special protocol is invoked.
 	if string(b[:PDLEN]) == REGISTER {
-		newBiePk := ocrypto.DecodePK(b[PDLEN:PDLEN+PKRQLEN])
-		senderID := string(b[PDLEN+PKRQLEN:])
+		newBiePk := ocrypto.DecodePK(b[PDLEN: PDLEN + PKRQLEN])
+		senderID := string(b[PDLEN + PKRQLEN:])
 		senderAddr := senderID[6:]
 
 		// TODO: remove this cond
 		if senderID != "FAKEID1339" {
 			n.registerCoSign(newBiePk, senderID)
 		} else {
-			newbieID := senderID
-			n.defaultBankRoutine(newBiePk, newbieID)
+			n.defaultBankRoutine(newBiePk, senderID)
 		}
 
 		n.recordPE(senderID, newBiePk, util.LOCALHOST, senderAddr)
@@ -70,7 +68,7 @@ func (n* Node) newbieJoin(b []byte) bool {
 		return true
 	} else if string(b[:PDLEN]) == PKRQACK {
 		// return the pk to the requesting node to finish the join protocol.
-		confirmBytes := b[PDLEN:PDLEN+ PKRQLEN]
+		confirmBytes := b[PDLEN: PDLEN + PKRQLEN]
 		n.pkChan <- confirmBytes
 		return true
 	}

@@ -13,7 +13,6 @@ import(
 	"io/ioutil"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"sync"
-	"sort"
 	"github.com/rainer37/OnionCoin/util"
 	"fmt"
 )
@@ -46,7 +45,6 @@ type ChainIndex struct {
 	CNIndex map[string]int64
 	mutex *sync.Mutex
 }
-
 
 type BlockChain struct {
 	Blocks []*Block
@@ -139,11 +137,7 @@ func (chain *BlockChain) StoreBlock(b *Block) {
 		return
 	}
 
-	f, err := os.Create(CHAINDIR + blockFileName)
-	util.CheckErr(err)
-	f.Write(blockData)
-	f.Close()
-
+	ioutil.WriteFile(CHAINDIR + blockFileName, blockData, 0644)
 	chain.updateIndex(b)
 	chain.Blocks = append(chain.Blocks, b)
 
@@ -184,17 +178,9 @@ func (chain *BlockChain) TrimChain(start int64) {
 	chain.loadChainAndIndex()
 }
 
-func (chain *BlockChain) Size() int64 {
-	return int64(len(chain.Blocks))
-}
-
-func (chain *BlockChain) GetBlock(index int64) *Block {
-	return chain.Blocks[index]
-}
-
-func (chain *BlockChain) GetLastBlock() *Block {
-	return chain.GetBlock(chain.Size()-1)
-}
+func (chain *BlockChain) Size() int64 { return int64(len(chain.Blocks)) }
+func (chain *BlockChain) GetBlock(index int64) *Block { return chain.Blocks[index] }
+func (chain *BlockChain) GetLastBlock() *Block { return chain.GetBlock(chain.Size()-1) }
 
 /*
 	generate one block bytes in json
@@ -237,146 +223,6 @@ func (chain *BlockChain) updateIndex(b *Block) {
 }
 
 /*
-	read a block from disk and turn it into Block by given name(block index)
- */
-func readABlock(name string) *Block {
-	blockPath := CHAINDIR + name
-	dat, err := ioutil.ReadFile(blockPath)
-	util.CheckErr(err)
-	return DeMuxBlock(dat)
-}
-
-/*
-	generate a block from the given bytes, dynamically determine the actual type of the txns.
- */
-func DeMuxBlock (blockBytes []byte) *Block {
-	var block *Block
-	json.Unmarshal(blockBytes, &block)
-	block.Txns = []Txn{}
-	var b interface{}
-	json.Unmarshal(blockBytes, &b)
-	itemsMap := b.(map[string]interface{})
-
-	for i , v := range itemsMap {
-		if i == "Txns" {
-			block.Txns = DemuxTxnsHelper(v.([]interface{}))
-		}
-	}
-
-	return block
-}
-
-/*
-	Dynamically Demux the txns in json to correct Txn.
- */
-func DemuxTxns(txnsBytes []byte) (buffer []Txn) {
-	var b interface{}
-	json.Unmarshal(txnsBytes, &b)
-	itemsMap := b.([]interface{})
-	buffer = DemuxTxnsHelper(itemsMap)
-	return
-}
-
-func DemuxTxnsHelper(itemsMap []interface{}) (buffer []Txn){
-	for _, v := range itemsMap {
-		tflag := 0
-		for iii := range v.(map[string]interface{}) {
-			if iii == "Pk" {
-				tflag = 1
-				break
-			} else if iii == "CoinNum" {
-				tflag = 2
-				break
-			}
-		}
-		if tflag == 1 {
-			vvBytes, _ := json.Marshal(v)
-			var ptxn PKRegTxn
-			json.Unmarshal(vvBytes, &ptxn)
-			buffer = append(buffer, ptxn)
-		} else if tflag == 2 {
-			vvBytes, _ := json.Marshal(v)
-			var ctxn CNEXTxn
-			json.Unmarshal(vvBytes, &ctxn)
-			buffer = append(buffer, ctxn)
-		}
-	}
-	return
-}
-
-func (chain *BlockChain) GetAllPeerIDs(max int64) []string {
-	peers := []string{}
-	for i,v := range chain.TIndex.PKIndex {
-		//if i == "FAKEID1338" || i == "FAKEID1339" {
-		//	continue
-		//}
-
-		if v <= max {
-			peers = append(peers, i)
-		}
-	}
-	sort.Strings(peers)
-	return peers
-}
-
-func (chain *BlockChain) GetCurBankIDSet() []string {
-	return chain.GetBankSetWhen(time.Now().Unix())
-}
-
-func (chain *BlockChain) GetNextBankIDSet() []string {
-	nbanks := chain.GetBankSetWhen(time.Now().Unix() + util.EPOCHLEN)
-	// print(nbanks)
-	return nbanks
-}
-
-func (chain *BlockChain) GetBankSetWhen(t int64) []string {
-	superBank := []string{"FAKEID1339", "FAKEID1338"} // TODO: super banks for now, remove them.
-	// return superBank
-	curEpoch := t / util.EPOCHLEN
-
-	matureLen := chain.GetMatureBlockLen(t)
-	allPeers := chain.GetAllPeerIDs(matureLen)
-	fmt.Println(allPeers, matureLen)
-	numBanks := len(allPeers) / 2
-	// return append(superBank, allPeers...)
-	theChosen := []string{}
-	counter := 0
-	i := 0
-	for counter < numBanks {
-		newChosen := allPeers[(curEpoch * int64(i+1)) % int64(len(allPeers))]
-		if !util.Contains(theChosen, newChosen) {
-			theChosen = append(theChosen, newChosen)
-			counter++
-		}
-		i++
-	}
-	if matureLen < 2 {
-		return superBank
-	}
-	// print("Epoch:", curEpoch, "Everyone:",allPeers, "Mature", matureLen, "Chosen:", theChosen)
-	return theChosen
-//	return append(superBank, theChosen...)
-}
-
-func (chain *BlockChain) GetPrevBanks() []string {
-	return chain.GetBankSetWhen(time.Now().Unix() - util.EPOCHLEN)
-}
-
-func (chain* BlockChain) GetMatureBlockLen(t int64) int64 {
-	curEpoch := t / util.EPOCHLEN
-	mLen := 0
-	for i, b := range chain.Blocks {
-		// print("$$", b.Ts / EPOCHLEN, curEpoch - 2)
-		if b.Ts / util.EPOCHLEN < curEpoch - util.MATUREDIFF {
-			mLen = i
-		} else {
-			break
-		}
-	}
-	return int64(mLen)
-}
-
-/*
 	Check if the new coin num has been used before.
  */
 func IsFreeCoinNum(coinNum uint64) bool {
@@ -386,11 +232,3 @@ func IsFreeCoinNum(coinNum uint64) bool {
 	return false
 }
 
-func (chain *BlockChain) String() (s string) {
-	for _,v := range chain.Blocks {
-		b, err := json.Marshal(v)
-		util.CheckErr(err)
-		s += string(b) + "\n"
-	}
-	return
-}

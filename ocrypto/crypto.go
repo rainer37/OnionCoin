@@ -43,12 +43,12 @@ func RSAKeyGen() *rsa.PrivateKey {
 
 func PKEncrypt(pk rsa.PublicKey, payload []byte) []byte {
 	start := time.Now()
-	cipher, err := rsa.EncryptOAEP(sha256.New(), rng, &pk, payload, LABEL)
+	c, err := rsa.EncryptOAEP(sha256.New(), rng, &pk, payload, LABEL)
 	util.CheckErr(err)
 	ela := time.Since(start)
 	RSATime += ela.Nanoseconds()/nano
 	RSAStep++
-	return cipher
+	return c
 }
 
 func PKDecrypt(sk *rsa.PrivateKey, payload []byte) []byte {
@@ -99,12 +99,12 @@ func AESEncrypt(key []byte, payload []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	cipher := gcm.Seal(nonce, nonce, payload, nil)
+	ncipher := gcm.Seal(nonce, nonce, payload, nil)
 
 	ela := time.Since(start)
 	AESTime += ela.Nanoseconds()/1000
 	AESStep++
-	return cipher, nil
+	return ncipher, nil
 }
 
 func AESDecrypt(key []byte, cipherText []byte) ([]byte, error){
@@ -138,10 +138,10 @@ func BlockEncrypt(msg []byte, pk rsa.PublicKey) ([]byte, []byte , error) {
 	buf := make([]byte, 32)
 	rand.Read(buf) // generate random bytes for encryption
 	symkey := buf
-	cipher, err := AESEncrypt(symkey, msg)
+	ncipher, err := AESEncrypt(symkey, msg)
 	if err != nil { return nil, nil, err}
 	cipherKey := PKEncrypt(pk, symkey)
-	return cipher, cipherKey, nil
+	return ncipher, cipherKey, nil
 }
 
 func BlockDecrypt(cipher []byte, cipherKey []byte, sk *rsa.PrivateKey) ([]byte, error) {
@@ -152,9 +152,8 @@ func BlockDecrypt(cipher []byte, cipherKey []byte, sk *rsa.PrivateKey) ([]byte, 
 
 func EncodePK(pubkey rsa.PublicKey) []byte {
 	bs := make([]byte, 4)
-	binary.LittleEndian.PutUint32(bs, uint32(pubkey.E))
-	epk := append(pubkey.N.Bytes(), bs...)
-	return epk
+	binary.BigEndian.PutUint32(bs, uint32(pubkey.E))
+	return append(pubkey.N.Bytes(), bs...)
 }
 
 func DecodePK(enkey []byte) rsa.PublicKey {
@@ -164,7 +163,6 @@ func DecodePK(enkey []byte) rsa.PublicKey {
 	}
 	i := new(big.Int)
 	i.SetBytes(enkey[:NLen])
-	e := int(binary.LittleEndian.Uint32(enkey[NLen:]))
-	key := rsa.PublicKey{i, e}
-	return key
+	e := int(binary.BigEndian.Uint32(enkey[NLen:]))
+	return rsa.PublicKey{i, e}
 }

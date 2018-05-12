@@ -8,18 +8,18 @@ import(
 	"time"
 	"github.com/rainer37/OnionCoin/coin"
 	bc "github.com/rainer37/OnionCoin/blockChain"
-	"strings"
 	"encoding/json"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/util"
 	"github.com/rainer37/OnionCoin/records"
+	"strings"
 )
 
 const NODEPREFIX = "[NODE]"
 const FAKEID = "FAKEID"
 const SELFSKEYPATH = "self.sk"
 
-var silent = true
+var silent = false
 var opCount = 0
 var pathLength = 0
 var currentBanks []string
@@ -41,22 +41,17 @@ type Node struct {
 
 func NewNode(port string) *Node {
 	n := new(Node)
-	n.Vault = new(coin.Vault)
 	n.Port = port
 	n.pkChan = make(chan []byte)
 	n.regChan = make(chan []byte)
 	n.iplookup = make(chan string)
 	n.feedbackChan = make(chan rune)
 	n.sk = produceSK()
-	n.InitVault()
+	n.Vault = coin.InitVault()
 	n.chain = bc.InitBlockChain()
 	currentBanks = []string{"FAKEID1338", "FAKEID1339"} // TODO: take these superpower out.
 	ela = time.Now()
 	return n
-}
-
-func (n *Node) GetBalance() int {
-	return n.Vault.Len()
 }
 
 func (n *Node) addr() string {
@@ -69,6 +64,10 @@ func (n *Node) Deposit(coin *coin.Coin)  {
 
 func (n *Node) Withdraw(rid string) *coin.Coin {
 	return n.Vault.Withdraw(rid)
+}
+
+func (n *Node) GetBalance() int64 {
+	return n.Vault.GetBalance()
 }
 
 /*
@@ -170,8 +169,7 @@ func (n *Node) epochTimer() {
 							if bpe == nil { continue }
 							txnsBytes := n.getTxnsInBuffer()
 							if string(txnsBytes) != "null" {
-								p := n.prepareOMsg(TXNAGGRE, txnsBytes, bpe.Pk)
-								n.sendActive(p, bpe.Port)
+								n.sendOMsg(TXNAGGRE, txnsBytes, bpe)
 							}
 						}
 					}()
@@ -191,8 +189,7 @@ func (n *Node) epochTimer() {
 								if b == n.ID { continue }
 								bpe := n.getPubRoutingInfo(b)
 								if bpe == nil { continue }
-								p := n.prepareOMsg(HASHCMP, nb.CurHash, bpe.Pk)
-								n.sendActive(p, bpe.Port)
+								n.sendOMsg(HASHCMP, nb.CurHash, bpe)
 							}
 							cmpTimer := time.NewTimer(2 * time.Second)
 							<-cmpTimer.C
@@ -232,7 +229,7 @@ func (n *Node) random_exchg() {
 		if !n.iamBank() {
 
 			go func() {
-				if coin.GetBalance() > 0 {
+				if n.GetBalance() > 0 {
 
 					if n.isSlientHours() { return }
 					n.CoinExchange(n.ID)
@@ -253,7 +250,7 @@ func (n *Node) random_msg() {
 		//print(t.Unix(), "SEND:", msgSendCount, "OPS:", opCount, "MSGCOUNT:", omsgCount, "PATHLEN:", pathLength)
 		if !n.iamBank() {
 			go func() {
-				if coin.GetBalance() > 0 {
+				if n.GetBalance() > 0 {
 
 					if n.isSlientHours() { return }
 

@@ -5,6 +5,7 @@ import (
 )
 
 var omsgCount = 0
+const FWDTIMEOUT = 3 * 1000
 
 /*
 	1. Decrypt the Onion to get nextID, previous coin, and the innerOnion.
@@ -14,41 +15,26 @@ var omsgCount = 0
 func (n *Node) forwardProtocol(payload []byte, senderID string) {
 	nextID, prevCoin, iOnion := PeelOnion(n.sk, payload)
 	n.feedbackChan = make(chan rune)
+	defer close(n.feedbackChan)
+
 	// print(nextID, len(prevCoin), string(prevCoin), len(iOnion), len(iOnion))
 
-	spe := n.getPubRoutingInfo(senderID)
-
-	if spe == nil {
-		print("this is impossible, the sender is not verified ?")
-		return
-	}
-
 	// reply the coin to previous peer.
-	pm := n.prepareOMsg(COINREWARD, prevCoin, spe.Pk)
-	go n.sendActive(pm, spe.Port)
+	n.sendOMsgWithID(COINREWARD, prevCoin, senderID)
 
 	// the most innerOnion should have the same ID as receiver ID.
 	if nextID == n.ID {
-		//print("destination reached")
 		omsgCount++
 		print("   MSG RECEIVED: [", string(iOnion),"] FROM", senderID)
 		return
 	}
 
-	npe := n.getPubRoutingInfo(nextID)
-
-	if npe == nil {
-		print("cannot verify next hop id")
-		return
-	}
-
 	select {
-	case <-time.After(5 * time.Second):
+	case <-time.After(FWDTIMEOUT):
 		print("   Time out, no positive feedback, i won't help")
 	case feedback := <-n.feedbackChan:
 		if feedback == 'Y' {
-			m := n.prepareOMsg(FWD,iOnion,npe.Pk)
-			n.sendActive(m, npe.Port)
+			n.sendOMsgWithID(FWD, iOnion, nextID)
 		} else {
 			print("   no positive feedback, i won't help")
 		}
@@ -81,8 +67,6 @@ func (n *Node) WrapABigOnion(msg []byte, ids []string) []byte {
  */
 func (n *Node) SendOninoMsg(ids []string, msg string) {
 	print("SENDING ALONG:", ids)
-	m := n.WrapABigOnion([]byte(msg), ids)
-	npe := n.getPubRoutingInfo(ids[0])
-	m = n.prepareOMsg(FWD, m, npe.Pk)
-	n.sendActive(m, npe.Port)
+	onion := n.WrapABigOnion([]byte(msg), ids)
+	n.sendOMsgWithID(FWD, onion, ids[0])
 }

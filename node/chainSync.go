@@ -23,10 +23,7 @@ func (n *Node) syncOnce() {
 	binary.BigEndian.PutUint64(buf, uint64(n.chain.Size()))
 	b := n.chain.GetLastBlock()
 	bhash := b.CurHash
-	bpk := n.getPubRoutingInfo(bid)
-	if bpk == nil { return }
-	p := n.prepareOMsg(CHAINSYNC, append(buf, bhash[:]...) , bpk.Pk)
-	n.sendActive(p, bpk.Port)
+	n.sendOMsgWithID(CHAINSYNC, append(buf, bhash[:]...), bid)
 }
 
 /*
@@ -62,15 +59,13 @@ func (n *Node) chainSyncRequested(payload []byte, senderID string) {
 		print(senderID, "has short chain up to depth", peerDepth - 1)
 
 		for i := peerDepth; i < n.chain.Size(); i++ {
-			spk := n.getPubRoutingInfo(senderID)
 			blocks := n.chain.GenBlockBytes(i)
 			// print("sending block", i)
 
 			myDepth := make([]byte, 8)
 			binary.BigEndian.PutUint64(myDepth, uint64(i))
 
-			p := n.prepareOMsg(CHAINSYNCACK, append(myDepth, blocks...), spk.Pk)
-			n.sendActive(p, spk.Port)
+			n.sendOMsgWithID(CHAINSYNCACK, append(myDepth, blocks...), senderID)
 		}
 	} else {
 		print("!!! found", senderID, "has minor branch")
@@ -110,9 +105,7 @@ func (n *Node) handleBranching(senderID string) {
 	arr, err := json.Marshal(a)
 	util.CheckErr(err)
 
-	spe := n.getPubRoutingInfo(senderID)
-	p := n.prepareOMsg(CHAINREPAIR, arr, spe.Pk)
-	n.sendActive(p, spe.Port)
+	n.sendOMsgWithID(CHAINREPAIR, arr, senderID)
 }
 
 /*
@@ -141,16 +134,6 @@ func (n *Node) chainRepairReceived(payload []byte, senderID string) {
 	}
 }
 
-///*
-//	Repair the blockChain by trimming at specific point
-//	and sync with others later.
-// */
-//func (n *Node) repairChain(payload []byte) {
-//	trimmingStart := binary.BigEndian.Uint64(payload[:8])
-//	print("trimming everything starting at", trimmingStart + 1)
-//	n.chain.TrimChain(int64(trimmingStart + 1))
-//}
-
 /*
 	broadcast the txn to other banks with best effort.
  */
@@ -158,9 +141,8 @@ func (n *Node) broadcastTxn(txn blockChain.Txn, txnType rune) {
 	banks := currentBanks
 	for _, b := range banks {
 		if b != n.ID{
-			bpe := n.getPubRoutingInfo(b)
-			p := n.prepareOMsg(TXNRECEIVE, append([]byte{byte(txnType)}, txn.ToBytes()...), bpe.Pk)
-			n.sendActive(p, bpe.Port)
+			p := append([]byte{byte(txnType)}, txn.ToBytes()...)
+			n.sendOMsgWithID(TXNRECEIVE, p, b)
 		}
 	}
 }
@@ -174,11 +156,9 @@ func (n *Node) publishBlock() {
 	banks := currentBanks
 	for _, b := range banks {
 		if b == n.ID { continue }
-		bpe := n.getPubRoutingInfo(b)
 		bbytes := n.chain.GenBlockBytes(n.chain.Size() - 1)
 		depthByte := make([]byte, 8)
 		binary.BigEndian.PutUint64(depthByte, uint64(n.chain.Size()-1))
-		p := n.prepareOMsg(PUBLISHINGBLOCK, append(depthByte, bbytes...), bpe.Pk)
-		n.sendActive(p, bpe.Port)
+		n.sendOMsgWithID(PUBLISHINGBLOCK, append(depthByte, bbytes...), b)
 	}
 }

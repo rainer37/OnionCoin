@@ -3,7 +3,6 @@ package node
 import (
 	"fmt"
 	"crypto/rsa"
-	"bytes"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/util"
 )
@@ -32,13 +31,11 @@ func WrapOnion(pk rsa.PublicKey, nextID string, coin []byte, content []byte) []b
 	cbytes := make([]byte, 256) // TODO: adjust the size by real coin size.
 	copy(cbytes, coin)
 
-	b := bytes.Join([][]byte{nextIDBytes, cbytes, content}, []byte{})
-
+	b := util.JoinBytes([][]byte{nextIDBytes, cbytes, content})
 	cipher, cKey, err := ocrypto.BlockEncrypt(b, pk)
 	util.CheckErr(err)
 
-	cipher = append(cKey, cipher...)
-	return cipher
+	return append(cKey, cipher...)
 }
 /*
 	remove one layer of onion and return nexthopID, CoinBytes, and InnerOnion
@@ -49,9 +46,13 @@ func PeelOnion(sk *rsa.PrivateKey, fullOnion []byte) (string, []byte, []byte) {
 	decryptedOnion, err := ocrypto.BlockDecrypt(onion, cKey, sk)
 	util.CheckErr(err)
 	// print(len(decryptedOnion))
-	return string(bytes.Trim(decryptedOnion[:util.IDLEN], "\x00")),
-	bytes.Trim(decryptedOnion[util.IDLEN:util.IDLEN+256], "\x00"),
+	return util.GetID(decryptedOnion[:util.IDLEN]),
+	[]byte(util.GetID(decryptedOnion[util.IDLEN:util.IDLEN+256])),
 	decryptedOnion[util.IDLEN+256:]
+	//
+	//return string(bytes.Trim(decryptedOnion[:util.IDLEN], "\x00")),
+	//bytes.Trim(decryptedOnion[util.IDLEN:util.IDLEN+256], "\x00"),
+	//decryptedOnion[util.IDLEN+256:]
 }
 
 func (o *Onion) String() string {

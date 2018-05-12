@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"time"
 	"fmt"
-	"bytes"
 	"github.com/rainer37/OnionCoin/util"
 )
 
@@ -120,8 +119,7 @@ func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey,
 	pld_len_buf := make([]byte, PAYLOADLENLEN)
 	binary.BigEndian.PutUint32(pld_len_buf, uint32(len(payload)))
 
-	buffer := bytes.Join([][]byte{op_buf, id_buf, ts_buf, hash_buf, pld_len_buf, payload}, []byte{})
-
+	buffer := util.JoinBytes([][]byte{op_buf, id_buf, ts_buf, hash_buf, pld_len_buf, payload})
 	cipher, ckey, err := ocrypto.BlockEncrypt(buffer, pk)
 
 	if err != nil {

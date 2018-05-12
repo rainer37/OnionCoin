@@ -174,7 +174,7 @@ func AllPEs(ids []string) []*PKEntry {
 /*
 	get all ids in my key repo.
  */
-func allIDs() (ids []string) {
+func AllIDs() (ids []string) {
 	for i := range keyRepo { ids = append(ids, i) }
 	return
 }
@@ -182,7 +182,7 @@ func allIDs() (ids []string) {
 func RandomPath() (path []string) {
 	count := 0
 	num := rand.Int() % 2 + 2
-	ids := allIDs()
+	ids := AllIDs()
 	for count < num {
 		index := rand.Int() % len(keyRepo)
 		id := ids[index]

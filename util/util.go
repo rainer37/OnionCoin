@@ -22,6 +22,7 @@ const (
 
 	MAXNUMTXN = 500
 	MATUREDIFF = 2
+	SIGL = 128
 
  	RSAKEYLEN = 1024
  	CIPHERKEYLEN = RSAKEYLEN / 8
@@ -49,4 +50,22 @@ func ShaHash(b []byte) [32]byte {
 
 func GetID(b []byte) string {
 	return string(bytes.Trim(b, "\x00"))
+}
+
+func JoinBytes(bs [][]byte) []byte {
+	return bytes.Join(bs, []byte{})
+}
+
+func SortSigs(sigs []byte, verifiers []string) {
+	for i:=0; i<len(verifiers) - 1; i++ {
+		for j:=0; j<len(verifiers) -i - 1; j++ {
+			if verifiers[j] > verifiers[j+1] {
+				verifiers[j+1], verifiers[j] = verifiers[j], verifiers[j+1]
+				temp := make([]byte, SIGL)
+				copy(temp, sigs[(j+1) * SIGL:(j+2) * SIGL])
+				copy(sigs[(j+1) * SIGL:(j+2) * SIGL],sigs[j*SIGL:(j+1)*SIGL])
+				copy(sigs[j*SIGL:(j+1)*SIGL], temp)
+			}
+		}
+	}
 }

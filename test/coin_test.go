@@ -9,6 +9,8 @@ import (
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"os"
+	"encoding/json"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 func TestRawCoinToBytes(t *testing.T) {
@@ -83,4 +85,18 @@ func TestRawCoinBlindbyBanks(t *testing.T) {
 	if rwcn.GetCoinNum() != binary.BigEndian.Uint64(cc[32:]) {
 		t.Error("Cannot decrypt second layer")
 	}
+}
+
+func TestCoinGetBytes(t *testing.T) {
+	c1 := coin.NewCoin("rainer", []byte("contents"), []string{"r1", "r2"})
+	cbytes := c1.Bytes()
+
+	ncoin := new(coin.Coin)
+	err := json.Unmarshal(cbytes, ncoin)
+	util.CheckErr(err)
+
+	if ncoin.GetRID() != "rainer" { t.Error("WRONG ID") }
+	if util.GetID(ncoin.GetContent()) != "contents" { t.Error("WRONG CONTENTS") }
+	if len(ncoin.Signers) != 2 { t.Error("WRONG NUM SIGNERS") }
+	if ncoin.Signers[0] != "r1" || ncoin.Signers[1] != "r2" { t.Error("WRONG SIGNES" )}
 }

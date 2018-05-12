@@ -117,13 +117,9 @@ func (n *Node) dispatch(incoming []byte) {
 		print("Finding")
 	case COINREWARD:
 		//print("Receiving a Coin")
-		spe := n.getPubRoutingInfo(senderID)
 		aye := "N"
-		if n.ValidateCoin(payload, senderID) {
-			aye = "Y"
-		}
-		p := n.prepareOMsg(COINFEEDBACK, []byte(aye), spe.Pk)
-		n.sendActive(p, spe.Port)
+		if n.ValidateCoin(payload, senderID) { aye = "Y" }
+		n.sendOMsgWithID(COINFEEDBACK, []byte(aye), senderID)
 	case COINFEEDBACK:
 		//print("Feedback Received", string(payload[0]))
 		n.feedbackChan <- rune(payload[0])
@@ -199,13 +195,6 @@ func (n *Node) dispatch(incoming []byte) {
 }
 
 /*
-	Wrap payload into OMsg and encrypt it with target pk.
- */
-func (n *Node) prepareOMsg(opCode rune, payload []byte, pk rsa.PublicKey) []byte {
-	return records.MarshalOMsg(opCode,payload, n.ID, n.sk, pk)
-}
-
-/*
 	Retrieve the encrypted symmetric key, and decrypt it
 	Decrypt the rest of incoming packet, and return it as OMsg
  */
@@ -218,5 +207,19 @@ func (n* Node) unMarshalOMsg(incoming []byte) (*records.OMsg, bool) {
  */
 func verifySig(oMsg *records.OMsg, pk *rsa.PublicKey) bool {
 	return oMsg.VerifySig(pk)
+}
+
+/*
+	Wrap payload into OMsg and encrypt it with target pk, and send it.
+ */
+func (n *Node) sendOMsg(opCode rune, payload []byte, pe *records.PKEntry) {
+	p := records.MarshalOMsg(opCode, payload, n.ID, n.sk, pe.Pk)
+	n.sendActive(p, pe.Port)
+}
+
+func (n *Node) sendOMsgWithID(opCode rune, payload []byte, id string) {
+	pe := n.getPubRoutingInfo(id)
+	if pe == nil { return }
+	n.sendOMsg(opCode, payload, pe)
 }
 

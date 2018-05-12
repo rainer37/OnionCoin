@@ -20,7 +20,6 @@ type Bank struct {
 }
 
 type TxnSorter []blockChain.Txn
-
 func (a TxnSorter) Len() int           { return len(a) }
 func (a TxnSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a TxnSorter) Less(i, j int) bool {
@@ -35,13 +34,8 @@ func InitBank(sk *rsa.PrivateKey, chain *blockChain.BlockChain) *Bank {
 	return bank
 }
 
-func (bank *Bank) GetTxnBuffer() []blockChain.Txn {
-	return bank.txnBuffer
-}
-
-func (bank *Bank) SetStatus(status bool) {
-	bank.status = status
-}
+func (bank *Bank) GetTxnBuffer() []blockChain.Txn { return bank.txnBuffer }
+func (bank *Bank) SetStatus(status bool) { bank.status = status }
 
 /*
 	Add a transaction to the buffer, return true if succeed.
@@ -60,7 +54,8 @@ func (bank *Bank) AddTxn(txn blockChain.Txn) bool {
 		return false
 	}
 	bank.txnBuffer = append(bank.txnBuffer, txn)
-	print("Txn added, current buffer load:", float32(len(bank.txnBuffer)) / util.MAXNUMTXN, len(bank.txnBuffer))
+	l:=len(bank.txnBuffer)
+	print("Txn added, current buffer load:", float32(l) / util.MAXNUMTXN, l)
 
 	if bank.status {
 		for len(bank.txnBuffer) >= util.MAXNUMTXN {

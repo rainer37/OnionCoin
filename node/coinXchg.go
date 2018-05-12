@@ -6,13 +6,11 @@ import (
 	"crypto/rsa"
 	"encoding/binary"
 	"math/rand"
-	"github.com/rainer37/OnionCoin/blockChain"
 	"time"
-	"strings"
-	"bytes"
 	"encoding/json"
 	"sync"
 	"github.com/rainer37/OnionCoin/util"
+	"github.com/rainer37/OnionCoin/blockChain"
 )
 
 const BCOINSIZE = 128 // raw
@@ -66,17 +64,8 @@ func (n *Node) receiveRawCoin(payload []byte, senderID string) {
 	n.coSignValidCoin(pb)
 
 	newCoin := n.blindSign(rwcn[:32])
-	spk := n.getPubRoutingInfo(senderID)
 
-	if spk == nil {
-		print("Cannot find the key with senderID")
-		return
-	}
-
-	//print("reply with partial newCoin")
-
-	p := n.prepareOMsg(RAWCOINSIGNED,append(newCoin, bfid...),spk.Pk)
-	n.sendActive(p, spk.Port)
+	n.sendOMsgWithID(RAWCOINSIGNED, append(newCoin, bfid...), senderID)
 }
 
 /*
@@ -146,15 +135,12 @@ func (n *Node) CoinExchange(dstID string) {
 
 		blindrwcn, bfid := BlindBytes(rc, &bpe.Pk)
 
-		payload := bytes.Join([][]byte{tsBytes, blindrwcn, []byte(bfid), gcoin}, []byte{})
-
-		fo := n.prepareOMsg(RAWCOINEXCHANGE, payload, bpe.Pk)
-
 		m.Lock()
 		exMap[bfid] = make(chan []byte)
 		m.Unlock()
 
-		n.sendActive(fo, bpe.Port)
+		payload := util.JoinBytes([][]byte{tsBytes, blindrwcn, []byte(bfid), gcoin})
+		n.sendOMsg(RAWCOINEXCHANGE, payload, bpe)
 
 		var realCoin []byte
 
@@ -189,13 +175,12 @@ func (n *Node) CoinExchange(dstID string) {
 		layers++
 	}
 
-	if layers == util.NUMCOSIGNER {
-		// print("New Coin Forged, Thanks Fellas!", len(rc))
-		n.Deposit(coin.NewCoin(dstID, rc, signerBanks))
-		// print(n.Vault.Coins)
-	} else {
+	if layers != util.NUMCOSIGNER {
 		print("Not Enough Banks To Forge a Coin, Try Next Epoch")
+		return
 	}
+
+	n.Deposit(coin.NewCoin(dstID, rc, signerBanks))
 }
 
 /*
@@ -245,11 +230,8 @@ func (n *Node) coSignValidCoin(c []byte) {
 
 	// randomly picks banks other than me
 	bid := n.pickOneRandomBank()
-	tpk := n.getPubRoutingInfo(bid)
-	payload := n.prepareOMsg(COINCOSIGN, signedHash, tpk.Pk)
 
-	//print("sending aggregated signed coin and cosign counter:", newCounter)
-	n.sendActive(payload, tpk.Port)
+	n.sendOMsgWithID(COINCOSIGN, signedHash, bid)
 }
 
 /*
@@ -266,13 +248,13 @@ func (n *Node) decodeCNCosign(content []byte, counter uint16) (ts int64, cnum ui
 	json.Unmarshal(cbytes, &c)
 	cnum, _ = n.getCoinNumAndIDHash(c)
 	// print(string(c.String()))
-	sigs_vrfers := content[12 + cLen:]
+	sigsVrfers := content[12 + cLen:]
 
 	for i:=0; i<int(counter); i++ {
-		b := sigs_vrfers[i*(128 + 16):(i+1)*(128 + 16)-1]
+		b := sigsVrfers[i*(128 + 16):(i+1)*(128 + 16)-1]
 		ver,sig := b[128:], b[:128]
 		sigs = append(sigs, sig...)
-		verifiers = append(verifiers, strings.Trim(string(ver), "\x00"))
+		verifiers = append(verifiers, util.GetID(ver))
 	}
 
 	return
@@ -380,7 +362,7 @@ func (n *Node) ValidateCoin(coinBytes []byte, senderID string) bool {
  */
 func ValidateCoinByKey(coinBytes []byte, senderID string, pk *rsa.PublicKey) bool {
 	c := ocrypto.EncryptBig(pk, coinBytes)
-	if len(c) != 40 {
+	if len(c) != 32 + 8 {
 		return false
 	}
 

@@ -12,7 +12,7 @@ import (
 	advertise the new comer to random other nodes
  */
 func (n *Node) welcomeNewBie(newbieID string) {
-	pe := records.GetKeyByID(newbieID)
+	pe := n.getPubRoutingInfo(newbieID)
 	if pe == nil {
 		print("Cannot find pk by id")
 		return
@@ -21,8 +21,7 @@ func (n *Node) welcomeNewBie(newbieID string) {
 	copy(idb, newbieID)
 	payload := append(idb, pe.Bytes()...)
 	for _, v := range records.AllPEs([]string{n.ID, newbieID}) {
-		wpayload := n.prepareOMsg(WELCOME, payload, v.Pk)
-		n.sendActive(wpayload, v.Port)
+		n.sendOMsg(WELCOME, payload, v)
 	}
 }
 

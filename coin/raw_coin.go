@@ -25,17 +25,9 @@ func NewRawCoin(rid string) *RawCoin {
 	return rwcoin
 }
 
-func (c *RawCoin) GetCoinNum() uint64 {
-	return c.coinNum
-}
-
-func (c *RawCoin) GetRID() string {
-	return c.rid
-}
-
-func (c *RawCoin) GetRIDHash() [32]byte {
-	return c.ridHash
-}
+func (c *RawCoin) GetCoinNum() uint64 { return c.coinNum }
+func (c *RawCoin) GetRID() string { return c.rid }
+func (c *RawCoin) GetRIDHash() [32]byte { return c.ridHash }
 
 /*
 	Record blind factor of the exchanging RawCoins.
@@ -47,6 +39,8 @@ func RecordBF(rwid string, bf []byte) {
 }
 
 func GetBF(bfid string) []byte {
+	met.Lock()
+	defer met.Unlock()
 	return rawCoinBFs[bfid]
 }
 
@@ -54,10 +48,9 @@ func GetBF(bfid string) []byte {
 	raw coin to bytes of size 40.
  */
 func (c *RawCoin) ToBytes() []byte {
-	b := [8]byte{}
-	binary.BigEndian.PutUint64(b[:], c.coinNum)
-	bytes := append(c.ridHash[:], b[:]...)
-	return bytes
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, c.coinNum)
+	return append(c.ridHash[:], b...)
 }
 
 /*

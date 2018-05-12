@@ -2,9 +2,6 @@ package coin
 
 import(
 	"fmt"
-	"os"
-	"strconv"
-	"io/ioutil"
 	"time"
 	"encoding/json"
 	"github.com/rainer37/OnionCoin/util"
@@ -12,7 +9,6 @@ import(
 
 const COINPREFIX = "[COIN]"
 const COINLEN = 128
-const COINDIR = "coin/"
 
 type Coin struct {
 	RID     string // receiver's ID
@@ -41,9 +37,7 @@ func (c *Coin) GetContent() []byte {
 	return b
 }
 
-func (c *Coin) GetRID() string {
-	return c.RID
-}
+func (c *Coin) GetRID() string { return c.RID }
 
 func (c *Coin) Bytes() []byte {
 	coinBytes, err := json.Marshal(c)
@@ -53,16 +47,4 @@ func (c *Coin) Bytes() []byte {
 
 func (c *Coin) String() string {
 	return string(c.Bytes())
-}
-
-func (c *Coin) Store() {
-	e := strconv.FormatUint(c.Epoch, 10)
-	coinPath := COINDIR+c.RID+"_"+e
-	if ok, _ := util.Exists(coinPath); !ok {
-		file, err := os.Create(coinPath)
-		defer file.Close()
-		util.CheckErr(err)
-	}
-	ioutil.WriteFile(coinPath, c.Bytes(), 0644)
-	// print("successfully save a coin on disk", coinPath)
 }

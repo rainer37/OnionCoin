@@ -88,8 +88,7 @@ func (n *Node) IniJoin(targetAddress string, status int) {
 
 	// ID @ IP:port
 	payload := []byte(n.ID + "@" + n.IP + ":" + n.Port)
-	joinMsg := n.prepareOMsg(JOIN, payload, pe.Pk)
-	n.sendActive(joinMsg, targetAddress)
+	n.sendOMsg(JOIN, payload, pe)
 
 	select{}
 }

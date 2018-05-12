@@ -13,14 +13,19 @@ const (
 	MSG = '1'
 	UPDATE = '2'
 )
-const SIGL = 128
 
 type Txn interface {
 	ToBytes() []byte
 	GetVerifiers() []string
-	GetContent() []byte // getting the signing content
+	GetContent() []byte
 	GetSigs() []byte
 	GetTS() int64
+}
+
+type TxnBase struct {
+	Ts        	int64
+	Sigs      	[]byte
+	Verifiers 	[]string
 }
 
 /*
@@ -29,9 +34,7 @@ type Txn interface {
 type PKRegTxn struct {
 	Id        	string
 	Pk        	[]byte
-	Ts        	int64
-	Sigs      	[]byte // containing signatures of the hash of Pk and Id.
-	Verifiers 	[]string
+	TxnBase
 }
 
 /*
@@ -40,9 +43,7 @@ type PKRegTxn struct {
 type CNEXTxn struct {
 	CoinNum   	uint64
 	CoinBytes 	[]byte
-	Ts        	int64
-	Sigs      	[]byte
-	Verifiers 	[]string
+	TxnBase
 }
 
 /*
@@ -51,24 +52,22 @@ type CNEXTxn struct {
 type BCNRDMTxn struct {
 	TxnID 		[]byte
 	CasherID 	string
-	Ts        	int64
-	Sigs   		[]byte // containing signatures of the hash of Pk and Id.
-	Verifiers 	[]string
+	TxnBase
 }
 
 func NewPKRTxn(id string, pk rsa.PublicKey, sigs []byte, verifiers []string) PKRegTxn {
-	sortSigs(sigs, verifiers)
-	return PKRegTxn{id, ocrypto.EncodePK(pk), time.Now().Unix(), sigs, verifiers}
+	util.SortSigs(sigs, verifiers)
+	return PKRegTxn{id, ocrypto.EncodePK(pk), TxnBase{time.Now().Unix(), sigs, verifiers}}
 }
 
 func NewCNEXTxn(coinNum uint64, coinBytes []byte, ts int64, sigs []byte, verifiers []string) CNEXTxn {
-	sortSigs(sigs, verifiers)
-	return CNEXTxn{coinNum, coinBytes, ts, sigs, verifiers}
+	util.SortSigs(sigs, verifiers)
+	return CNEXTxn{coinNum, coinBytes, TxnBase{ts, sigs, verifiers}}
 }
 
 func NewBCNRDMTxn(TxnID []byte, casherID string, ts int64, sigs []byte, verifiers []string) BCNRDMTxn {
-	sortSigs(sigs, verifiers)
-	return BCNRDMTxn{TxnID, casherID, ts, sigs, verifiers}
+	util.SortSigs(sigs, verifiers)
+	return BCNRDMTxn{TxnID, casherID, TxnBase{ts, sigs, verifiers}}
 }
 /*
 	ID(16) | PK(132) | Ts(8) | signedHashes | SignerIDs
@@ -81,6 +80,8 @@ func (pkr PKRegTxn) ToBytes() []byte {
 
 func (pkr PKRegTxn) GetVerifiers() []string { return pkr.Verifiers }
 func (pkr PKRegTxn) GetSigs() []byte { return pkr.Sigs }
+func (pkr PKRegTxn) GetTS() int64 { return pkr.Ts }
+
 /*
 	PK register txn content: pk + id
  */
@@ -88,8 +89,6 @@ func (pkr PKRegTxn) GetContent() []byte {
 	pkHash := util.ShaHash(pkr.Pk)
 	return append(pkHash[:], []byte(pkr.Id)...)
 }
-
-func (pkr PKRegTxn) GetTS() int64 { return pkr.Ts }
 
 /*
 	CNEX format: coinNum(8) : signedCoin(128) : [S0, S1, S2...] : [V0, V1, V2...] : [VHash0, VHash1, VHash2...]
@@ -124,13 +123,12 @@ func (bcnrd BCNRDMTxn) ToBytes() []byte {
 
 func (bcnrd BCNRDMTxn) GetSigs() []byte { return bcnrd.Sigs }
 func (bcnrd BCNRDMTxn) GetVerifiers() []string { return bcnrd.Verifiers }
+func (bcnrd BCNRDMTxn) GetTS() int64 { return bcnrd.Ts }
 func (bcnrd BCNRDMTxn) GetContent() []byte {
-	idByets := make([]byte, 16)
+	idByets := make([]byte, util.IDLEN)
 	copy(idByets, bcnrd.CasherID)
 	return append(bcnrd.TxnID, idByets...)
 }
-func (bcnrd BCNRDMTxn) GetTS() int64 { return bcnrd.Ts }
-
 /*
 	translate []Txn into bytes
  */
@@ -162,16 +160,3 @@ func ProduceTxn(data []byte, txnType rune) Txn {
 	return nil
 }
 
-func sortSigs(sigs []byte, verifiers []string) {
-	for i:=0; i<len(verifiers) - 1; i++ {
-		for j:=0; j<len(verifiers) -i - 1; j++ {
-			if verifiers[j] > verifiers[j+1] {
-				verifiers[j+1], verifiers[j] = verifiers[j], verifiers[j+1]
-				temp := make([]byte, SIGL)
-				copy(temp, sigs[(j+1) * SIGL:(j+2) * SIGL])
-				copy(sigs[(j+1) * SIGL:(j+2) * SIGL],sigs[j*SIGL:(j+1)*SIGL])
-				copy(sigs[j*SIGL:(j+1)*SIGL], temp)
-			}
-		}
-	}
-}

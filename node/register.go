@@ -30,9 +30,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string) {
 		}
 		if b != n.ID {
 			// print("sending REGCOSIGNRQ to", b)
-			bpe := n.getPubRoutingInfo(b)
-			p := n.prepareOMsg(REGCOSIGNREQUEST,newBieInfo,bpe.Pk)
-			n.sendActive(p, bpe.Port)
+			n.sendOMsgWithID(REGCOSIGNREQUEST, newBieInfo, b)
 
 			var rBytes []byte
 
@@ -42,7 +40,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string) {
 				rBytes = reply
 			case <-time.After(util.COSIGNTIMEOUT * time.Second):
 				print(b, "reg cosign no response, try next bank")
-				counter++
+				// counter++
 				continue
 			}
 
@@ -52,7 +50,10 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string) {
 		}
 	}
 
-
+	if len(signers) != util.NUMCOSIGNER {
+		print("Not Enough Sigs Acquired, abort...")
+		return
+	}
 
 	print("Enough Signing Received, Register Node", id, "by", len(signers), "Signer:", signers)
 
@@ -69,8 +70,5 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string) {
 func (n *Node) regCoSignRequest(payload []byte, senderID string) {
 	pkHash := util.ShaHash(payload[:PKRQLEN])
 	mySig := n.blindSign(append(pkHash[:], payload[PKRQLEN:]...))
-
-	spk := n.getPubRoutingInfo(senderID)
-	p := n.prepareOMsg(REGCOSIGNREPLY, mySig, spk.Pk)
-	n.sendActive(p, spk.Port)
+	n.sendOMsgWithID(REGCOSIGNREPLY, mySig, senderID)
 }

@@ -19,9 +19,7 @@ var bigOne = big.NewInt(1)
 func Blind(key *rsa.PublicKey, data []byte) ([]byte, []byte) {
 	start := time.Now()
 	blinded, bfactor, err := blind(rng, key, new(big.Int).SetBytes(data))
-	if err != nil {
-		panic(err)
-	}
+	util.CheckErr(err)
 	b, bf := blinded.Bytes(), bfactor.Bytes()
 	ela := time.Since(start)
 	RSATime += ela.Nanoseconds()/nano
