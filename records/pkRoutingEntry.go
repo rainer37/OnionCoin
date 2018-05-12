@@ -2,16 +2,13 @@ package records
 
 import (
 	"crypto/rsa"
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	"os"
-	"path/filepath"
 	"io/ioutil"
-	"strings"
 	"math/rand"
 	"sync"
 	"github.com/rainer37/OnionCoin/util"
+	"encoding/json"
 )
 
 type PKEntry struct {
@@ -24,85 +21,108 @@ type PKEntry struct {
 const KEYDIR = "keys/"
 const RECORDPREFIX = "[RCOD]"
 
-var KeyRepo map[string]*PKEntry // map[id:string] entry:PKEntry
+var keyRepo map[string]*PKEntry // map[id:string] entry:PKEntry
 var mete = sync.RWMutex{}
+
+/*
+	read key repo blockchain file from disk and load entries into keyRepo
+ */
+func GenerateKeyRepo() {
+	InitKeyRepo()
+	if yes, _ := util.Exists(KEYDIR); !yes {
+		os.Mkdir(KEYDIR, 0777)
+	}
+	PopulatePKEntry()
+}
+
+func InitKeyRepo() {
+	keyRepo = make(map[string]*PKEntry)
+}
+
+/*
+	Read all saved PKEntry from disk.
+ */
+func PopulatePKEntry() {
+	files, err := ioutil.ReadDir(KEYDIR)
+	util.CheckErr(err)
+	for _, f := range files {
+		err := getPEonDisk(f.Name())
+		util.CheckErr(err)
+	}
+}
+
+/*
+	Read a PE from disk by its file name/pe_id.
+ */
+func getPEonDisk(id string) error {
+	dat, err := ioutil.ReadFile(KEYDIR + id)
+	util.CheckErr(err)
+	pe := BytesToPKEntry(dat)
+	insertPE(id, pe)
+	return err
+}
 
 /*
 	check if there is PKEntry associated with id in memory and on disk.
  */
 func GetKeyByID(id string) *PKEntry {
-	mete.Lock()
-	defer mete.Unlock()
-	pe := KeyRepo[id]
+	pe := getPE(id)
 	if pe != nil { return pe }
 	if yes , _ := util.Exists(KEYDIR+id); yes {
-		dat, err := ioutil.ReadFile(KEYDIR+id)
+		err := getPEonDisk(id)
 		util.CheckErr(err)
-		pe = BytesToPKEntry(dat)
-		return pe
+		return getPE(id)
 	}
 	return nil
 }
 
-func InsertEntry(id string, pk rsa.PublicKey, recTime int64, ip string, port string) {
+func insertPE(id string, pe *PKEntry) {
 	mete.Lock()
 	defer mete.Unlock()
+	keyRepo[id] = pe
+}
 
-	if pe := KeyRepo[id]; pe != nil {
-		if pe.Time < recTime {
-			pe.IP = ip
-			pe.Port = port
-			pe.Time = recTime
-			writePE(pe, id)
-		}
-	} else {
-		e := &PKEntry{pk, ip, port, recTime}
-		KeyRepo[id] = e
-		writePE(e, id)
-	}
+func getPE(id string) *PKEntry {
+	mete.Lock()
+	defer mete.Unlock()
+	return keyRepo[id]
+}
+
+func InsertEntry(id string, pk rsa.PublicKey, recTime int64, ip string, port string) {
+	pe := new(PKEntry)
+	pe.Pk = pk
+	pe.IP = ip
+	pe.Port = port
+	pe.Time = recTime
+
+	insertPE(id, pe)
+	WritePE(pe, id)
 }
 
 /*
-	read key repo blockchain file from disk and load entries into KeyRepo
- */
-func GenerateKeyRepo() {
-	KeyRepo = make(map[string]*PKEntry)
-	if yes, _ := util.Exists(KEYDIR); !yes {
-		os.Mkdir(KEYDIR, 0777)
-	}
-	populatePKEntry()
-}
-
-/*
-	god encode PKEntry to bytes
+	json encode PKEntry to bytes
  */
 func (e PKEntry) Bytes() []byte {
-	var b bytes.Buffer
-	enc := gob.NewEncoder(&b)
-	err := enc.Encode(PKEntry{e.Pk, e.IP, e.Port, e.Time})
+	b, err := json.Marshal(e)
 	util.CheckErr(err)
-	return b.Bytes()
+	return b
 }
 
 /*
-	decode bytes into PKEntry
+	decode json bytes into PKEntry
  */
 func BytesToPKEntry(data []byte) *PKEntry {
-	b := bytes.NewBuffer(data)
-	dec := gob.NewDecoder(b)
-	e := new(PKEntry)
-	err := dec.Decode(e)
-	if err != nil {
-		return nil
-	}
-	return e
+	pe := new(PKEntry)
+	err := json.Unmarshal(data, pe)
+	util.CheckErr(err)
+	return pe
 }
 
 /*
-	Write a PKEntry to disk.
+	(Over)Write a PKEntry to disk.
  */
-func writePE(pe *PKEntry, id string) {
-	path := KEYDIR+id
+func WritePE(pe *PKEntry, id string) {
+	path := KEYDIR + id
 	os.Remove(path)
 	os.Create(path)
 	file, err := os.OpenFile(path, os.O_RDWR, 0777)
@@ -111,29 +131,51 @@ func writePE(pe *PKEntry, id string) {
 	fmt.Fprintf(file, "%s", pe.Bytes())
 }
 
+func KeyRepoSize() int { return len(keyRepo) }
+
 /*
-	Read all saved PKEntry from disk.
+	Gather multiple PEntry and format them into json.
  */
-func populatePKEntry() {
-	dir := KEYDIR
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		util.CheckErr(err)
-		dat, err := ioutil.ReadFile(path)
-		id := strings.Split(path, "/")[len(strings.Split(path, "/"))-1]
-		pe := BytesToPKEntry(dat)
-		if pe != nil {
-			KeyRepo[id] = pe
-		}
-		return nil
-	})
+func PackPEs(num int) []byte {
+	pes := make(map[string]PKEntry)
+	i := 0
+	for id, v := range keyRepo {
+		if i >= num { break }
+		pes[id] = *v
+		i++
+	}
+	b, err := json.Marshal(pes)
 	util.CheckErr(err)
+	return b
+}
+
+func UnpackPEs(b []byte) {
+	pes := map[string]PKEntry{}
+	err := json.Unmarshal(b, &pes)
+	util.CheckErr(err)
+	for i,v := range pes {
+		InsertEntry(i, v.Pk, v.Time, v.IP, v.Port)
+	}
+}
+
+/*
+	Get all PEs except the ones in ids.
+ */
+func AllPEs(ids []string) []*PKEntry {
+	var pes []*PKEntry
+	for i, v := range keyRepo {
+		if !util.Contains(ids, i) {
+			pes = append(pes, v)
+		}
+	}
+	return pes
 }
 
 /*
 	get all ids in my key repo.
  */
 func allIDs() (ids []string) {
-	for i := range KeyRepo { ids = append(ids, i) }
+	for i := range keyRepo { ids = append(ids, i) }
 	return
 }
 
@@ -142,7 +184,7 @@ func RandomPath() (path []string) {
 	num := rand.Int() % 2 + 2
 	ids := allIDs()
 	for count < num {
-		index := rand.Int() % len(KeyRepo)
+		index := rand.Int() % len(keyRepo)
 		id := ids[index]
 		if !util.Contains(path, id) {
 			path = append(path, id)

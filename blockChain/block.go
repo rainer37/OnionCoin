@@ -2,10 +2,10 @@ package blockChain
 
 import (
 	"strconv"
-	"bytes"
 	"time"
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/util"
+	"bytes"
 )
 
 type Block struct {

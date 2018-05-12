@@ -8,10 +8,12 @@ import (
 	"github.com/rainer37/OnionCoin/node"
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/blockChain"
+	"os"
 )
 
 func TestRawCoinToBytes(t *testing.T) {
 	blockChain.InitBlockChain()
+	defer os.RemoveAll("chainData/")
 	rwcn := coin.NewRawCoin("rainer")
 	hashid := sha256.Sum256([]byte("rainer"))
 
@@ -32,15 +34,9 @@ func TestRawCoinBlindbyBank(t *testing.T) {
 
 	brc, bfid := node.BlindBytes(rwcn.ToBytes(), &bankSK.PublicKey)
 
-	//fmt.Println(len(brc))
-
 	signedBRC := ocrypto.BlindSign(bankSK, brc)
 
-	//fmt.Println(len(signedBRC))
-
 	coin := node.UnBlindBytes(signedBRC, bfid, &bankSK.PublicKey)
-
-	//fmt.Println(len(coin))
 
 	if !ocrypto.VerifyBlindSig(&bankSK.PublicKey,rwcn.ToBytes(),coin) {
 		t.Error("wrong raw coin ex")
@@ -49,8 +45,6 @@ func TestRawCoinBlindbyBank(t *testing.T) {
 	if !node.ValidateCoinByKey(coin, "rainer", &bankSK.PublicKey) {
 		t.Error("invalid coin")
 	}
-
-
 }
 
 func TestRawCoinBlindbyBanks(t *testing.T) {

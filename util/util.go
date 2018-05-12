@@ -3,6 +3,7 @@ package util
 import (
 	"os"
 	"crypto/sha256"
+	"bytes"
 )
 
 const (
@@ -11,6 +12,7 @@ const (
 	IDLEN = 16
 
 	NUMCOSIGNER = 2
+	COSIGNTIMEOUT = 2
 
 	EPOCHLEN = 10
 	PROPOSINGDELAY = 5
@@ -43,4 +45,8 @@ func Contains(ids []string, id string) bool {
 
 func ShaHash(b []byte) [32]byte {
 	return sha256.Sum256(b)
+}
+
+func GetID(b []byte) string {
+	return string(bytes.Trim(b, "\x00"))
 }

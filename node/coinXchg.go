@@ -16,7 +16,6 @@ import (
 )
 
 const BCOINSIZE = 128 // raw
-const COSIGNTIMEOUT = 2
 
 var exMap = map[string]chan []byte{} // channels for coin exchanging
 var m = sync.RWMutex{}
@@ -165,7 +164,7 @@ func (n *Node) CoinExchange(dstID string) {
 			realCoin = reply
 			close(exMap[bfid])
 			m.Unlock()
-		case <-time.After(COSIGNTIMEOUT * time.Second):
+		case <-time.After(util.COSIGNTIMEOUT * time.Second):
 			print(bid, "no response, try next bank")
 			close(exMap[bfid])
 			counter++

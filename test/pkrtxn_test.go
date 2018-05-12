@@ -39,7 +39,7 @@ func TestPKRTxnToBytes(t *testing.T) {
 		t.Error("PK not equal")
 	}
 
-	if ntxn.Ts != ts || ptxn.GetTS() != ts{
+	if ntxn.Ts != ts || ptxn.GetTS() != ts {
 		t.Error("Ts not equal")
 	}
 

@@ -54,7 +54,7 @@ func (omsg *OMsg) GetOPCode() rune {
 }
 
 func (omsg *OMsg) GetSenderID() string {
-	return string(bytes.Trim(omsg.B[1:1 + util.IDLEN], "\x00")) // trim trailing NULL
+	return util.GetID(omsg.B[1:1 + util.IDLEN]) // trim trailing NULL
 }
 
 func (omsg *OMsg) GetTS() uint32 {

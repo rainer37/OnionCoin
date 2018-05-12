@@ -3,12 +3,11 @@ package node
 import (
 	"net"
 	"strconv"
-	"github.com/rainer37/OnionCoin/records"
-	"time"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"os"
 	"github.com/rainer37/OnionCoin/util"
 	"github.com/rainer37/OnionCoin/blockChain"
+	"crypto/rsa"
 )
 
 const BUFSIZE = 4096 * 10
@@ -24,16 +23,10 @@ func (n *Node) SelfInit() {
 		n.bankProxy.SetStatus(true)
 	}
 
-	records.InsertEntry(n.ID, n.sk.PublicKey, time.Now().Unix(), n.IP, n.Port)
+	n.recordPE(n.ID, n.sk.PublicKey, n.IP, n.Port)
 
-	if n.ID == "FAKEID1338" && n.chain.Size() < 2{
-		superPK := ocrypto.EncodePK(n.sk.PublicKey)
-		pkHash := util.ShaHash(superPK)
-		sig1 := n.blindSign(append(pkHash[:], []byte(n.ID)...))
-		sig2 := n.blindSign(append(pkHash[:], []byte(n.ID)...))
-		signers := []string{n.ID, n.ID}
-		txn := blockChain.NewPKRTxn(n.ID, n.sk.PublicKey, append(sig1, sig2...), signers)
-		n.bankProxy.AddTxn(txn)
+	if n.ID == "FAKEID1338" && n.chain.Size() < 2 {
+		n.defaultBankRoutine(n.sk.PublicKey, n.ID)
 	}
 
 	p,err := strconv.Atoi(n.Port)
@@ -58,10 +51,10 @@ func (n *Node) SelfInit() {
 			2. send JOIN request. [IP:Port]
 
  */
-func (n *Node) IniJoin(address string, status int) {
+func (n *Node) IniJoin(targetAddress string, status int) {
 	go n.SelfInit()
 
-	JID := FAKEID + address // FOR NOW ONLY USE FAKEID + PORT AS THE ID.
+	JID := FAKEID + targetAddress // FOR NOW ONLY USE FAKEID + PORT AS THE ID.
 
 	// if i am new to system, register first.
 	if status == 1 {
@@ -75,26 +68,28 @@ func (n *Node) IniJoin(address string, status int) {
 			REGISTER | EncodedPK(RSAKEYLEN / 8) | MyID
 		*/
 		encodedPK := ocrypto.EncodePK(n.sk.PublicKey)
-		n.sendActive([]byte(REGISTER + string(encodedPK) + n.ID), address)
+		regPayload := []byte(REGISTER + string(encodedPK) + n.ID)
+		n.sendActive(regPayload, targetAddress)
 
-		enPk := <-n.pkChan // waiting for registration cosign finish.
+		encodedPk := <-n.pkChan // waiting for registration cosign finish.
 
-		print("Good! I'm Now Registered")
-		talkingPK := ocrypto.DecodePK(enPk)
-		records.InsertEntry(JID, talkingPK, time.Now().Unix(), util.LOCALHOST, address)
+		print("Good! I'm In The System")
+		targetPK := ocrypto.DecodePK(encodedPk)
+
+		// insert target PE into repo
+		n.recordPE(JID, targetPK, util.LOCALHOST, targetAddress)
 	}
 
 	pe := n.getPubRoutingInfo(JID)
 	if pe == nil {
 		print("Cannot Join On this Unregistered Peer")
 		os.Exit(1)
-		return
 	}
 
 	// ID @ IP:port
 	payload := []byte(n.ID + "@" + n.IP + ":" + n.Port)
 	joinMsg := n.prepareOMsg(JOIN, payload, pe.Pk)
-	n.sendActive(joinMsg, address)
+	n.sendActive(joinMsg, targetAddress)
 
 	select{}
 }
@@ -130,4 +125,14 @@ func (n *Node) sendActive(msg []byte, add string) {
 	defer con.Close()
 	_, err = con.Write(msg)
 	util.CheckErr(err)
+}
+
+func (n *Node) defaultBankRoutine(pk rsa.PublicKey, id string) {
+	superPK := ocrypto.EncodePK(pk)
+	pkHash := util.ShaHash(superPK)
+	sig1 := n.blindSign(append(pkHash[:], []byte(id)...))
+	sig2 := n.blindSign(append(pkHash[:], []byte(id)...))
+	signers := []string{n.ID, n.ID}
+	txn := blockChain.NewPKRTxn(id, pk, append(sig1, sig2...), signers)
+	n.bankProxy.AddTxn(txn)
 }

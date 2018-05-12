@@ -1,13 +1,13 @@
 package node
 
 import (
-	"github.com/rainer37/OnionCoin/records"
 	"crypto/rsa"
 	"encoding/binary"
 	"sync"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/util"
 	"errors"
+	"github.com/rainer37/OnionCoin/records"
 )
 
 const (
@@ -50,7 +50,7 @@ func (n *Node) syntaxCheck(incoming []byte) (error, rune, string, *records.PKEnt
 	// print("valid OMsg, continue...")
 
 	senderID := omsg.GetSenderID()
-	senderPK := records.KeyRepo[senderID]
+	senderPK := n.getPubRoutingInfo(senderID)
 
 	// check if the sender's id is known, otherwise cannot verify the signature.
 	if senderPK == nil {
@@ -107,6 +107,12 @@ func (n *Node) dispatch(incoming []byte) {
 	case JOIN:
 		print("Joining", senderID)
 		n.joinProtocol(payload)
+	case JOINACK:
+		// print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
+		unmarshalRoutingInfo(payload)
+	case WELCOME:
+		// print("WELCOME received from", senderID)
+		n.welcomeProtocol(payload)
 	case FIND:
 		print("Finding")
 	case COINREWARD:
@@ -121,12 +127,6 @@ func (n *Node) dispatch(incoming []byte) {
 	case COINFEEDBACK:
 		//print("Feedback Received", string(payload[0]))
 		n.feedbackChan <- rune(payload[0])
-	case JOINACK:
-		// print("JOIN ACK RECEIVED, JOIN SUCCEEDS")
-		unmarshalRoutingInfo(payload)
-	case WELCOME:
-		// print("WELCOME received from", senderID)
-		welcomeProtocol(payload)
 	case RAWCOINEXCHANGE:
 		//print("COINREWARD Exchange Requesting by", senderID)
 		if !n.iamBank() {

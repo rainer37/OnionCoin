@@ -7,12 +7,12 @@ import(
 	"io/ioutil"
 	"time"
 	"github.com/rainer37/OnionCoin/coin"
-	"github.com/rainer37/OnionCoin/records"
 	bc "github.com/rainer37/OnionCoin/blockChain"
 	"strings"
 	"encoding/json"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/util"
+	"github.com/rainer37/OnionCoin/records"
 )
 
 const NODEPREFIX = "[NODE]"
@@ -93,7 +93,7 @@ func (n *Node) getPubRoutingInfo(id string) *records.PKEntry {
 
 	ip, port := strings.Split(targetAddr, "@")[0],  strings.Split(targetAddr, "@")[1]
 
-	records.InsertEntry(id, pe.Pk, time.Now().Unix(), ip, port)
+	n.recordPE(id, pe.Pk, ip, port)
 
 	return records.GetKeyByID(id)
 }
@@ -309,11 +309,11 @@ func (n *Node) isBank(id string) bool {
 func (n *Node) iamNextBank() bool {
 	return util.Contains(n.chain.GetNextBankIDSet(), n.ID)
 }
+
 /*
 	Check if the id given is a current bank.
  */
 func (n* Node) checkBankStatus(id string) bool {
-	// banks := n.chain.GetCurBankIDSet()
 	return util.Contains(currentBanks, id)
 }
 

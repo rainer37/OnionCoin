@@ -32,8 +32,7 @@ func WrapOnion(pk rsa.PublicKey, nextID string, coin []byte, content []byte) []b
 	cbytes := make([]byte, 256) // TODO: adjust the size by real coin size.
 	copy(cbytes, coin)
 
-	b := append(nextIDBytes, cbytes...)
-	b = append(b, content...)
+	b := bytes.Join([][]byte{nextIDBytes, cbytes, content}, []byte{})
 
 	cipher, cKey, err := ocrypto.BlockEncrypt(b, pk)
 	util.CheckErr(err)

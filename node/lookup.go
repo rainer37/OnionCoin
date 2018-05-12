@@ -3,9 +3,7 @@ package node
 import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/rsa"
-	"github.com/rainer37/OnionCoin/records"
 	"strings"
-	"github.com/rainer37/OnionCoin/util"
 )
 
 func (n *Node) LookUpPK(address string) rsa.PublicKey {
@@ -19,12 +17,12 @@ func (n *Node) LookUpPK(address string) rsa.PublicKey {
 	send lookup request with the targetID and my address for reply.
  */
 func (n *Node) LookUpIP(id string) {
-	for _ ,v := range records.KeyRepo {
-		targetID := make([]byte, util.IDLEN)
-		copy(targetID, id)
-		p := n.prepareOMsg(IPLOOKUP, append(targetID , []byte(n.addr())...), v.Pk)
-		go n.sendActive(p, v.Port)
-	}
+	//for _ ,v := range records.keyRepo {
+	//	targetID := make([]byte, util.IDLEN)
+	//	copy(targetID, id)
+	//	p := n.prepareOMsg(IPLOOKUP, append(targetID , []byte(n.addr())...), v.Pk)
+	//	go n.sendActive(p, v.Port)
+	//}
 }
 
 func (n *Node) handleLookup(payload []byte) {
