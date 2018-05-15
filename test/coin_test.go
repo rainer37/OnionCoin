@@ -96,7 +96,7 @@ func TestCoinGetBytes(t *testing.T) {
 	util.CheckErr(err)
 
 	if ncoin.GetRID() != "rainer" { t.Error("WRONG ID") }
-	if util.GetID(ncoin.GetContent()) != "contents" { t.Error("WRONG CONTENTS") }
+	if util.Strip(ncoin.GetContent()) != "contents" { t.Error("WRONG CONTENTS") }
 	if len(ncoin.Signers) != 2 { t.Error("WRONG NUM SIGNERS") }
 	if ncoin.Signers[0] != "r1" || ncoin.Signers[1] != "r2" { t.Error("WRONG SIGNES" )}
 }

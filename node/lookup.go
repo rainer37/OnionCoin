@@ -1,7 +1,7 @@
 package node
 
 import (
-	"strings"
+	"github.com/rainer37/OnionCoin/util"
 )
 
 /*
@@ -11,12 +11,13 @@ func (n *Node) LookUpIP(id string) {
 	//for _ ,v := range records.keyRepo {
 	//	targetID := make([]byte, util.IDLEN)
 	//	copy(targetID, id)
-	//	p := n.prepareOMsg(IPLOOKUP, append(targetID , []byte(n.addr())...), v.Pk)
+	//	p := n.prepareOMsg(IPLOOKUP, append(targetID ,
+	// []byte(n.addr())...), v.Pk)
 	//	go n.sendActive(p, v.Port)
 	//}
 }
 
 func (n *Node) handleLookup(payload []byte) {
-	targetID, origAddr := strings.Trim(string(payload[:16]), "\x00"), payload[16:]
+	targetID, origAddr := util.Strip(payload[:16]), payload[16:]
 	print("looking for", targetID, "i am at", origAddr)
 }

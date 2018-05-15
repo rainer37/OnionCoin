@@ -58,13 +58,12 @@ func PKDecrypt(sk *rsa.PrivateKey, payload []byte) []byte {
 	ela := time.Since(start)
 	RSATime += ela.Nanoseconds()/nano
 	RSAStep++
-
 	return plain
 }
 
 func RSASign(sk *rsa.PrivateKey, msg []byte) []byte {
 	start := time.Now()
-	hashed := util.ShaHash(msg)
+	hashed := util.Sha(msg)
 	signature, err := rsa.SignPKCS1v15(rng, sk, crypto.SHA256, hashed[:])
 	util.CheckErr(err)
 	ela := time.Since(start)
@@ -75,7 +74,7 @@ func RSASign(sk *rsa.PrivateKey, msg []byte) []byte {
 
 func RSAVerify(pk *rsa.PublicKey, sig []byte, msg []byte) bool {
 	start := time.Now()
-	hashed := util.ShaHash(msg)
+	hashed := util.Sha(msg)
 	err := rsa.VerifyPKCS1v15(pk, crypto.SHA256, hashed[:], sig)
 	ela := time.Since(start)
 	RSATime += ela.Nanoseconds()/nano

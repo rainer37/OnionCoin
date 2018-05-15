@@ -17,6 +17,7 @@ const (
 	EPOCHLEN = 10
 	PROPOSINGDELAY = 5
 	PUSHINGDELAY = 3
+	DECISIONDELAY = 2
 	PROPOSINGTIME = EPOCHLEN - PROPOSINGDELAY
 	PUSHTIME = EPOCHLEN - PUSHINGDELAY
 
@@ -35,27 +36,13 @@ func Exists(path string) (bool, error) {
 	if os.IsNotExist(err) { return false, nil }
 	return true, err
 }
-
-func CheckErr(err error){
-	if err != nil { panic(err) }
-}
-
+func CheckErr(err error){ if err != nil { panic(err) } }
 func Contains(ids []string, id string) bool {
 	for _, v := range ids { if v == id { return true } }; return false
 }
-
-func ShaHash(b []byte) [32]byte {
-	return sha256.Sum256(b)
-}
-
-func GetID(b []byte) string {
-	return string(bytes.Trim(b, "\x00"))
-}
-
-func JoinBytes(bs [][]byte) []byte {
-	return bytes.Join(bs, []byte{})
-}
-
+func Sha(b []byte) [32]byte { return sha256.Sum256(b) }
+func Strip(b []byte) string { return string(bytes.Trim(b, "\x00")) }
+func JoinBytes(bs [][]byte) []byte { return bytes.Join(bs, []byte{}) }
 func SortSigs(sigs []byte, verifiers []string) {
 	for i:=0; i<len(verifiers) - 1; i++ {
 		for j:=0; j<len(verifiers) -i - 1; j++ {

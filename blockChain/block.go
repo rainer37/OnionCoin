@@ -5,7 +5,6 @@ import (
 	"time"
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/util"
-	"bytes"
 )
 
 type Block struct {
@@ -26,7 +25,7 @@ func NewBlock(txns []Txn) *Block {
 	b.Txns = txns
 	b.TxnHashes = make([][]byte, len(txns))
 	for i, t := range b.Txns {
-		h := util.ShaHash(t.GetContent())
+		h := util.Sha(t.GetContent())
 		b.TxnHashes[i] = h[:]
 	}
 	b.NumTxn = len(txns)
@@ -50,8 +49,8 @@ func (b *Block) GetCurHash() []byte {
 		}
 	}
 
-	data := bytes.Join([][]byte{b.PrevHash, txnsBytes, timestamp}, []byte{})
-	hash := util.ShaHash(data)
+	data := util.JoinBytes([][]byte{b.PrevHash, txnsBytes, timestamp})
+	hash := util.Sha(data)
 	return hash[:]
 }
 

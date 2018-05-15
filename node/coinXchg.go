@@ -87,7 +87,7 @@ func (n *Node) receiveNewCoin(payload []byte, senderID string) {
 	Generate the genesis coin with my signed pk.
  */
 func (n *Node) GetGenesisCoin() *coin.Coin {
-	pkHash := util.ShaHash(ocrypto.EncodePK(n.sk.PublicKey))
+	pkHash := util.Sha(ocrypto.EncodePK(n.sk.PublicKey))
 	gcoin := n.blindSign(pkHash[:])
 	return coin.NewCoin(n.ID, gcoin, []string{n.ID})
 }
@@ -196,7 +196,7 @@ func (n *Node) coSignValidCoin(c []byte) {
 	cc := c[2:]
 
 	cLen := binary.BigEndian.Uint32(cc[8:12])
-	hashAndIds := util.ShaHash(cc[8 + 4: 8 + 4 + cLen]) // get the hash(32) of coin
+	hashAndIds := util.Sha(cc[8 + 4: 8 + 4 + cLen]) // get the hash(32) of coin
 
 	signedHash := n.blindSign(hashAndIds[:]) // sign the coin(128)
 	signedHash = append(cc, signedHash...)
@@ -254,7 +254,7 @@ func (n *Node) decodeCNCosign(content []byte, counter uint16) (ts int64, cnum ui
 		b := sigsVrfers[i*(128 + 16):(i+1)*(128 + 16)-1]
 		ver,sig := b[128:], b[:128]
 		sigs = append(sigs, sig...)
-		verifiers = append(verifiers, util.GetID(ver))
+		verifiers = append(verifiers, util.Strip(ver))
 	}
 
 	return
@@ -316,7 +316,7 @@ func (n *Node) ValidateCoin(coinBytes []byte, senderID string) bool {
 
 	// first check if it is a genesis coin.
 	spe := n.getPubRoutingInfo(senderID)
-	encSPK := util.ShaHash(ocrypto.EncodePK(spe.Pk))
+	encSPK := util.Sha(ocrypto.EncodePK(spe.Pk))
 	targetHash := ocrypto.EncryptBig(&spe.Pk, ncoin.Content)
 
 	if string(encSPK[:]) == string(targetHash) {
@@ -340,7 +340,7 @@ func (n *Node) ValidateCoin(coinBytes []byte, senderID string) bool {
 
 	coinNum, idHash := n.getCoinNumAndIDHash(ncoin)
 	print("CoinNum:", coinNum)
-	h := util.ShaHash([]byte(senderID))
+	h := util.Sha([]byte(senderID))
 
 	if string(idHash) != string(h[:]) {
 		print("The coin id is not the senderID, sorry you have to use your own coin!")
@@ -366,7 +366,7 @@ func ValidateCoinByKey(coinBytes []byte, senderID string, pk *rsa.PublicKey) boo
 		return false
 	}
 
-	idHash := util.ShaHash([]byte(senderID))
+	idHash := util.Sha([]byte(senderID))
 	targetHash := c[:32]
 	coinNum := c[32:]
 

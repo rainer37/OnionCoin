@@ -15,9 +15,10 @@ const FWDTIMEOUT = 3 * 1000
 func (n *Node) forwardProtocol(payload []byte, senderID string) {
 	nextID, prevCoin, iOnion := PeelOnion(n.sk, payload)
 	n.feedbackChan = make(chan rune)
-	defer close(n.feedbackChan)
+	// defer close(n.feedbackChan)
 
-	// print(nextID, len(prevCoin), string(prevCoin), len(iOnion), len(iOnion))
+	// print(nextID, len(prevCoin),
+	// string(prevCoin), len(iOnion), len(iOnion))
 
 	// reply the coin to previous peer.
 	n.sendOMsgWithID(COINREWARD, prevCoin, senderID)
@@ -25,7 +26,7 @@ func (n *Node) forwardProtocol(payload []byte, senderID string) {
 	// the most innerOnion should have the same ID as receiver ID.
 	if nextID == n.ID {
 		omsgCount++
-		print("   MSG RECEIVED: [", string(iOnion),"] FROM", senderID)
+		print("MSG RECEIVED: [", string(iOnion),"] FROM", senderID)
 		return
 	}
 
@@ -42,7 +43,8 @@ func (n *Node) forwardProtocol(payload []byte, senderID string) {
 }
 
 /*
-	Given a list of ids of nodes on the path, create a onion wrapping the message to send.
+	Given a list of ids of nodes on the path,
+	create a onion wrapping the message to send.
 	ids : [s -> n0 -> n1 -> ... -> r]
 */
 func (n *Node) WrapABigOnion(msg []byte, ids []string) []byte {

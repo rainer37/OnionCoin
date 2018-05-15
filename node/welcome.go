@@ -29,7 +29,7 @@ func (n *Node) welcomeNewBie(newbieID string) {
 	a warm welcome to newbie.
  */
 func (n *Node) welcomeProtocol(payload []byte) {
-	id := util.GetID(payload[:util.IDLEN])
+	id := util.Strip(payload[:util.IDLEN])
 	e := new(records.PKEntry)
 	err := json.Unmarshal(payload[util.IDLEN:], e)
 	util.CheckErr(err)

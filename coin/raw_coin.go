@@ -20,7 +20,7 @@ var rawCoinBFs = make(map[string][]byte) // map of blind factors
 func NewRawCoin(rid string) *RawCoin {
 	rwcoin := new(RawCoin)
 	rwcoin.rid = rid
-	rwcoin.ridHash = util.ShaHash([]byte(rid))
+	rwcoin.ridHash = util.Sha([]byte(rid))
 	rwcoin.coinNum = genFreeCN()
 	return rwcoin
 }

@@ -15,7 +15,8 @@ type DepthHashPair struct {
 
 /*
 	Try sync block chain with one peer once.
-	randomly picks a bank to send CHAINSYNC req with my current depth, and the hash of last block.
+	randomly picks a bank to send CHAINSYNC req with
+	my current depth, and the hash of last block.
  */
 func (n *Node) syncOnce() {
 	bid := n.pickOneRandomBank()
@@ -41,10 +42,12 @@ func (n *Node) pickOneRandomBank() string {
 /*
 	Upon received a request for blockChain Sync, reply with blocks.
 	request : [peer current depth(8) | hash of last block(32)]
-	reply : my current depth and the missing blocks starting with peer's current depth
+	reply : my current depth and the missing blocks
+			starting with peer's current depth
  */
 func (n *Node) chainSyncRequested(payload []byte, senderID string) {
-	peerDepth := int64(binary.BigEndian.Uint64(payload[:8])) // requesting peer's current chain length
+	// requesting peer's current chain length
+	peerDepth := int64(binary.BigEndian.Uint64(payload[:8]))
 	bHash := payload[8:] // hash of the last block from requesting peer.
 	
 	// if the peer has longer chain, ignore it.
@@ -65,7 +68,8 @@ func (n *Node) chainSyncRequested(payload []byte, senderID string) {
 			myDepth := make([]byte, 8)
 			binary.BigEndian.PutUint64(myDepth, uint64(i))
 
-			n.sendOMsgWithID(CHAINSYNCACK, append(myDepth, blocks...), senderID)
+			syncPayload := append(myDepth, blocks...)
+			n.sendOMsgWithID(CHAINSYNCACK, syncPayload, senderID)
 		}
 	} else {
 		print("!!! found", senderID, "has minor branch")
@@ -120,7 +124,8 @@ func (n *Node) chainRepairReceived(payload []byte, senderID string) {
 
 	var start int64 = -1
 	for _, v := range arr {
-		if v.Depth < n.chain.Size() && string(n.chain.Blocks[v.Depth].CurHash[:8]) == string(v.Hash[:8]) {
+		if v.Depth < n.chain.Size() &&
+			string(n.chain.Blocks[v.Depth].CurHash[:8]) == string(v.Hash[:8]) {
 			start = v.Depth
 			// break
 		}

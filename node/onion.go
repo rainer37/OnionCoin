@@ -46,8 +46,8 @@ func PeelOnion(sk *rsa.PrivateKey, fullOnion []byte) (string, []byte, []byte) {
 	decryptedOnion, err := ocrypto.BlockDecrypt(onion, cKey, sk)
 	util.CheckErr(err)
 	// print(len(decryptedOnion))
-	return util.GetID(decryptedOnion[:util.IDLEN]),
-	[]byte(util.GetID(decryptedOnion[util.IDLEN:util.IDLEN+256])),
+	return util.Strip(decryptedOnion[:util.IDLEN]),
+	[]byte(util.Strip(decryptedOnion[util.IDLEN:util.IDLEN+256])),
 	decryptedOnion[util.IDLEN+256:]
 	//
 	//return string(bytes.Trim(decryptedOnion[:util.IDLEN], "\x00")),

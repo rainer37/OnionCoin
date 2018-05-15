@@ -26,14 +26,15 @@ func (chain *BlockChain) GetCurBankIDSet() []string {
 	return chain.GetBankSetWhen(time.Now().Unix())
 }
 
-func (chain *BlockChain) GetNextBankIDSet() []string {
+func (chain *BlockChain) GetNextBankSet() []string {
 	nbanks := chain.GetBankSetWhen(time.Now().Unix() + util.EPOCHLEN)
 	// print(nbanks)
 	return nbanks
 }
 
 func (chain *BlockChain) GetBankSetWhen(t int64) []string {
-	superBank := []string{"FAKEID1339", "FAKEID1338"} // TODO: super banks for now, remove them.
+	superBank := []string{"FAKEID1339", "FAKEID1338"}
+	// TODO: super banks for now, remove them.
 	// return superBank
 	curEpoch := t / util.EPOCHLEN
 
@@ -56,7 +57,8 @@ func (chain *BlockChain) GetBankSetWhen(t int64) []string {
 	if matureLen < 2 {
 		return superBank
 	}
-	// print("Epoch:", curEpoch, "Everyone:",allPeers, "Mature", matureLen, "Chosen:", theChosen)
+	// print("Epoch:", curEpoch, "Everyone:",
+	// allPeers, "Mature", matureLen, "Chosen:", theChosen)
 	return theChosen
 	//	return append(superBank, theChosen...)
 }

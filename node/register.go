@@ -19,7 +19,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string) {
 	newBieInfo := append(ocrypto.EncodePK(pk), []byte(id)...)
 
 	// first sign it by myself.
-	pkHash := util.ShaHash(ocrypto.EncodePK(pk))
+	pkHash := util.Sha(ocrypto.EncodePK(pk))
 	regBytes := n.blindSign(append(pkHash[:], []byte(id)...))
 
 	signers := []string{n.ID}
@@ -55,7 +55,8 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string) {
 		return
 	}
 
-	print("Enough Signing Received, Register Node", id, "by", len(signers), "Signer:", signers)
+	print("Enough Signing Received, Register Node", id,
+		"by", len(signers), "Signer:", signers)
 
 	txn := blockChain.NewPKRTxn(id, pk, regBytes, signers)
 	n.bankProxy.AddTxn(txn)
@@ -68,7 +69,7 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string) {
 	Upon received register request, sign the pk, and reply it.
  */
 func (n *Node) regCoSignRequest(payload []byte, senderID string) {
-	pkHash := util.ShaHash(payload[:PKRQLEN])
+	pkHash := util.Sha(payload[:PKRQLEN])
 	mySig := n.blindSign(append(pkHash[:], payload[PKRQLEN:]...))
 	n.sendOMsgWithID(REGCOSIGNREPLY, mySig, senderID)
 }

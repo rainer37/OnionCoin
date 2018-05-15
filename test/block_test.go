@@ -5,9 +5,10 @@ import (
 	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/sha256"
+	"os"
 )
 
-func GenTestBlockWithTwoTxn() *blockChain.Block {
+func GenTestBlockWithTwoTxn(chain *blockChain.BlockChain) *blockChain.Block {
 	id_1 := "rainer"
 	sk_1 := ocrypto.RSAKeyGen()
 	pk_1 := sk_1.PublicKey
@@ -35,14 +36,14 @@ func GenTestBlockWithTwoTxn() *blockChain.Block {
 	txn2 := blockChain.NewPKRTxn(id_2, pk_2, append(hash21, hash22...), verifiers)
 
 	txns := []blockChain.Txn{txn1, txn2}
-	block := blockChain.NewBlock(txns)
-	return block
+	return chain.GenNewBlock(txns)
 }
 
 func TestBlockGen(t *testing.T) {
-	// chain := blockChain.InitBlockChain()
+	chain := blockChain.InitBlockChain()
+	defer os.RemoveAll("chainData/")
 
-	block := GenTestBlockWithTwoTxn()
+	block := GenTestBlockWithTwoTxn(chain)
 
 	if block.NumTxn != 2 {
 		t.Error("wrong number of txns")

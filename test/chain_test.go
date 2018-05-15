@@ -16,11 +16,10 @@ func TestAddBlockToChain(t *testing.T) {
 	defer os.RemoveAll("chainData/")
 
 	size := chain.Size()
-	block := GenTestBlockWithTwoTxn()
+	block := GenTestBlockWithTwoTxn(chain)
 	gblock := chain.GetLastBlock()
 
 	chain.AddNewBlock(block)
-
 
 	if chain.Size() != size + 1 {
 		t.Error("Wrong size")
@@ -64,12 +63,12 @@ func TestGetBlock(t *testing.T) {
 	defer os.RemoveAll("chainData/")
 
 	size := chain.Size()
-	block_1 := GenTestBlockWithTwoTxn()
-	block_2 := GenTestBlockWithTwoTxn()
-	block_3 := GenTestBlockWithTwoTxn()
 
+	block_1 := GenTestBlockWithTwoTxn(chain)
 	chain.AddNewBlock(block_1)
+	block_2 := GenTestBlockWithTwoTxn(chain)
 	chain.AddNewBlock(block_2)
+	block_3 := GenTestBlockWithTwoTxn(chain)
 	chain.AddNewBlock(block_3)
 
 	// fmt.Println(chain.Size())

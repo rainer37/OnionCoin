@@ -128,7 +128,7 @@ func (n *Node) sendActive(msg []byte, add string) {
 
 func (n *Node) defaultBankRoutine(pk rsa.PublicKey, id string) {
 	superPK := ocrypto.EncodePK(pk)
-	pkHash := util.ShaHash(superPK)
+	pkHash := util.Sha(superPK)
 	sig1 := n.blindSign(append(pkHash[:], []byte(id)...))
 	sig2 := n.blindSign(append(pkHash[:], []byte(id)...))
 	signers := []string{n.ID, n.ID}

@@ -59,7 +59,7 @@ func TestWithdrawCoins(t *testing.T) {
 
 	nc1 := vault.Withdraw(c2.GetRID())
 	if nc1.GetRID() != "c2" { t.Error("WRONG ID") }
-	if util.GetID(nc1.GetContent()) != "contents" { t.Error("WRONG CONTENTS") }
+	if util.Strip(nc1.GetContent()) != "contents" { t.Error("WRONG CONTENTS") }
 	if len(nc1.Signers) != 2 { t.Error("WRONG NUM SIGNERS") }
 	if nc1.Signers[0] != "r1" || nc1.Signers[1] != "r2" { t.Error("WRONG SIGNES" )}
 
@@ -68,7 +68,7 @@ func TestWithdrawCoins(t *testing.T) {
 
 	nc2 := vault.Withdraw(c1.GetRID())
 	if nc2.GetRID() != "c1" { t.Error("WRONG ID") }
-	if util.GetID(nc1.GetContent()) != "contents" { t.Error("WRONG CONTENTS") }
+	if util.Strip(nc1.GetContent()) != "contents" { t.Error("WRONG CONTENTS") }
 	if len(nc2.Signers) != 2 { t.Error("WRONG NUM SIGNERS") }
 	if nc2.Signers[0] != "r1" || nc2.Signers[1] != "r2" { t.Error("WRONG SIGNES" )}
 

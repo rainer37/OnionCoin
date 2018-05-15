@@ -38,13 +38,15 @@ const (
 var mutex = sync.Mutex{}
 var bcCount = 0
 /*
-	check the OMsg bytes received, verify the sig by senderID, and return [err, opCode, ID, pkEntry, payload]
+	check the OMsg bytes received, verify the sig by senderID,
+	 and return [err, opCode, ID, pkEntry, payload]
  */
 func (n *Node) syntaxCheck(incoming []byte) (error, rune, string, *records.PKEntry, []byte) {
 	omsg, ok := n.unMarshalOMsg(incoming)
 
 	if !ok {
-		return errors.New("cannot Unmarshal Msg, discard it." + string(len(incoming))), ' ', "", nil, nil
+		return errors.New("cannot Unmarshal Msg, discard it." +
+			string(len(incoming))), ' ', "", nil, nil
 	}
 
 	// print("valid OMsg, continue...")

@@ -15,6 +15,7 @@ import(
 	"sync"
 	"github.com/rainer37/OnionCoin/util"
 	"fmt"
+	"sort"
 )
 
 const BKCHPREFIX = "[BKCH] "
@@ -23,14 +24,19 @@ const TINDEXDIR = CHAINDIR + "TIndex"
 const GENSIS_HASH = "_OC_GENESIS_HASH_ON_18_MAR_2018_"
 
 const silent = false
-var GENESISBLOCK = Block{[]byte("ONCE UPON A TIME IN OLD ERA"), []byte(GENSIS_HASH), 0, 0, 0, nil, nil}
+var GENESISBLOCK = Block{
+	[]byte("ONCE UPON A TIME IN OLD ERA"),
+[]byte(GENSIS_HASH), 0, 0, 0,
+nil, nil }
 
-func print(str ...interface{}) {
-	if silent {
-		return
-	}
-	fmt.Print(BKCHPREFIX+" ")
-	fmt.Println(str...)
+type TxnSorter []Txn
+func (a TxnSorter) Len() int           { return len(a) }
+func (a TxnSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a TxnSorter) Less(i, j int) bool {
+	earlier := a[i].GetTS() < a[j].GetTS()
+	sameTime := a[i].GetTS() == a[j].GetTS()
+	smallContent := string(a[i].GetContent()) < string(a[j].GetContent())
+	return  earlier || (sameTime && smallContent)
 }
 
 /*
@@ -107,18 +113,30 @@ func (chain *BlockChain) loadChainAndIndex() {
 	Add a new block to the blockChain.
 	Update the prehash, txnHashes and depth before add it.
  */
-func (chain *BlockChain) AddNewBlock(block *Block) bool {
-	// print("Adding a new block")
+func (chain *BlockChain) AddNewBlock(block *Block) {
+	// chain.Blocks = append(chain.Blocks, block)
+	chain.StoreBlock(block)
+}
+
+/*
+	generate a block from transaction buffer and push it to the system.
+ */
+func (chain *BlockChain) GenNewBlock(txnBuffer []Txn) *Block {
+	if len(txnBuffer) == 0 { return nil }
+	print("Fresh Block with", len(txnBuffer), "txns")
+
+	sort.Sort(TxnSorter(txnBuffer))
+	newBlock := NewBlock(txnBuffer)
 
 	prevBlock := chain.Blocks[chain.Size()-1]
 
-	block.PrevHash = prevBlock.CurHash
-	block.Depth = prevBlock.Depth + 1
-	block.Ts = time.Now().Unix()
-	block.CurHash = block.GetCurHash()
+	newBlock.PrevHash = prevBlock.CurHash
+	newBlock.Depth = prevBlock.Depth + 1
+	newBlock.Ts = time.Now().Unix()
+	newBlock.CurHash = newBlock.GetCurHash()
 
-	chain.StoreBlock(block)
-	return true
+	print("NewBlock Hash: [", string(newBlock.CurHash[:8]), "]")
+	return newBlock
 }
 
 /*
@@ -141,7 +159,8 @@ func (chain *BlockChain) StoreBlock(b *Block) {
 	chain.updateIndex(b)
 	chain.Blocks = append(chain.Blocks, b)
 
-	print("new block written, depth:", b.Depth, "Epoch:", b.Ts / util.EPOCHLEN)
+	print("new block written, depth:",
+		b.Depth, "Epoch:", b.Ts / util.EPOCHLEN)
 }
 
 /*
@@ -232,3 +251,10 @@ func IsFreeCoinNum(coinNum uint64) bool {
 	return false
 }
 
+func print(str ...interface{}) {
+	if silent {
+		return
+	}
+	fmt.Print(BKCHPREFIX+" ")
+	fmt.Println(str...)
+}

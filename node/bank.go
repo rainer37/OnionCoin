@@ -5,8 +5,6 @@ import (
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"github.com/rainer37/OnionCoin/blockChain"
 	"github.com/rainer37/OnionCoin/records"
-	"sort"
-	"time"
 	"github.com/rainer37/OnionCoin/util"
 )
 
@@ -17,13 +15,6 @@ type Bank struct {
 	txnBuffer []blockChain.Txn
 	chain *blockChain.BlockChain
 	status bool
-}
-
-type TxnSorter []blockChain.Txn
-func (a TxnSorter) Len() int           { return len(a) }
-func (a TxnSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a TxnSorter) Less(i, j int) bool {
-	return a[i].GetTS() < a[j].GetTS() || (a[i].GetTS() == a[j].GetTS() && a[i].GetContent()[0] < a[j].GetContent()[0])
 }
 
 func InitBank(sk *rsa.PrivateKey, chain *blockChain.BlockChain) *Bank {
@@ -48,20 +39,22 @@ func (bank *Bank) AddTxn(txn blockChain.Txn) bool {
 		return false
 	}
 
-	ok := bank.validateTxn(txn)
-	if !ok {
+	if !bank.validateTxn(txn) {
 		print("Invalid Cheating Txn, discard it")
 		return false
 	}
-	bank.txnBuffer = append(bank.txnBuffer, txn)
-	l:=len(bank.txnBuffer)
-	print("Txn added, current buffer load:", float32(l) / util.MAXNUMTXN, l)
 
-	if bank.status {
-		for len(bank.txnBuffer) >= util.MAXNUMTXN {
-			bank.GenerateNewBlock()
-		}
-	}
+	bank.txnBuffer = append(bank.txnBuffer, txn)
+
+	l := len(bank.txnBuffer)
+	print("Txn added, current buffer load:",
+		float32(l) / util.MAXNUMTXN, l)
+
+	//if bank.status {
+	//	for len(bank.txnBuffer) >= util.MAXNUMTXN {
+	//		bank.GenerateNewBlock()
+	//	}
+	//}
 
 	return true
 }
@@ -73,8 +66,10 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 	verifiers := txn.GetVerifiers()
 	sigs := txn.GetSigs()
 
-	if len(verifiers) != util.NUMCOSIGNER || len(verifiers) != len(sigs) / 128 {
-		print("number of sigs does not match number of banks", len(verifiers), len(sigs) / 128)
+	if len(verifiers) != util.NUMCOSIGNER ||
+		len(verifiers) != len(sigs) / 128 {
+		print("number of sigs does not match number of co-signers!",
+			len(verifiers), len(sigs) / 128)
 		return false
 	}
 
@@ -90,15 +85,17 @@ func (bank *Bank) validateTxn(txn blockChain.Txn) bool {
 		}
 	}
 	if matchCounter != len(verifiers) {
-		print("Some signer was not a bank at that time", matchCounter, util.NUMCOSIGNER)
+		print("Some signer was not a bank at that time",
+			matchCounter, util.NUMCOSIGNER)
 		return false
 	}
 
-	// verify every signature is proper by checking against the original signed message.
+	// verify every signature is proper by checking against
+	// the original signed message.
 
 	content := txn.GetContent()
 
-	for i:=0;i<len(verifiers);i++ {
+	for i:=0; i<len(verifiers); i++ {
 		pk := records.GetKeyByID(verifiers[i]).Pk
 		expectedContent := ocrypto.EncryptBig(&pk, sigs[i * 128 : (i+1) * 128])
 		if string(expectedContent) != string(content) {
@@ -136,40 +133,13 @@ func (bank *Bank) containsTxn(txn blockChain.Txn) bool {
 /*
 	generate a block from transaction buffer and push it to the system.
  */
-func (bank *Bank) GenerateNewBlock() bool {
-	if len(bank.txnBuffer) <= 0 {
-		return false
-	}
-	print("Fresh Block with", len(bank.txnBuffer), "txns")
-	sort.Sort(TxnSorter(bank.txnBuffer))
-	newBlock := blockChain.NewBlock(bank.txnBuffer)
-	ok := bank.chain.AddNewBlock(newBlock)
-	print("NewBlock Hash: [", string(newBlock.CurHash), "]")
-	if ok {
-		bank.CleanBuffer()
-		return true
-	}
-	return false
-}
-
 func (bank *Bank) GenNewBlock() *blockChain.Block {
-	if len(bank.txnBuffer) <= 0 {
-		return nil
-	}
-	print("Fresh Block with", len(bank.txnBuffer), "txns")
-	sort.Sort(TxnSorter(bank.txnBuffer))
-	newBlock := blockChain.NewBlock(bank.txnBuffer)
-
-	prevBlock := bank.chain.Blocks[bank.chain.Size()-1]
-	newBlock.PrevHash = prevBlock.CurHash
-	newBlock.Depth = prevBlock.Depth + 1
-	newBlock.Ts = time.Now().Unix()
-	newBlock.CurHash = newBlock.GetCurHash()
-
-	print("NewBlock Hash: [", string(newBlock.CurHash), "]")
-	return newBlock
+	return bank.chain.GenNewBlock(bank.txnBuffer)
 }
 
+/*
+	check if the local hash is the major one.
+ */
 func (bank *Bank) IsMajorityHash(hash string) bool {
 	maxCount := 0
 	myCount := HashCmpMap[hash]
@@ -178,18 +148,10 @@ func (bank *Bank) IsMajorityHash(hash string) bool {
 			maxCount = v
 		}
 	}
-	if myCount == maxCount {
-		return true
-	}
-	return false
+	return myCount == maxCount
 }
 
 func (bank *Bank) CleanBuffer() {
-	//if len(bank.txnBuffer) > blockChain.MAXNUMTXN {
-	//	bank.txnBuffer = bank.txnBuffer[blockChain.MAXNUMTXN:]
-	//} else {
-	//	bank.txnBuffer = []blockChain.Txn{}
-	//}
 	bank.txnBuffer = []blockChain.Txn{}
 	print("Txn buffer cleared")
 }

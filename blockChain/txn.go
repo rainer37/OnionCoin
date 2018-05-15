@@ -55,19 +55,25 @@ type BCNRDMTxn struct {
 	TxnBase
 }
 
-func NewPKRTxn(id string, pk rsa.PublicKey, sigs []byte, verifiers []string) PKRegTxn {
-	util.SortSigs(sigs, verifiers)
-	return PKRegTxn{id, ocrypto.EncodePK(pk), TxnBase{time.Now().Unix(), sigs, verifiers}}
+func NewPKRTxn(id string, pk rsa.PublicKey,
+	sigs []byte, vs []string) PKRegTxn {
+	util.SortSigs(sigs, vs)
+	return PKRegTxn{id, ocrypto.EncodePK(pk),
+	TxnBase{time.Now().Unix(), sigs, vs}}
 }
 
-func NewCNEXTxn(coinNum uint64, coinBytes []byte, ts int64, sigs []byte, verifiers []string) CNEXTxn {
+func NewCNEXTxn(coinNum uint64, coinBytes []byte, ts int64,
+	sigs []byte, verifiers []string) CNEXTxn {
 	util.SortSigs(sigs, verifiers)
-	return CNEXTxn{coinNum, coinBytes, TxnBase{ts, sigs, verifiers}}
+	return CNEXTxn{coinNum, coinBytes,
+	TxnBase{ts, sigs, verifiers}}
 }
 
-func NewBCNRDMTxn(TxnID []byte, casherID string, ts int64, sigs []byte, verifiers []string) BCNRDMTxn {
+func NewBCNRDMTxn(TxnID []byte, casherID string, ts int64,
+	sigs []byte, verifiers []string) BCNRDMTxn {
 	util.SortSigs(sigs, verifiers)
-	return BCNRDMTxn{TxnID, casherID, TxnBase{ts, sigs, verifiers}}
+	return BCNRDMTxn{TxnID, casherID,
+	TxnBase{ts, sigs, verifiers}}
 }
 /*
 	ID(16) | PK(132) | Ts(8) | signedHashes | SignerIDs
@@ -86,12 +92,14 @@ func (pkr PKRegTxn) GetTS() int64 { return pkr.Ts }
 	PK register txn content: pk + id
  */
 func (pkr PKRegTxn) GetContent() []byte {
-	pkHash := util.ShaHash(pkr.Pk)
+	pkHash := util.Sha(pkr.Pk)
 	return append(pkHash[:], []byte(pkr.Id)...)
 }
 
 /*
-	CNEX format: coinNum(8) : signedCoin(128) : [S0, S1, S2...] : [V0, V1, V2...] : [VHash0, VHash1, VHash2...]
+	CNEX format:
+	coinNum(8) : signedCoin(128) : [S0, S1, S2...]
+	: [V0, V1, V2...] : [VHash0, VHash1, VHash2...]
 	Si(16): coin signer i;
 	Vi(16): coin Verifiers(cosigners);
 	VHashi(128) : cosigned hash of the signedCoin
@@ -111,7 +119,7 @@ func (cnex CNEXTxn) GetTS() int64 { return cnex.Ts }
 	coin exchange content: coin bytes
  */
 func (cnex CNEXTxn) GetContent() []byte {
-	cnHash := util.ShaHash(cnex.CoinBytes)
+	cnHash := util.Sha(cnex.CoinBytes)
 	return cnHash[:]
 }
 

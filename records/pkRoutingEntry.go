@@ -21,11 +21,13 @@ type PKEntry struct {
 const KEYDIR = "keys/"
 const RECORDPREFIX = "[RCOD]"
 
-var keyRepo map[string]*PKEntry // map[id:string] entry:PKEntry
+// map[id:string] entry:PKEntry
+var keyRepo map[string]*PKEntry
 var mete = sync.RWMutex{}
 
 /*
-	read key repo blockchain file from disk and load entries into keyRepo
+	read key repo blockchain file from disk
+	and load entries into keyRepo
  */
 func GenerateKeyRepo() {
 	InitKeyRepo()
@@ -63,12 +65,13 @@ func getPEonDisk(id string) error {
 }
 
 /*
-	check if there is PKEntry associated with id in memory and on disk.
+	check if there is PKEntry associated with id
+	in memory OR on disk.
  */
 func GetKeyByID(id string) *PKEntry {
 	pe := getPE(id)
 	if pe != nil { return pe }
-	if yes , _ := util.Exists(KEYDIR+id); yes {
+	if yes , _ := util.Exists(KEYDIR + id); yes {
 		err := getPEonDisk(id)
 		util.CheckErr(err)
 		return getPE(id)
@@ -88,7 +91,8 @@ func getPE(id string) *PKEntry {
 	return keyRepo[id]
 }
 
-func InsertEntry(id string, pk rsa.PublicKey, recTime int64, ip string, port string) {
+func InsertEntry(id string, pk rsa.PublicKey,
+	recTime int64, ip string, port string) {
 	pe := new(PKEntry)
 	pe.Pk = pk
 	pe.IP = ip
