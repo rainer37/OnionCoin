@@ -120,15 +120,15 @@ func (n *Node) dispatch(incoming []byte) {
 	case COINREWARD:
 		//print("Receiving a Coin")
 		aye := "N"
-		if n.ValidateCoin(payload, senderID) { aye = "Y" }
+		if n.validcoinwrap(payload, senderID) { aye = "Y" }
 		n.sendOMsgWithID(COINFEEDBACK, []byte(aye), senderID)
 	case COINFEEDBACK:
-		//print("Feedback Received", string(payload[0]))
+		// print("Feedback Received", string(payload[0]))
 		n.feedbackChan <- rune(payload[0])
 	case RAWCOINEXCHANGE:
 		//print("COINREWARD Exchange Requesting by", senderID)
 		if !n.iamBank() {
-			print("SRY IM NOT BANK", senderPK)
+			print("SRY IM NOT BANK", &senderPK)
 			return
 		}
 		n.receiveRawCoin(payload, senderID)

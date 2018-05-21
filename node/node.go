@@ -11,6 +11,7 @@ import(
 	"github.com/rainer37/OnionCoin/util"
 	"github.com/rainer37/OnionCoin/records"
 	"strings"
+	"github.com/rainer37/OnionCoin/ocrypto"
 )
 
 const NODEPREFIX = "[NODE]"
@@ -67,6 +68,10 @@ func (n *Node) Withdraw(rid string) *coin.Coin {
 
 func (n *Node) GetBalance() int64 {
 	return n.Vault.GetBalance()
+}
+
+func (n *Node) blindSign(rawCoin []byte) []byte {
+	return ocrypto.BlindSign(n.sk, rawCoin)
 }
 
 /*

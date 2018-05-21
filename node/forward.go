@@ -5,7 +5,7 @@ import (
 )
 
 var omsgCount = 0
-const FWDTIMEOUT = 3 * 1000
+const FWDTIMEOUT = 3 * time.Second
 
 /*
 	1. Decrypt the Onion to get nextID, previous coin, and the innerOnion.
@@ -56,7 +56,8 @@ func (n *Node) WrapABigOnion(msg []byte, ids []string) []byte {
 	for i:=len(ids)-2; i > 0; i-- {
 		pe := n.getPubRoutingInfo(ids[i])
 		//n.CoinExchange(ids[i])
-		c := n.Vault.Withdraw(ids[i-1])
+		// c := n.Vault.Withdraw(ids[i-1])
+		c := n.GetGenesisCoin()
 		nextID := ids[i+1]
 		o = WrapOnion(pe.Pk, nextID, c.Bytes(), o)
 	}

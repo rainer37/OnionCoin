@@ -15,7 +15,7 @@ func (n *Node) epochTimer() {
 	epochLen := int64(util.EPOCHLEN)
 
 	defer func() {
-		print("BOOM!\n\n\n\n")
+		fmt.Println("BOOM!\n\n\n\n")
 	}()
 
 	// wait until beginning of next epoch upon boot.
@@ -55,7 +55,7 @@ func (n *Node) epochTimer() {
 
 				if n.iamNextBank() {
 					print("!!! i'm one of the next gen banks, so? !!!")
-					go n.publishBlock()
+					go n.pullBlock()
 				}
 			}
 		}()
@@ -126,7 +126,7 @@ func (n *Node) logStats(t time.Time) {
 	fmt.Println(t.Unix() / util.EPOCHLEN, msgSendCount - bcCount ,
 		omsgCount, pathLength, ocrypto.RSAStep, ocrypto.AESStep,
 		ocrypto.RSATime, ocrypto.AESTime, percent * 100,"%")
-	fmt.Println(currentBanks)
+	// fmt.Println(currentBanks)
 }
 
 func (n *Node) pullBlock() {

@@ -4,7 +4,6 @@ import (
 	"sort"
 	"time"
 	"github.com/rainer37/OnionCoin/util"
-	"fmt"
 )
 
 func (chain *BlockChain) GetAllPeerIDs(max int64) []string {
@@ -40,7 +39,7 @@ func (chain *BlockChain) GetBankSetWhen(t int64) []string {
 
 	matureLen := chain.GetMatureBlockLen(t)
 	allPeers := chain.GetAllPeerIDs(matureLen)
-	fmt.Println(allPeers, matureLen)
+	// fmt.Println(allPeers, matureLen)
 	numBanks := len(allPeers) / 2
 	// return append(superBank, allPeers...)
 	theChosen := []string{}
