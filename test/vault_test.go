@@ -24,21 +24,21 @@ func TestDepositCoins(t *testing.T) {
 	vault.Deposit(c3)
 
 	if vault.GetBalance() != 4 { t.Error("wrong balace") }
-	if !vault.Contains(c1.GetRID()) || !vault.Contains(c2.GetRID()) || !vault.Contains(c3.GetRID()) {
+	if !vault.Contains(c1.RID) || !vault.Contains(c2.RID) || !vault.Contains(c3.RID) {
 		t.Error("wrong coin contained")
 	}
-	if vault.GetNumCoins(c1.GetRID()) != 1 { t.Error("wrong get num of coins") }
+	if vault.GetNumCoins(c1.RID) != 1 { t.Error("wrong get num of coins") }
 
 	vault = coin.InitVault()
 
 	if vault.GetBalance() != 4 { t.Error("wrong balace") }
-	if !vault.Contains(c1.GetRID()) || !vault.Contains(c2.GetRID()) || !vault.Contains(c3.GetRID()) {
+	if !vault.Contains(c1.RID) || !vault.Contains(c2.RID) || !vault.Contains(c3.RID) {
 		t.Error("wrong coin contained")
 	}
-	if vault.GetNumCoins(c1.GetRID()) != 1 { t.Error("wrong get num of coins") }
+	if vault.GetNumCoins(c1.RID) != 1 { t.Error("wrong get num of coins") }
 
 	vault.Deposit(c4)
-	if vault.GetNumCoins(c1.GetRID()) != 2 { t.Error("wrong get num of coins") }
+	if vault.GetNumCoins(c1.RID) != 2 { t.Error("wrong get num of coins") }
 }
 
 func TestWithdrawCoins(t *testing.T) {
@@ -57,29 +57,29 @@ func TestWithdrawCoins(t *testing.T) {
 
 	if GetNumCoinFiles() != 4 { t.Error("wrong num of coins file")}
 
-	nc1 := vault.Withdraw(c2.GetRID())
-	if nc1.GetRID() != "c2" { t.Error("WRONG ID") }
-	if util.Strip(nc1.GetContent()) != "contents" { t.Error("WRONG CONTENTS") }
+	nc1 := vault.Withdraw(c2.RID)
+	if nc1.RID != "c2" { t.Error("WRONG ID") }
+	if util.Strip(nc1.Content) != "contents" { t.Error("WRONG CONTENTS") }
 	if len(nc1.Signers) != 2 { t.Error("WRONG NUM SIGNERS") }
 	if nc1.Signers[0] != "r1" || nc1.Signers[1] != "r2" { t.Error("WRONG SIGNES" )}
 
 	if GetNumCoinFiles() != 3 { t.Error("wrong num of coins file") }
-	if vault.Contains(c2.GetRID()) { t.Error("wrong contained coins") }
+	if vault.Contains(c2.RID) { t.Error("wrong contained coins") }
 
-	nc2 := vault.Withdraw(c1.GetRID())
-	if nc2.GetRID() != "c1" { t.Error("WRONG ID") }
-	if util.Strip(nc1.GetContent()) != "contents" { t.Error("WRONG CONTENTS") }
+	nc2 := vault.Withdraw(c1.RID)
+	if nc2.RID != "c1" { t.Error("WRONG ID") }
+	if util.Strip(nc1.Content) != "contents" { t.Error("WRONG CONTENTS") }
 	if len(nc2.Signers) != 2 { t.Error("WRONG NUM SIGNERS") }
 	if nc2.Signers[0] != "r1" || nc2.Signers[1] != "r2" { t.Error("WRONG SIGNES" )}
 
 	if GetNumCoinFiles() != 2 { t.Error("wrong num of coins file") }
-	if vault.GetNumCoins(c1.GetRID()) != 1 { t.Error("wrong contained coins") }
+	if vault.GetNumCoins(c1.RID) != 1 { t.Error("wrong contained coins") }
 
-	vault.Withdraw(c3.GetRID())
-	vault.Withdraw(c1.GetRID())
+	vault.Withdraw(c3.RID)
+	vault.Withdraw(c1.RID)
 	if GetNumCoinFiles() != 0 { t.Error("wrong num of coins file") }
 
-	nn := vault.Withdraw(c1.GetRID())
+	nn := vault.Withdraw(c1.RID)
 	if nn != nil { t.Error("error getting coin when empty") }
 }
 

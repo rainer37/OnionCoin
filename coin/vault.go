@@ -66,7 +66,7 @@ func (vault *Vault) Deposit(coin *Coin) {
 
 
 func (vault *Vault) insertCoin(ncoin *Coin) {
-	rid := ncoin.GetRID()
+	rid := ncoin.RID
 	_, ok := vault.Coins[rid]
 	if !ok {
 		vault.Coins[rid] = make([]*Coin, 1)
@@ -98,8 +98,10 @@ func (vault *Vault) Withdraw(rid string) *Coin {
 		vault.Coins[rid] = []*Coin{}
 	}
 	vault.me.Unlock()
+
 	files, err := ioutil.ReadDir(COINDIR)
 	util.CheckErr(err)
+
 	for _, f := range files {
 		if rid == f.Name()[:len(rid)] {
 			os.Remove(COINDIR + f.Name())

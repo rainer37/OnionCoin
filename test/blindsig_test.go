@@ -22,12 +22,18 @@ func TestBlindAndUnBlind(t *testing.T) {
 
 func TestBlindRawCoin(t *testing.T) {
 	blockChain.InitBlockChain()
-	msg := coin.NewRawCoin("rainer").ToBytes()
+	msg := coin.NewRawCoin("rainerfsfsdfsdf").ToBytes()
 	sk := ocrypto.RSAKeyGen()
 	pk := &sk.PublicKey
+
 	bsig, bfactor := ocrypto.Blind(pk, msg)
 	bsign := ocrypto.BlindSign(sk, bsig)
 	nmsg := ocrypto.Unblind(pk, bsign, bfactor)
+
+	big := ocrypto.EncryptBig(pk, nmsg)
+	if string(big) != string(msg) {
+		t.Error("Encrypt Big is wrong")
+	}
 
 	if !ocrypto.VerifyBlindSig(pk, msg, nmsg) {
 		t.Error("wrong blind signing")

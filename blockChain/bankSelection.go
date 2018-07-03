@@ -6,7 +6,7 @@ import (
 	"github.com/rainer37/OnionCoin/util"
 )
 
-func (chain *BlockChain) GetAllPeerIDs(max int64) []string {
+func (chain *Chain) GetAllPeerIDs(max int64) []string {
 	peers := []string{}
 	for i,v := range chain.TIndex.PKIndex {
 		//if i == "FAKEID1338" || i == "FAKEID1339" {
@@ -21,17 +21,17 @@ func (chain *BlockChain) GetAllPeerIDs(max int64) []string {
 	return peers
 }
 
-func (chain *BlockChain) GetCurBankIDSet() []string {
+func (chain *Chain) GetCurBankIDSet() []string {
 	return chain.GetBankSetWhen(time.Now().Unix())
 }
 
-func (chain *BlockChain) GetNextBankSet() []string {
+func (chain *Chain) GetNextBankSet() []string {
 	nbanks := chain.GetBankSetWhen(time.Now().Unix() + util.EPOCHLEN)
 	// print(nbanks)
 	return nbanks
 }
 
-func (chain *BlockChain) GetBankSetWhen(t int64) []string {
+func (chain *Chain) GetBankSetWhen(t int64) []string {
 	superBank := []string{"FAKEID1339", "FAKEID1338"}
 	// TODO: super banks for now, remove them.
 	// return superBank
@@ -62,11 +62,11 @@ func (chain *BlockChain) GetBankSetWhen(t int64) []string {
 	//	return append(superBank, theChosen...)
 }
 
-func (chain *BlockChain) GetPrevBanks() []string {
+func (chain *Chain) GetPrevBanks() []string {
 	return chain.GetBankSetWhen(time.Now().Unix() - util.EPOCHLEN)
 }
 
-func (chain* BlockChain) GetMatureBlockLen(t int64) int64 {
+func (chain*Chain) GetMatureBlockLen(t int64) int64 {
 	curEpoch := t / util.EPOCHLEN
 	mLen := 0
 	for i, b := range chain.Blocks {

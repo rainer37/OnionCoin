@@ -60,9 +60,6 @@ func (n *Node) registerCoSign(pk rsa.PublicKey, id string) {
 
 	txn := blockChain.NewPKRTxn(id, pk, regBytes, signers)
 	n.bankProxy.AddTxn(txn)
-
-	// TODO: sync this?
-	// go n.broadcastTxn(txn, blockChain.PK)
 }
 
 /*

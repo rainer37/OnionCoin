@@ -151,12 +151,12 @@ func (n *Node) dispatch(incoming []byte) {
 		n.bankProxy.AddTxn(txn)
 	case CHAINSYNC:
 		bcCount++
-		//print("BlockChain Sync Req Received from", senderID)
+		//print("Chain Sync Req Received from", senderID)
 		n.chainSyncRequested(payload, senderID)
 	case CHAINSYNCACK:
 		bcCount++
 		mutex.Lock()
-		//print("BlockChain Sync Ack Received from", senderID)
+		//print("Chain Sync Ack Received from", senderID)
 		n.chainSyncAckReceived(payload, senderID)
 		mutex.Unlock()
 	case CHAINREPAIR:
@@ -221,7 +221,8 @@ func (n *Node) sendOMsg(opCode rune, payload []byte, pe *records.PKEntry) {
 
 func (n *Node) sendOMsgWithID(opCode rune, payload []byte, id string) {
 	pe := n.getPubRoutingInfo(id)
-	if pe == nil { return }
+	if pe == nil {
+		return
+	}
 	n.sendOMsg(opCode, payload, pe)
 }
-

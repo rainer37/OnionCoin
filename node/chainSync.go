@@ -81,7 +81,6 @@ func (n *Node) chainSyncRequested(payload []byte, senderID string) {
 	Upon received a sync ack from a bank.
 	compare a the hash of the block to see if it could connect.
 	if not, ignore it, otherwise store it.
-	// TODO: the blocks may not came in orders.
  */
 func (n *Node) chainSyncAckReceived(payload []byte, senderID string) {
 	bDepth := binary.BigEndian.Uint64(payload[:8])
@@ -156,8 +155,6 @@ func (n *Node) broadcastTxn(txn blockChain.Txn, txnType rune) {
 	publish the new blocks to all other banks.
  */
 func (n *Node) publishBlock() {
-
-	// banks := n.chain.GetCurBankIDSet()
 	banks := currentBanks
 	for _, b := range banks {
 		if b == n.ID { continue }

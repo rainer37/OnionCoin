@@ -4,6 +4,8 @@ import (
 	"os"
 	"crypto/sha256"
 	"bytes"
+	"encoding/binary"
+	"time"
 )
 
 const (
@@ -55,4 +57,30 @@ func SortSigs(sigs []byte, verifiers []string) {
 			}
 		}
 	}
+}
+
+func SplitBytes(b []byte, n int) [][]byte {
+	if len(b) / n > 40 {
+		print("msg too long cannot split")
+		return nil
+	}
+	bs := [][]byte{}
+	div := len(b) / n
+	for i:=0;i<n;i++ {
+		bs = append(bs, b[i*div:(i+1)*div])
+	}
+	if len(b) % n != 0 { bs = append(bs, b[n*div:]) }
+	return bs
+}
+
+func CurTSBytes() []byte {
+	tsBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(tsBytes, uint64(time.Now().Unix()))
+	return tsBytes
+}
+
+func NewBytes(n int, data []byte) []byte {
+	nb := make([]byte, n)
+	copy(nb, data)
+	return nb
 }

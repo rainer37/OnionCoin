@@ -33,6 +33,18 @@ func print(str ...interface{}) {
 	fmt.Println(str...)
 }
 
+func rsaTimeInc(start time.Time) {
+	ela := time.Since(start)
+	RSATime += ela.Nanoseconds()/nano
+	RSAStep++
+}
+
+func aesTimeInc(start time.Time) {
+	ela := time.Since(start)
+	AESTime += ela.Nanoseconds()/1000
+	AESStep++
+}
+
 // generate a pub/private key pair.
 // public key is inside of PrivateKey by invoking .PublicKey
 func RSAKeyGen() *rsa.PrivateKey {
@@ -42,91 +54,61 @@ func RSAKeyGen() *rsa.PrivateKey {
 }
 
 func PKEncrypt(pk rsa.PublicKey, payload []byte) []byte {
-	start := time.Now()
+	defer rsaTimeInc(time.Now())
 	c, err := rsa.EncryptOAEP(sha256.New(), rng, &pk, payload, LABEL)
 	util.CheckErr(err)
-	ela := time.Since(start)
-	RSATime += ela.Nanoseconds()/nano
-	RSAStep++
 	return c
 }
 
 func PKDecrypt(sk *rsa.PrivateKey, payload []byte) []byte {
-	start := time.Now()
+	defer rsaTimeInc(time.Now())
 	plain, err := rsa.DecryptOAEP(sha256.New(), rng, sk, payload, LABEL)
 	util.CheckErr(err)
-	ela := time.Since(start)
-	RSATime += ela.Nanoseconds()/nano
-	RSAStep++
 	return plain
 }
 
 func RSASign(sk *rsa.PrivateKey, msg []byte) []byte {
-	start := time.Now()
+	defer rsaTimeInc(time.Now())
 	hashed := util.Sha(msg)
 	signature, err := rsa.SignPKCS1v15(rng, sk, crypto.SHA256, hashed[:])
 	util.CheckErr(err)
-	ela := time.Since(start)
-	RSATime += ela.Nanoseconds()/nano
-	RSAStep++
 	return signature
 }
 
 func RSAVerify(pk *rsa.PublicKey, sig []byte, msg []byte) bool {
-	start := time.Now()
+	defer rsaTimeInc(time.Now())
 	hashed := util.Sha(msg)
 	err := rsa.VerifyPKCS1v15(pk, crypto.SHA256, hashed[:], sig)
-	ela := time.Since(start)
-	RSATime += ela.Nanoseconds()/nano
-	RSAStep++
 	if err != nil { return false }
 	return true
 }
 
 func AESEncrypt(key []byte, payload []byte) ([]byte, error) {
-
-	start := time.Now()
-
+	defer aesTimeInc(time.Now())
 	c, err := aes.NewCipher(key)
 	if err != nil { return nil, err}
-
 	gcm, err := cipher.NewGCM(c)
 	if err != nil { return nil, err}
-
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err = io.ReadFull(rng, nonce); err != nil {
 		return nil, err
 	}
-
 	ncipher := gcm.Seal(nonce, nonce, payload, nil)
-
-	ela := time.Since(start)
-	AESTime += ela.Nanoseconds()/1000
-	AESStep++
 	return ncipher, nil
 }
 
 func AESDecrypt(key []byte, cipherText []byte) ([]byte, error){
-	start := time.Now()
-
+	defer aesTimeInc(time.Now())
 	c, err := aes.NewCipher(key)
 	if err != nil { return nil, err }
-
 	gcm, err := cipher.NewGCM(c)
 	if err != nil { return nil, err}
-
 	nonceSize := gcm.NonceSize()
 	if len(cipherText) < nonceSize {
-		return nil, errors.New("ciphertext too short")
+		return nil, errors.New("cipherText too short")
 	}
-
 	nonce, cipherText := cipherText[:nonceSize], cipherText[nonceSize:]
-
 	plain, err := gcm.Open(nil, nonce, cipherText, nil)
-
-	ela := time.Since(start)
-	AESTime += ela.Nanoseconds()/1000
-	AESStep++
 	return plain, err
 }
 
@@ -134,9 +116,8 @@ func AESDecrypt(key []byte, cipherText []byte) ([]byte, error){
 	Return cipher, encrypted symkey, and err.
  */
 func BlockEncrypt(msg []byte, pk rsa.PublicKey) ([]byte, []byte , error) {
-	buf := make([]byte, 32)
-	rand.Read(buf) // generate random bytes for encryption
-	symkey := buf
+	symkey := make([]byte, 32)
+	rand.Read(symkey) // generate random bytes for encryption
 	ncipher, err := AESEncrypt(symkey, msg)
 	if err != nil { return nil, nil, err}
 	cipherKey := PKEncrypt(pk, symkey)

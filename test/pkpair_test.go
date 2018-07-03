@@ -6,7 +6,7 @@ import (
 )
 
 func TestPKEncrypt(t *testing.T) {
-	msg := "the-key-has-to-be-32-bytes-lon!"
+	msg := "the-key-has-to-be-32-bytes-long!"
 
 	sk := ocrypto.RSAKeyGen()
 	pk := sk.PublicKey
@@ -70,7 +70,7 @@ func TestSignANDVerify(t *testing.T) {
 	sk := ocrypto.RSAKeyGen()
 	pk := sk.PublicKey
 
-	msg := []byte("Hello World")
+	msg := make([]byte, 1280)
 
 	sig := ocrypto.RSASign(sk, msg)
 	// fmt.Println(len(sig))

@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-func GenTestBlockWithTwoTxn(chain *blockChain.BlockChain) *blockChain.Block {
+func GenTestBlockWithTwoTxn(chain *blockChain.Chain) *blockChain.Block {
 	id_1 := "rainer"
 	sk_1 := ocrypto.RSAKeyGen()
 	pk_1 := sk_1.PublicKey

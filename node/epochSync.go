@@ -15,7 +15,7 @@ func (n *Node) epochTimer() {
 	epochLen := int64(util.EPOCHLEN)
 
 	defer func() {
-		fmt.Println("BOOM!\n\n\n\n")
+		print("BOOM!\n\n\n\n")
 	}()
 
 	// wait until beginning of next epoch upon boot.
@@ -142,10 +142,7 @@ func (n *Node) getTxnsInBuffer() []byte {
 func (n *Node) isSlientHours() bool {
 	now := time.Now().Unix()
 	nextEpoch := (now / util.EPOCHLEN + 1) * util.EPOCHLEN
-	if now > nextEpoch - util.PROPOSINGDELAY {
-		return true
-	}
-	return false
+	return now > nextEpoch - util.PROPOSINGDELAY
 }
 
 /*

@@ -35,7 +35,7 @@ type Node struct {
 	regChan chan []byte
 	iplookup chan string
 	feedbackChan chan rune
-	chain *bc.BlockChain
+	chain *bc.Chain
 }
 
 func NewNode(port string) *Node {
@@ -52,10 +52,6 @@ func NewNode(port string) *Node {
 	// TODO: take these superpower out.
 	ela = time.Now()
 	return n
-}
-
-func (n *Node) addr() string {
-	return n.IP + ":" + n.Port
 }
 
 func (n *Node) Deposit(coin *coin.Coin)  {
@@ -116,7 +112,7 @@ func produceSK() *rsa.PrivateKey {
 }
 
 func (n *Node) random_exchg() {
-	ticker := time.NewTicker(time.Second * 1)
+	ticker := time.NewTicker(time.Second * 5)
 	for range ticker.C {
 		//fmt.Println("Tick at", t.Unix(), "SEND:", msgSendCount,
 		// "RECEIVED:", msgReceived, "OPS:", opCount)
@@ -134,7 +130,6 @@ func (n *Node) random_exchg() {
 				}
 			}()
 		}
-
 	}
 }
 
@@ -168,7 +163,6 @@ func (n *Node) random_msg() {
 				}
 			}()
 		}
-
 	}
 }
 

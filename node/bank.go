@@ -13,11 +13,11 @@ var HashCmpMap map[string]int
 type Bank struct {
 	sk *rsa.PrivateKey
 	txnBuffer []blockChain.Txn
-	chain *blockChain.BlockChain
+	chain *blockChain.Chain
 	status bool
 }
 
-func InitBank(sk *rsa.PrivateKey, chain *blockChain.BlockChain) *Bank {
+func InitBank(sk *rsa.PrivateKey, chain *blockChain.Chain) *Bank {
 	bank := new(Bank)
 	bank.sk = sk
 	bank.chain = chain
@@ -49,12 +49,6 @@ func (bank *Bank) AddTxn(txn blockChain.Txn) bool {
 	l := len(bank.txnBuffer)
 	print("Txn added, current buffer load:",
 		float32(l) / util.MAXNUMTXN, l)
-
-	//if bank.status {
-	//	for len(bank.txnBuffer) >= util.MAXNUMTXN {
-	//		bank.GenerateNewBlock()
-	//	}
-	//}
 
 	return true
 }

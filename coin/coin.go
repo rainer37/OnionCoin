@@ -8,7 +8,6 @@ import(
 )
 
 const COINPREFIX = "[COIN]"
-const COINLEN = 128
 
 type Coin struct {
 	RID     string // receiver's ID
@@ -30,14 +29,6 @@ func NewCoin(rid string, content []byte, signers []string) *Coin {
 	coin.Signers = signers
 	return coin
 }
-
-func (c *Coin) GetContent() []byte {
-	b := make([]byte, COINLEN)
-	copy(b, c.Content)
-	return b
-}
-
-func (c *Coin) GetRID() string { return c.RID }
 
 func (c *Coin) Bytes() []byte {
 	coinBytes, err := json.Marshal(c)

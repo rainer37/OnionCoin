@@ -52,16 +52,16 @@ type ChainIndex struct {
 	mutex *sync.Mutex
 }
 
-type BlockChain struct {
+type Chain struct {
 	Blocks []*Block
 	TIndex ChainIndex
 }
 
 var TI *ChainIndex
 
-func InitBlockChain() *BlockChain {
+func InitBlockChain() *Chain {
 
-	chain := new(BlockChain)
+	chain := new(Chain)
 	chain.Blocks = []*Block{&GENESISBLOCK}
 
 	if ok, _ := util.Exists(TINDEXDIR); !ok {
@@ -87,7 +87,7 @@ func InitBlockChain() *BlockChain {
 	Load all the blocks from disk, and add it to blockchain struct
 	update TIndex with all info loaded
  */
-func (chain *BlockChain) loadChainAndIndex() {
+func (chain *Chain) loadChainAndIndex() {
 	chain.Blocks = []*Block{&GENESISBLOCK}
 
 	chain.TIndex.PKIndex = make(map[string]int64)
@@ -113,7 +113,7 @@ func (chain *BlockChain) loadChainAndIndex() {
 	Add a new block to the blockChain.
 	Update the prehash, txnHashes and depth before add it.
  */
-func (chain *BlockChain) AddNewBlock(block *Block) {
+func (chain *Chain) AddNewBlock(block *Block) {
 	// chain.Blocks = append(chain.Blocks, block)
 	chain.StoreBlock(block)
 }
@@ -121,7 +121,7 @@ func (chain *BlockChain) AddNewBlock(block *Block) {
 /*
 	generate a block from transaction buffer and push it to the system.
  */
-func (chain *BlockChain) GenNewBlock(txnBuffer []Txn) *Block {
+func (chain *Chain) GenNewBlock(txnBuffer []Txn) *Block {
 	if len(txnBuffer) == 0 { return nil }
 	print("Fresh Block with", len(txnBuffer), "txns")
 
@@ -142,7 +142,7 @@ func (chain *BlockChain) GenNewBlock(txnBuffer []Txn) *Block {
 /*
 	store the block bytes on disk in json, and update TIndex
  */
-func (chain *BlockChain) StoreBlock(b *Block) {
+func (chain *Chain) StoreBlock(b *Block) {
 	// print("writing block to disk, depth:", b.Depth)
 
 	blockData, err := json.Marshal(b)
@@ -166,7 +166,7 @@ func (chain *BlockChain) StoreBlock(b *Block) {
 /*
 	return the pub-key associated with Id from blockchain.
  */
-func (chain *BlockChain) GetPKFromChain(id string) *rsa.PublicKey {
+func (chain *Chain) GetPKFromChain(id string) *rsa.PublicKey {
 	tpk, ok := chain.TIndex.PKIndex[id]
 	if !ok { return nil }
 
@@ -189,7 +189,7 @@ func (chain *BlockChain) GetPKFromChain(id string) *rsa.PublicKey {
 	Trim the blockchain starting at some point, and delete them from disk
 	then update chain struct and TIndex.
  */
-func (chain *BlockChain) TrimChain(start int64) {
+func (chain *Chain) TrimChain(start int64) {
 	n := chain.Size()
 	for i := start; i < n; i++ {
 		os.Remove(CHAINDIR + strconv.FormatUint(uint64(i), 10))
@@ -197,14 +197,14 @@ func (chain *BlockChain) TrimChain(start int64) {
 	chain.loadChainAndIndex()
 }
 
-func (chain *BlockChain) Size() int64 { return int64(len(chain.Blocks)) }
-func (chain *BlockChain) GetBlock(index int64) *Block { return chain.Blocks[index] }
-func (chain *BlockChain) GetLastBlock() *Block { return chain.GetBlock(chain.Size()-1) }
+func (chain *Chain) Size() int64 { return int64(len(chain.Blocks)) }
+func (chain *Chain) GetBlock(index int64) *Block { return chain.Blocks[index] }
+func (chain *Chain) GetLastBlock() *Block { return chain.GetBlock(chain.Size()-1) }
 
 /*
 	generate one block bytes in json
  */
-func (chain *BlockChain) GenBlockBytes(index int64) []byte {
+func (chain *Chain) GenBlockBytes(index int64) []byte {
 	blo := chain.GetBlock(index)
 	b, err := json.Marshal(blo)
 	util.CheckErr(err)
@@ -214,7 +214,7 @@ func (chain *BlockChain) GenBlockBytes(index int64) []byte {
 /*
 	update the TIndex for quick search for coinNum and pk.
  */
-func (chain *BlockChain) updateIndex(b *Block) {
+func (chain *Chain) updateIndex(b *Block) {
 	for _, t := range b.Txns {
 		switch v := t.(type) {
 		case PKRegTxn:
@@ -224,7 +224,7 @@ func (chain *BlockChain) updateIndex(b *Block) {
 		case BCNRDMTxn:
 			print("duo nothing now")
 		default:
-			print("what the fuck is this txn")
+			print("what the hell is this txn?")
 		}
 	}
 
@@ -245,16 +245,12 @@ func (chain *BlockChain) updateIndex(b *Block) {
 	Check if the new coin num has been used before.
  */
 func IsFreeCoinNum(coinNum uint64) bool {
-	if _, ok := TI.CNIndex[strconv.FormatUint(coinNum, 10)]; !ok {
-		return true
-	}
-	return false
+	_, ok := TI.CNIndex[strconv.FormatUint(coinNum, 10)]
+	return !ok
 }
 
 func print(str ...interface{}) {
-	if silent {
-		return
-	}
+	if silent { return }
 	fmt.Print(BKCHPREFIX+" ")
 	fmt.Println(str...)
 }

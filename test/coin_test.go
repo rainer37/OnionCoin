@@ -43,10 +43,6 @@ func TestRawCoinBlindbyBank(t *testing.T) {
 	if !ocrypto.VerifyBlindSig(&bankSK.PublicKey,rwcn.ToBytes(),coin) {
 		t.Error("wrong raw coin ex")
 	}
-
-	if !node.ValidateCoinByKey(coin, "rainer", &bankSK.PublicKey) {
-		t.Error("invalid coin")
-	}
 }
 
 func TestRawCoinBlindbyBanks(t *testing.T) {
@@ -62,10 +58,6 @@ func TestRawCoinBlindbyBanks(t *testing.T) {
 
 	if !ocrypto.VerifyBlindSig(&bankSK.PublicKey,rwcn.ToBytes(),coin) {
 		t.Error("wrong raw coin ex")
-	}
-
-	if !node.ValidateCoinByKey(coin, "rainer", &bankSK.PublicKey) {
-		t.Error("invalid coin")
 	}
 
 	nbrc, nbfid := ocrypto.Blind(&bankSK1.PublicKey, coin)
@@ -95,8 +87,9 @@ func TestCoinGetBytes(t *testing.T) {
 	err := json.Unmarshal(cbytes, ncoin)
 	util.CheckErr(err)
 
-	if ncoin.GetRID() != "rainer" { t.Error("WRONG ID") }
-	if util.Strip(ncoin.GetContent()) != "contents" { t.Error("WRONG CONTENTS") }
+	if ncoin.RID != "rainer" { t.Error("WRONG ID") }
+	if util.Strip(ncoin.Content) != "contents" { t.Error("WRONG CONTENTS") }
 	if len(ncoin.Signers) != 2 { t.Error("WRONG NUM SIGNERS") }
 	if ncoin.Signers[0] != "r1" || ncoin.Signers[1] != "r2" { t.Error("WRONG SIGNES" )}
 }
+

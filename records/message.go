@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"github.com/rainer37/OnionCoin/ocrypto"
 	"crypto/rsa"
-	"time"
 	"fmt"
 	"github.com/rainer37/OnionCoin/util"
 )
@@ -106,15 +105,9 @@ func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey,
 
 	if len(nodeID) > util.IDLEN { return nil }
 
-	id_buf := make([]byte, util.IDLEN)
-	copy(id_buf[:], nodeID)
-
-	ts_buf := make([]byte, TSLEN)
-	binary.BigEndian.PutUint64(ts_buf, uint64(time.Now().Unix()))
-
-	hash_buf := make([]byte, HASHLEN)
-	sig := ocrypto.RSASign(sk, payload)
-	copy(hash_buf, sig)
+	id_buf := util.NewBytes(util.IDLEN, []byte(nodeID))
+	ts_buf := util.CurTSBytes()
+	hash_buf := util.NewBytes(HASHLEN, ocrypto.RSASign(sk, payload))
 
 	pld_len_buf := make([]byte, PAYLOADLENLEN)
 	binary.BigEndian.PutUint32(pld_len_buf, uint32(len(payload)))
@@ -122,10 +115,6 @@ func MarshalOMsg(opCode rune, payload []byte, nodeID string, sk *rsa.PrivateKey,
 	buffer := util.JoinBytes([][]byte{op_buf, id_buf, ts_buf, hash_buf, pld_len_buf, payload})
 	cipher, ckey, err := ocrypto.BlockEncrypt(buffer, pk)
 
-	if err != nil {
-		fmt.Println(err.Error())
-		return nil
-	}
-
+	util.CheckErr(err)
 	return append(ckey, cipher...)
 }

@@ -17,8 +17,7 @@ func (n *Node) welcomeNewBie(newbieID string) {
 		print("Cannot find pk by id")
 		return
 	}
-	idb := make([]byte, util.IDLEN)
-	copy(idb, newbieID)
+	idb := util.NewBytes(util.IDLEN, []byte(newbieID))
 	payload := append(idb, pe.Bytes()...)
 	for _, v := range records.AllPEs([]string{n.ID, newbieID}) {
 		n.sendOMsg(WELCOME, payload, v)

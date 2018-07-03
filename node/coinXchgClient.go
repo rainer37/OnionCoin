@@ -8,7 +8,6 @@ import (
 	"encoding/binary"
 	"crypto/rsa"
 	"math/rand"
-	"github.com/rainer37/OnionCoin/blockChain"
 )
 
 /*
@@ -25,10 +24,26 @@ func (n *Node) receiveNewCoin(payload []byte, senderID string) {
 /*
 	Generate the genesis coin with my signed pk.
  */
+//func (n *Node) GetGenesisCoin() *coin.Coin {
+//	pkHash := util.Sha(ocrypto.EncodePK(n.sk.PublicKey))
+//	gcoin := n.blindSign(pkHash[:])
+//	return coin.NewCoin(n.ID, gcoin, []string{n.ID})
+//}
+
 func (n *Node) GetGenesisCoin() *coin.Coin {
-	pkHash := util.Sha(ocrypto.EncodePK(n.sk.PublicKey))
-	gcoin := n.blindSign(pkHash[:])
-	return coin.NewCoin(n.ID, gcoin, []string{n.ID})
+	myIDHash := util.Sha([]byte(n.ID))
+	//myIDHash := []byte("rainerrainerrainerrainerrainerer")
+	gbytes := util.NewBytes(40, myIDHash[:])
+	gbs := util.SplitBytes(gbytes, util.NUMCOSIGNER)
+	gcoin := []byte{}
+	for _, gb := range gbs {
+		gcoin = append(gcoin, n.blindSign(gb)...)
+	}
+	signers := []string{n.ID}
+	for i:=0;i<util.NUMCOSIGNER-1;i++ {
+		signers = append(signers, n.ID)
+	}
+	return coin.NewCoin(n.ID, gcoin, signers)
 }
 
 /*
@@ -77,7 +92,9 @@ func (n *Node) CoinExchange(dstID string) {
 	rwcn := coin.NewRawCoin(dstID)
 
 	// gcoin := n.Vault.Withdraw(n.ID).Bytes()
-	gcoin := n.GetGenesisCoin().Bytes()
+//	gcoin := n.GetGenesisCoin().Bytes()
+	gcoin := n.Withdraw(dstID).Bytes()
+
 	if gcoin == nil {
 		print("No More Coins To exchange")
 		return
@@ -90,86 +107,59 @@ func (n *Node) CoinExchange(dstID string) {
 	counter := 0
 	layers := 0
 	rc := rwcn.ToBytes()
+	tsBytes := util.CurTSBytes()
+	newCoin := []byte{}
 
-	tsBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(tsBytes, uint64(time.Now().Unix()))
+	rawCoinSegs := util.SplitBytes(rc, util.NUMCOSIGNER)
+	print("coin segments num:", len(rawCoinSegs),
+		"coin len:", len(gcoin))
 
 	for layers < util.NUMCOSIGNER && counter < len(banks) {
-		banks = currentBanks
 		bid := banks[counter]
-
 		bpe := n.getPubRoutingInfo(bid)
-		if bpe == nil { continue }
 
-		// print("Requesting", bid, "for signing rawCoin")
+		blindRawSeg, bfid := BlindBytes(rawCoinSegs[layers], &bpe.Pk)
+		print("blindRawSeg size:", len(blindRawSeg))
 
-		blindrwcn, bfid := BlindBytes(rc, &bpe.Pk)
-
-		payload := util.JoinBytes([][]byte{tsBytes, blindrwcn, []byte(bfid), gcoin})
+		payload := util.JoinBytes([][]byte{tsBytes, blindRawSeg, []byte(bfid), gcoin})
 		n.sendOMsg(RAWCOINEXCHANGE, payload, bpe)
 
-		var realCoin []byte
-
-		m.Lock()
+		var signedRawSeg []byte
 		exMap[bfid] = make(chan []byte)
 
-		select{
-		case reply := <-exMap[bfid]:
-			realCoin = reply
-			close(exMap[bfid])
-			m.Unlock()
-		case <-time.After(util.COSIGNTIMEOUT * time.Second):
-			// print(bid, "no response, try next bank")
-			close(exMap[bfid])
-			counter++
-			m.Unlock()
-			continue
+		m.Lock()
+		select {
+			case signedRawSeg = <-exMap[bfid]:
+			case <-time.After(util.COSIGNTIMEOUT * time.Second):
+				signedRawSeg = nil
 		}
-		//print("waiting for response from", bid)
 
-		revealedCoin := UnBlindBytes(realCoin, bfid, &bpe.Pk)
+		close(exMap[bfid])
+		m.Unlock()
 
 		counter++
 
+		if signedRawSeg == nil { continue }
+
+		revealedCoin := UnBlindBytes(signedRawSeg, bfid, &bpe.Pk)
+
 		expected := ocrypto.EncryptBig(&bpe.Pk, revealedCoin)
 
-		if string(expected) != string(rc) {
-			// print("not equal after blindSign, bad bank!", bid, len(expected), len(rc))
+		if string(expected) != string(rawCoinSegs[layers]) {
+			print("not equal after blindSign, bad bank!",
+				bid, len(expected), len(rawCoinSegs[layers]))
 			continue
 		}
 
-		rc = revealedCoin
+		newCoin = append(newCoin, revealedCoin...)
 		signerBanks = append(signerBanks, bid)
 		layers++
 	}
 
 	if layers != util.NUMCOSIGNER {
-		// print("Not Enough Banks To Forge a Coin, Try Next Epoch")
+		print("Not Enough Banks To Forge a Coin, Try Next Epoch")
 		return
 	}
-
-	n.Deposit(coin.NewCoin(dstID, rc, signerBanks))
-}
-
-/*
-	Validate a received coin by checking if the rid matches senderID, and if the coinNum is free.
- */
-func ValidateCoinByKey(coinBytes []byte, senderID string, pk *rsa.PublicKey) bool {
-	c := ocrypto.EncryptBig(pk, coinBytes)
-
-	if len(c) != 32 + 8 { return false }
-
-	idHash := util.Sha([]byte(senderID))
-	targetHash := c[:32]
-	coinNum := c[32:]
-
-	if string(idHash[:]) != string(targetHash) {
-		return false
-	}
-
-	if !blockChain.IsFreeCoinNum(binary.BigEndian.Uint64(coinNum)) {
-		return false
-	}
-
-	return true
+	print("successfully get a coin for", dstID)
+	n.Deposit(coin.NewCoin(dstID, newCoin, signerBanks))
 }

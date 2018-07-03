@@ -18,10 +18,7 @@ func (n *Node) SelfInit() {
 
 	n.bankProxy = InitBank(n.sk, n.chain)
 
-	n.bankProxy.SetStatus(false)
-	if n.iamBank() {
-		n.bankProxy.SetStatus(true)
-	}
+	n.bankProxy.SetStatus(n.iamBank())
 
 	n.recordPE(n.ID, n.sk.PublicKey, n.IP, n.Port)
 
@@ -32,8 +29,8 @@ func (n *Node) SelfInit() {
 	p,err := strconv.Atoi(n.Port)
 	util.CheckErr(err)
 
-	// go n.random_exchg()
-	go n.random_msg()
+	go n.random_exchg()
+	// go n.random_msg()
 	go n.epochTimer()
 
 	n.Serve(util.LOCALHOST, p)

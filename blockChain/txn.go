@@ -167,4 +167,3 @@ func ProduceTxn(data []byte, txnType rune) Txn {
 	}
 	return nil
 }
-

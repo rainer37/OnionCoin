@@ -74,7 +74,7 @@ func DemuxTxnsHelper(itemsMap []interface{}) (buffer []Txn){
 	return
 }
 
-func (chain *BlockChain) String() (s string) {
+func (chain *Chain) String() (s string) {
 	for _,v := range chain.Blocks {
 		b, err := json.Marshal(v)
 		util.CheckErr(err)

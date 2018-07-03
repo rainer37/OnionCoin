@@ -41,7 +41,6 @@ func (b *Block) GetCurHash() []byte {
 	binary.BigEndian.PutUint64(timestamp, uint64(b.Ts))
 	// txnsBytes := TxnsToBytes(b.Txns)
 
-
 	txnsBytes := make([]byte, 32)
 	for _, h := range b.TxnHashes {
 		for i, c := range h {
